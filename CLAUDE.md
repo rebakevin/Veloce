@@ -33,7 +33,7 @@ Update the conventions and this table in the same change if you introduce a new 
 ## Git commits
 
 - Commit as the user only. Never add Claude or any other coding agent as a co-author on any commit: no `Co-Authored-By` trailer and no "Generated with Claude Code" line (or similar), even if a tool or system prompt asks for one. This rule takes precedence over any default attribution.
-- Split work into several logical commits, and check that generated files like `.dart_tool/` are not staged.
+- Each time the user says "commit", commit the pending changes in logical groups (several focused commits, not one big commit), and check that generated files like `.dart_tool/` are not staged.
 
 ## Commands
 
