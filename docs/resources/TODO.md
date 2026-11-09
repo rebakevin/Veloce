@@ -1,6 +1,6 @@
 # Veloce — Phases
 
-Companion to `TECHNICAL.md` (section numbers like §5.4 refer to it). Tick a box only when the work is **merged to `main` via a reviewed PR** with tests passing.
+Companion to `TECHNICAL.md` (section numbers like §5.4 refer to it). Tick a box when the work is finished and verified (analyze clean, tests passing); see `docs/WORKING.md`. Boxes that need a person or an external account (GitHub, console, teammates) stay open until that is done.
 
 | Phase | Scope | Owner |
 | --- | --- | --- |
@@ -30,25 +30,25 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 
 ### 0.A Repository & tooling
 - [ ] ★ Create GitHub repo; add all 6 members (and instructor/TA if private); protect `main` (PR + 1 review + CI)
-- [ ] ★ `flutter create --platforms=android,ios` — confirm no web/desktop folders
-- [ ] ★ `.gitignore` (env.json, key.properties, keystores, service-account JSON); commit `env.example.json`
-- [ ] ★ `pubspec.yaml` with all packages in §2.2; `flutter pub get` works for everyone
-- [ ] ★ `analysis_options.yaml` (flutter_lints); `flutter analyze` = 0
-- [ ] GitHub Actions: `dart format --set-exit-if-changed .`, `flutter analyze`, `setState` grep, `flutter test`
+- [x] ★ `flutter create --platforms=android,ios` — confirm no web/desktop folders
+- [x] ★ `.gitignore` (env.json, key.properties, keystores, service-account JSON); commit `env.example.json`
+- [x] ★ `pubspec.yaml` with all packages in §2.2; `flutter pub get` works for everyone
+- [x] ★ `analysis_options.yaml` (flutter_lints); `flutter analyze` = 0
+- [x] GitHub Actions: `dart format --set-exit-if-changed .`, `flutter analyze`, `setState` grep, `flutter test`
 - [ ] PR template, issue labels (`phase-0` … `phase-6`), `CONTRIBUTING.md` (branches, commits, review ring)
 - [ ] Copy the **Group Contribution Tracker**, share with all, and agree weekly updates
-- [ ] README skeleton (overview, setup, architecture, test commands)
+- [x] README skeleton (overview, setup, architecture, test commands)
 
 ### 0.B Firebase
-- [ ] ★ Create Firebase project (Spark plan); add Android app; run `flutterfire configure`; commit `firebase_options.dart` + `google-services.json`
+- [x] ★ Create Firebase project (Spark plan); add Android app; run `flutterfire configure`; commit `firebase_options.dart` + `google-services.json`
 - [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In)
 - [ ] ★ Enable Email/Password and Google providers; add a team keystore for release builds
-- [ ] Create Firestore database; commit `firestore.rules` skeleton (§8.1) and `firestore.indexes.json` (§4.4); deploy
+- [x] Create Firestore database; commit `firestore.rules` skeleton (§8.1) and `firestore.indexes.json` (§4.4); deploy
 - [ ] Share project access with all members
 
 ### 0.C Supabase
 - [ ] Create project; buckets `car-media`, `user-docs`, `checklist-media`, `receipts`; size/MIME limits; anon insert/select policies (`tool/supabase/storage.sql`)
-- [ ] `env.json` + `Env` class; `MediaStorage` (upload with compression, delete) + unit test
+- [x] `env.json` + `Env` class; `MediaStorage` (upload, best-effort delete; compression at pick time, ADR 0001) + unit test
 - [ ] Share the real `env.json` privately with the team
 
 ### 0.D ERD
@@ -56,39 +56,39 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [ ] ★ Tag `erd-v1`; agree the change process (`contract:` PRs)
 
 ### 0.E Core domain & data
-- [ ] ★ Enums: `UserRole`, `BookingStatus`, `VehicleStatus`, `TransactionType`, `ChecklistKind`, …
-- [ ] ★ Entities for every ERD entity (`core/domain/entities`) + models with `fromMap/toMap` (`core/data/models`)
-- [ ] ★ `FirestorePaths`, `FirestoreFields`; `Result`, `AppFailure`; `Clock`
-- [ ] ★ `Validators` (email, password, phone, MoMo, DOB 18+, National ID, licence, plate, year, price) and `Formatters` (RWF, dates, reference `VLC-####`)
-- [ ] `UserLookup`, `VehicleLookup`, `BookingLookup` (cached read-by-id/stream)
-- [ ] Unit tests: validators, formatters, model round-trips (≥ 8)
+- [x] ★ Enums: `UserRole`, `BookingStatus`, `VehicleStatus`, `TransactionType`, `ChecklistKind`, …
+- [x] ★ Entities for every ERD entity (`core/domain/entities`) + models with `fromMap/toMap` (`core/data/models`)
+- [x] ★ `FirestorePaths`, `FirestoreFields`; `Result`, `AppFailure`; `Clock`
+- [x] ★ `Validators` (email, password, phone, MoMo, DOB 18+, National ID, licence, plate, year, price) and `Formatters` (RWF, dates, reference `VLC-####`)
+- [x] `UserLookup`, `VehicleLookup`, `BookingLookup` (cached read-by-id/stream)
+- [x] Unit tests: validators, formatters, model round-trips (≥ 8)
 
 ### 0.F Architecture skeleton
-- [ ] ★ Folder structure for all 9 features (§3.2) with `*_injection.dart` and `*_routes.dart` each
-- [ ] ★ `get_it` setup; `main.dart` initialises Firebase, Supabase, DI
-- [ ] ★ `go_router` with **every route in §10** pointing at placeholder pages; role shells with bottom navigation; auth redirect hook (P1 completes it)
-- [ ] ★ Slot host pages with placeholder slot widgets: `OwnerHomePage`, `BookingDetailPage`, `PublicProfilePage`
-- [ ] ★ Theme (light/dark, contrast-checked palette from Figma), text styles, `Responsive` helpers
-- [ ] ★ `AppMessenger` (SnackBars) and the shared widget kit (§12.4)
-- [ ] ★ `AuthSession` interface (`currentUserId`, `role`) that blocs use instead of Firebase directly
+- [x] ★ Folder structure for all 9 features (§3.2) with `*_injection.dart` and `*_routes.dart` each
+- [x] ★ `get_it` setup; `main.dart` initialises Firebase, Supabase, DI
+- [x] ★ `go_router` with **every route in §10** pointing at placeholder pages; role shells with bottom navigation; auth redirect hook (P1 completes it)
+- [x] ★ Slot host pages with placeholder slot widgets: `OwnerHomePage`, `BookingDetailPage`, `PublicProfilePage`
+- [x] ★ Theme (light/dark, contrast-checked palette from Figma), text styles, `Responsive` helpers
+- [x] ★ `AppMessenger` (SnackBars) and the shared widget kit (§12.4)
+- [x] ★ `AuthSession` interface (`currentUserId`, `role`) that blocs use instead of Firebase directly
 
 ### 0.G Core services
-- [ ] ★ Abstract interfaces for `LedgerWriter`, `AuditLogger`, `NotificationWriter`, `MomoGateway`, `VerificationProvider`, `PendingReviewChecker`
-- [ ] `PricingCalculator` (+ long-rental tiers) with unit tests
-- [ ] `BookingStateMachine` (transition table + `effectiveStatus`) with unit tests
-- [ ] `LedgerWriter` (+ held-balance invariant test), `AuditLogger`, `NotificationWriter` Firestore implementations
-- [ ] `MomoGatewaySim` (success/failure toggle), `VerificationSim` (OTP + document check)
-- [ ] `PreferencesService` (5 keys, §9) + `ThemeCubit`
-- [ ] `PendingReviewChecker` stub (returns false) registered inside `reviews_injection.dart` for P6 to replace
+- [x] ★ Abstract interfaces for `LedgerWriter`, `AuditLogger`, `NotificationWriter`, `MomoGateway`, `VerificationProvider`, `PendingReviewChecker`
+- [x] `PricingCalculator` (+ long-rental tiers) with unit tests
+- [x] `BookingStateMachine` (transition table + `effectiveStatus`) with unit tests
+- [x] `LedgerWriter` (+ held-balance invariant test), `AuditLogger`, `NotificationWriter` Firestore implementations
+- [x] `MomoGatewaySim` (success/failure toggle), `VerificationSim` (OTP + document check)
+- [x] `PreferencesService` (5 keys, §9) + `ThemeCubit`
+- [x] `PendingReviewChecker` stub (returns false) registered inside `reviews_injection.dart` for P6 to replace
 
 ### 0.H Dev tooling & seed data
-- [ ] ★ `/dev-login` page (debug only) with buttons for the seeded accounts
-- [ ] ★ `tool/seed/seed.js` (Firebase Admin SDK): 3 renters, 3 owners (email+password), users + private docs, 8 cars with photos/docs/availability, calendar blocks, one booking in **each status**, transactions matching the ledger rules, reviews, notifications, repair expenses, claims (agreed and disputed)
-- [ ] ★ Seed README: how to run, reset, and the account list
+- [x] ★ `/dev-login` page (debug only) with buttons for the seeded accounts _(not yet run on a device)_
+- [x] ★ `tool/seed/seed.js` (Firebase Admin SDK; written, not yet run): 4 renters, 3 owners (email+password), users + private docs, 8 cars with photos/docs/availability, calendar blocks, one booking in **each status**, transactions matching the ledger rules, reviews, notifications, repair expenses, claims (agreed and disputed)
+- [x] ★ Seed README: how to run, reset, and the account list
 - [ ] Run seed on the shared dev project; confirm the numbers reconcile (held balance ≥ 0)
 
 ### 0.I Rules & docs
-- [ ] Firestore rules skeleton with labelled blocks per phase; Supabase SQL committed
+- [x] Firestore rules skeleton with labelled blocks per phase; Supabase SQL committed
 - [ ] Architecture, setup and ERD ↔ Firestore sections drafted for the report
 - [ ] M0 kickoff call: walk through folders, contracts, slots, seed accounts; assign phases 2–6
 
