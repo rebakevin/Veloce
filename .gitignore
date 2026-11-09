@@ -1,1 +1,18 @@
 .idea
+*.iml
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins-dependencies
+.packages
+build/
+coverage/
+*.log
+
+# Secrets (never commit)
+env.json
+android/key.properties
+android/*.jks
+android/*.keystore
+**/*service-account*.json
+node_modules/
