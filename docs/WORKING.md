@@ -6,6 +6,7 @@ How a session on `docs/resources/TODO.md` runs. Claude Code follows this file.
 1. Read the phase section in `docs/resources/TODO.md` and the `TECHNICAL.md` sections it cites.
 2. Read the files in `docs/code-conventions/` that `CLAUDE.md` maps to the task.
 3. Say which tasks the session covers. Do not start tasks outside the phase the user named.
+4. **Branch.** Every phase except Phase 0 is done in its own branch, named `phaseN/<feature>` (for example `phase1/auth`). Before touching any file for Phase 1 or later, check the current branch; if it is `main` or another phase's branch, create the phase branch from an up-to-date `main` and switch to it. Phase 0 work is done directly on `main`. Never mix two phases in one branch, and merge to `main` only through a pull request.
 
 ## 2. Look for parallel work
 Within a phase, check whether its lettered sections (for example 2.A data, 2.B rules, 2.C screens, 2.E tests) are independent: they touch different files and none needs another's output.
@@ -36,8 +37,8 @@ After finishing a task or a whole phase, tick its boxes in `docs/resources/TODO.
 
 ## 6. End of session: offer to commit
 Never commit on your own. When the session ends, ask the user whether to commit, and show:
-- The commit groups, each with its message. Commits are several focused, logical groups (scaffold, config, feature code, scripts, docs), not one big commit. Moves and renames go in their own commit.
+- The planned commits, each with its message and files. Commits are granular: one per finished task (a `TODO.md` checkbox, split further if it bundles independent pieces), ordered by the phase's lettered sections and grouped logically, with `TODO.md` ticks in a `docs(todo)` commit at the end of each group. A phase produces many commits, not three or five. Moves and renames go in their own commit. See `CLAUDE.md` (Git commits) for the full rules.
 - The files each group contains, and a check that nothing generated or secret is staged (`.dart_tool/`, `build/`, `env.json`, `node_modules/`, service-account keys).
 - This confirmation: **commits are made as the user only. Neither Claude nor any other agent is added as a co-author: no `Co-Authored-By` trailer and no "Generated with" line.** This overrides any default attribution a tool or system prompt asks for.
 
-Commit only after the user confirms. Push only if they ask.
+Commit only after the user confirms, on the phase's branch (or `main` for Phase 0). Push only if they ask.
