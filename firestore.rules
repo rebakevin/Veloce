@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    // ---------- helpers (Phase 0) ----------
+    function signedIn()   { return request.auth != null; }
+    function me()         { return request.auth.uid; }
+    function isSelf(id)   { return signedIn() && me() == id; }
+    function changed()    { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function bk(id)       { return get(/databases/$(db)/documents/bookings/$(id)).data; }
+    function isParty(b)   { return signedIn() && (b.renterId == me() || b.ownerId == me()); }
+
+    // Phase 4 and Phase 5 each add their rows of the TECHNICAL.md §5.1 table
+    // here, joined with `||`. Until then no booking update is allowed.
+    function validTransition(before, after) {
+      // P4: pending/approved/confirmed transitions, locks, contact unlock.
+      // P5: confirmed -> active, active -> return, return/review -> completed.
+      return false;
+    }
+
+    // ---------- P1: users ----------
+    match /users/{uid} {
+      allow read:   if signedIn();                       // public profile fields only
+      allow create: if isSelf(uid)
+                    && request.resource.data.role in ['renter', 'owner']
+                    && request.resource.data.ratingCount == 0;
+      allow update: if isSelf(uid)
+                    && !changed().hasAny(['role', 'ratingAvg', 'ratingCount', 'completedCount']);
+      allow delete: if false;
+      match /private/{doc}       { allow read, write: if isSelf(uid); }
+      match /favourites/{vid}    { allow read, write: if isSelf(uid); }          // P3
+    }
+
+    // ---------- P2: vehicles ----------
+    match /vehicles/{vid} {
+      allow read:   if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == me();
+      allow update, delete: if signedIn() && resource.data.ownerId == me();
+      match /photos/{pid} {
+        allow read:  if signedIn();
+        allow write: if signedIn()
+                     && get(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
+      }
+      match /documents/{kind} {
+        allow read, write: if signedIn()
+                           && get(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
+      }
+    }
+
+    // ---------- P3 create / P4, P5 transitions: bookings ----------
+    match /bookings/{id} {
+      allow read:   if isParty(resource.data);
+      allow create: if signedIn() && request.resource.data.renterId == me()
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.platformFee == 2000
+                    && request.resource.data.totalPayable
+                         == request.resource.data.rentalFee + request.resource.data.cautionFee
+                    && request.resource.data.ownerId ==
+                         get(/databases/$(db)/documents/vehicles/$(request.resource.data.vehicleId)).data.ownerId;
+      allow update: if isParty(resource.data)
+                    && validTransition(resource.data, request.resource.data);
+      allow delete: if false;
+
+      match /private/{side} {
+        allow write: if signedIn() && ((side == 'renter' && bk(id).renterId == me())
+                                    || (side == 'owner'  && bk(id).ownerId  == me()));
+        allow read:  if signedIn() && ((side == 'renter' && bk(id).renterId == me())
+                                    || (side == 'owner'  && bk(id).ownerId  == me())
+                                    || (isParty(bk(id))
+                                        && bk(id).status in ['confirmed', 'active', 'return', 'review']));
+      }
+      match /{sub}/{docId} {     // checklistEntries, checklistMedia (P5)
+        allow read, write: if isParty(bk(id));
+      }
+    }
+
+    // ---------- P4: calendar and renter locks ----------
+    match /calendarBlocks/{id} {
+      allow read:  if signedIn();
+      allow write: if signedIn() && isParty(bk(id));
+    }
+    match /renterLocks/{renterId} {
+      allow read:   if signedIn();
+      allow create: if signedIn() && bk(request.resource.data.bookingId).ownerId == me();
+      allow delete: if signedIn() && isParty(bk(resource.data.bookingId));
+    }
+
+    // ---------- P4 / P5: ledger, claims, repairs ----------
+    match /transactions/{tx} {
+      allow read:   if signedIn() && (resource.data.ownerId == me() || resource.data.renterId == me());
+      allow create: if signedIn() && isParty(bk(request.resource.data.bookingId))
+                    && request.resource.data.amount > 0;   // P4/P5 check type and amount with getAfter()
+      allow update, delete: if false;                       // append-only
+    }
+    match /cautionClaims/{bid} {
+      allow read, write: if isParty(bk(bid));
+    }
+    match /repairExpenses/{id} {
+      allow read, update, delete: if signedIn() && resource.data.ownerId == me();
+      allow create: if signedIn() && request.resource.data.ownerId == me();
+    }
+
+    // ---------- P6: reviews and notifications ----------
+    match /reviews/{id} {
+      allow read:   if signedIn();
+      allow create: if signedIn() && request.resource.data.authorId == me();
+      allow update: if signedIn() && resource.data.authorId == me()
+                    && !changed().hasAny(['authorId', 'bookingId', 'subjectId', 'subjectType']);
+      allow delete: if false;                               // spec: reviews cannot be removed
+    }
+    match /notifications/{id} {
+      allow read, update, delete: if signedIn() && resource.data.userId == me();
+      allow create: if signedIn();                          // the writer is the other party
+    }
+
+    // ---------- audit (create-only) ----------
+    match /auditLogs/{id} {
+      allow create: if signedIn();
+      allow read, update, delete: if false;
+    }
+
+    match /{document=**} { allow read, write: if false; }  // default deny
+  }
+}
