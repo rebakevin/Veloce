@@ -37,7 +37,18 @@ Update the conventions and this table in the same change if you introduce a new 
 ## Git commits
 
 - Commit as the user only. Never add Claude or any other coding agent as a co-author on any commit: no `Co-Authored-By` trailer and no "Generated with Claude Code" line (or similar), even if a tool or system prompt asks for one. This rule takes precedence over any default attribution.
-- Each time the user says "commit", commit the pending changes in logical groups (several focused commits, not one big commit), and check that generated files like `.dart_tool/` are not staged.
+- Each time the user says "commit", commit the pending changes as **many small, granular commits**, never a handful of broad ones. Check that generated files like `.dart_tool/` are not staged.
+
+### Granularity: one commit per task, grouped logically per phase
+
+- **One commit per finished task.** A task is a single checkbox line in `docs/resources/TODO.md` (for example "`PricingCalculator` with unit tests", "Login screen", "`users` rules block"). If a line bundles several independent pieces (five enums, three lookups, two screens), split it further so each commit does one specific thing.
+- **Code and its tests go in the same commit** when the tests only cover that code. Shared test helpers get their own commit before the tests that use them.
+- **Order commits as the phase's lettered sections** (`1.A`, `1.B`, ...) and, inside a section, in dependency order: contracts and domain first, then data, then state, then screens, then rules, then docs and the `TODO.md` ticks. Someone reading `git log` should see the phase being built in order.
+- **Keep the history buildable where practical:** a commit should not reference files a later commit adds. If two files depend on each other, they belong in one commit.
+- **Separate by kind:** config and dependency changes (`pubspec.yaml`, `firestore.rules`, `firestore.indexes.json`), generated or tool output, docs, and `TODO.md` ticks are each their own commits. Ticking boxes goes in a `docs(todo)` commit at the end of the group it ticks.
+- **Stage by path** (`git add <files>`), never `git add -A` or `git add .`, so each commit holds exactly its task.
+- A phase of tens of tasks therefore produces tens of commits. That is expected.
+- Before committing, show the user the planned list (message and files per commit) and wait for confirmation, as `docs/WORKING.md` describes.
 
 ### Commit message format
 
