@@ -29,20 +29,20 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** Kevin · ★ = blocks the others (**M0 target: within ~2 days of starting**) · everything else can proceed while others build.
 
 ### 0.A Repository & tooling
-- [ ] ★ Create GitHub repo; add all 6 members (and instructor/TA if private); protect `main` (PR + 1 review + CI)
+- [x] ★ Create GitHub repo; add all 6 members (and instructor/TA if private); protect `main` (PR + 1 review + CI)
 - [x] ★ `flutter create --platforms=android,ios` — confirm no web/desktop folders
 - [x] ★ `.gitignore` (env.json, key.properties, keystores, service-account JSON); commit `env.example.json`
 - [x] ★ `pubspec.yaml` with all packages in §2.2; `flutter pub get` works for everyone
 - [x] ★ `analysis_options.yaml` (flutter_lints); `flutter analyze` = 0
 - [x] GitHub Actions: `dart format --set-exit-if-changed .`, `flutter analyze`, `setState` grep, `flutter test`
-- [ ] PR template, issue labels (`phase-0` … `phase-6`), `CONTRIBUTING.md` (branches, commits, review ring)
-- [ ] Copy the **Group Contribution Tracker**, share with all, and agree weekly updates
+- [x] PR template, issue labels (`phase-0` … `phase-6`), `CONTRIBUTING.md` (branches, commits, review ring)
+- [x] Copy the **Group Contribution Tracker**, share with all, and agree weekly updates
 - [x] README skeleton (overview, setup, architecture, test commands)
 
 ### 0.B Firebase
 - [x] ★ Create Firebase project (Spark plan); add Android app; run `flutterfire configure`; commit `firebase_options.dart` + `google-services.json`
-- [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In)
-- [ ] ★ Enable Email/Password and Google providers; add a team keystore for release builds
+- [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In) _(done: Kevin's Mac and the release keystore; waiting on the other 5 machines)_
+- [ ] ★ Enable Email/Password and Google providers; add a team keystore for release builds _(keystore done; providers are a console step)_
 - [x] Create Firestore database; commit `firestore.rules` skeleton (§8.1) and `firestore.indexes.json` (§4.4); deploy
 - [ ] Share project access with all members
 
