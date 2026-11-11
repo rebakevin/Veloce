@@ -1,8 +1,8 @@
 import '../domain/enums/user_role.dart';
 import 'route_names.dart';
 
-/// Decides where the router sends a user. Phase 1 completes this (unverified
-/// email gate); the structure stays.
+/// Decides where the router sends a user. Unverified emails are not redirected:
+/// they may browse, and request/publish/pay check `EmailVerificationGate`.
 String? authRedirect({
   required String? userId,
   required UserRole? role,
@@ -15,13 +15,18 @@ String? authRedirect({
   if (userId == null) return isAuthPage ? null : RouteNames.welcome;
 
   // Signed in but the profile (role) is not known yet: registration or restore.
+  // The account switcher signs another user in on its own pages and must stay.
   if (role == null) {
+    if (location.startsWith(RouteNames.profileAccounts)) return null;
     return isAuthPage || location == RouteNames.verifyEmail
         ? null
         : RouteNames.splash;
   }
 
   final home = _homeFor(role);
+  // The register flow ends on its own pages (welcome, then verify-email), and
+  // a signed-in user may open it to add another account.
+  if (location.startsWith('/register')) return null;
   if (isAuthPage) return home;
   final required = requiredRoleFor(location);
   if (required != null && required != role) return home;

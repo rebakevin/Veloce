@@ -89,6 +89,17 @@ void main() {
     );
   });
 
+  test('a signed-in user may stay in the register flow', () {
+    expect(
+      authRedirect(
+        userId: 'u',
+        role: UserRole.renter,
+        location: RouteNames.registerWelcome,
+      ),
+      isNull,
+    );
+  });
+
   test('dev login is always reachable', () {
     expect(
       authRedirect(userId: null, role: null, location: RouteNames.devLogin),
