@@ -44,16 +44,16 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In) _(done: Kevin's Mac and the release keystore; waiting on the other 5 machines)_
 - [x] ★ Enable Email/Password and Google providers; add a team keystore for release builds _(Android only; Google sign-in itself is first tested in Phase 1)_
 - [x] Create Firestore database; commit `firestore.rules` skeleton (§8.1) and `firestore.indexes.json` (§4.4); deploy
-- [ ] Share project access with all members
+- [x] Share project access with all members
 
 ### 0.C Supabase
-- [ ] Create project; buckets `car-media`, `user-docs`, `checklist-media`, `receipts`; size/MIME limits; anon insert/select policies (`tool/supabase/storage.sql`)
+- [x] Create project; buckets `car-media`, `user-docs`, `checklist-media`, `receipts`; size/MIME limits; anon insert/select policies (`tool/supabase/storage.sql`)
 - [x] `env.json` + `Env` class; `MediaStorage` (upload, best-effort delete; compression at pick time, ADR 0001) + unit test
-- [ ] Share the real `env.json` privately with the team
+- [x] Share the real `env.json` privately with the team
 
 ### 0.D ERD
-- [ ] ★ Finalise the ERD from §4.2 with the team; export PNG/SVG for the report
-- [ ] ★ Tag `erd-v1`; agree the change process (`contract:` PRs)
+- [x] ★ Finalise the ERD from §4.2 with the team _(confirmed; PNG/SVG export for the report still to do from the Mermaid source in `docs/resources/ER-DIAGRAM.md`)_
+- [x] ★ Tag `erd-v1`; agree the change process (`contract:` PRs) _(tag is local until pushed; process is in `CONTRIBUTING.md`)_
 
 ### 0.E Core domain & data
 - [x] ★ Enums: `UserRole`, `BookingStatus`, `VehicleStatus`, `TransactionType`, `ChecklistKind`, …
@@ -90,11 +90,11 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 ### 0.I Rules & docs
 - [x] Firestore rules skeleton with labelled blocks per phase; Supabase SQL committed
 - [x] Architecture, setup and ERD ↔ Firestore sections drafted for the report _(draft in `docs/report/phase-0-draft.md`)_
-- [ ] M0 kickoff call: walk through folders, contracts, slots, seed accounts; assign phases 2–6
+- [x] M0 kickoff call: walk through folders, contracts, slots, seed accounts; assign phases 2–6
 
 ### 0.J Definition of done
-- [ ] A fresh clone builds and runs on an emulator in < 15 minutes using only the README
-- [ ] Every route opens a placeholder; `/dev-login` signs in as any seeded account
+- [x] A fresh clone builds and runs on an emulator in < 15 minutes using only the README _(ticked by Kevin; not yet timed on a teammate's machine)_
+- [x] Every route opens a placeholder; `/dev-login` signs in as any seeded account _(renter1 and owner1 checked on the Pixel 8; a test opens every route and taps every link)_
 - [x] CI green on `main`
 
 ---
