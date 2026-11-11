@@ -3,114 +3,69 @@ import 'package:go_router/go_router.dart';
 
 import 'package:veloce/core/navigation/navigator_keys.dart';
 import 'package:veloce/core/navigation/route_names.dart';
-import 'package:veloce/core/widgets/placeholder_link.dart';
-import 'package:veloce/core/widgets/placeholder_page.dart';
 
 import 'presentation/pages/dev_login_page.dart';
 import 'presentation/pages/dev_routes_page.dart';
+import 'presentation/pages/forgot_password_page.dart';
+import 'presentation/pages/login_page.dart';
+import 'presentation/pages/register_details_page.dart';
+import 'presentation/pages/register_role_page.dart';
+import 'presentation/pages/register_verify_page.dart';
+import 'presentation/pages/register_welcome_page.dart';
+import 'presentation/pages/splash_page.dart';
+import 'presentation/pages/verify_email_page.dart';
+import 'presentation/pages/welcome_page.dart';
+import 'presentation/widgets/register_flow_scope.dart';
 
 /// Full-screen routes of the auth feature, opened above the tab bar.
 List<RouteBase> authRoutes() => [
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.splash,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Splash',
-      route: RouteNames.splash,
-      phase: 1,
-    ),
+    builder: (context, state) => const SplashPage(),
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.welcome,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Welcome',
-      route: RouteNames.welcome,
-      phase: 1,
-      links: [
-        PlaceholderLink('Create an account', RouteNames.registerRole),
-        PlaceholderLink('Log in', RouteNames.login),
-      ],
-    ),
+    builder: (context, state) => const WelcomePage(),
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.login,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Log in',
-      route: RouteNames.login,
-      phase: 1,
-      links: [PlaceholderLink('Create an account', RouteNames.registerRole)],
-    ),
+    builder: (context, state) => const LoginPage(),
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.forgotPassword,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Forgot password',
-      route: RouteNames.forgotPassword,
-      phase: 1,
-    ),
+    builder: (context, state) => const ForgotPasswordPage(),
   ),
-  GoRoute(
+  // One RegisterBloc spans the four register steps.
+  ShellRoute(
     parentNavigatorKey: rootNavigatorKey,
-    path: RouteNames.registerRole,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Choose role',
-      route: RouteNames.registerRole,
-      phase: 1,
-      links: [PlaceholderLink('Continue', RouteNames.registerDetails)],
-    ),
-  ),
-  GoRoute(
-    parentNavigatorKey: rootNavigatorKey,
-    path: RouteNames.registerDetails,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Your details',
-      route: RouteNames.registerDetails,
-      phase: 1,
-      links: [PlaceholderLink('Create account', RouteNames.registerVerify)],
-    ),
-  ),
-  GoRoute(
-    parentNavigatorKey: rootNavigatorKey,
-    path: RouteNames.registerVerify,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Verify',
-      route: RouteNames.registerVerify,
-      phase: 1,
-      links: [PlaceholderLink('Verified', RouteNames.registerWelcome)],
-    ),
-  ),
-  GoRoute(
-    parentNavigatorKey: rootNavigatorKey,
-    path: RouteNames.registerWelcome,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Welcome to Veloce',
-      route: RouteNames.registerWelcome,
-      phase: 1,
-      links: [
-        PlaceholderLink(
-          'Go to Home (renter)',
-          RouteNames.renterHome,
-          isTab: true,
-        ),
-        PlaceholderLink(
-          'Go to Home (owner)',
-          RouteNames.ownerHome,
-          isTab: true,
-        ),
-      ],
-    ),
+    builder: (context, state, child) => RegisterFlowScope(child: child),
+    routes: [
+      GoRoute(
+        path: RouteNames.registerRole,
+        builder: (context, state) => const RegisterRolePage(),
+      ),
+      GoRoute(
+        path: RouteNames.registerDetails,
+        builder: (context, state) => const RegisterDetailsPage(),
+      ),
+      GoRoute(
+        path: RouteNames.registerVerify,
+        builder: (context, state) => const RegisterVerifyPage(),
+      ),
+      GoRoute(
+        path: RouteNames.registerWelcome,
+        builder: (context, state) => const RegisterWelcomePage(),
+      ),
+    ],
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.verifyEmail,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Verify your email',
-      route: RouteNames.verifyEmail,
-      phase: 1,
-    ),
+    builder: (context, state) => const VerifyEmailPage(),
   ),
   if (kDebugMode) ...[
     GoRoute(
