@@ -16,3 +16,6 @@ android/*.jks
 android/*.keystore
 **/*service-account*.json
 node_modules/
+
+# Personal downloads (never commit)
+secrets/
