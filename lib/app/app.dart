@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/theme/theme_cubit.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
+import 'package:veloce/features/auth/auth.dart';
 
 /// Root widget: theme, messenger and router. Blocs that outlive a route (theme,
 /// later auth) are provided here; screen blocs live at their route.
@@ -16,8 +17,11 @@ class VeloceApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final getIt = GetIt.instance;
-    return BlocProvider.value(
-      value: getIt<ThemeCubit>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: getIt<ThemeCubit>()),
+        BlocProvider.value(value: getIt<AuthBloc>()..add(const AuthStarted())),
+      ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) => MaterialApp.router(
           title: 'Veloce',
