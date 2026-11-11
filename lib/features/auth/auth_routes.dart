@@ -3,9 +3,11 @@ import 'package:go_router/go_router.dart';
 
 import 'package:veloce/core/navigation/navigator_keys.dart';
 import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/core/widgets/placeholder_link.dart';
 import 'package:veloce/core/widgets/placeholder_page.dart';
 
 import 'presentation/pages/dev_login_page.dart';
+import 'presentation/pages/dev_routes_page.dart';
 
 /// Full-screen routes of the auth feature, opened above the tab bar.
 List<RouteBase> authRoutes() => [
@@ -25,6 +27,10 @@ List<RouteBase> authRoutes() => [
       title: 'Welcome',
       route: RouteNames.welcome,
       phase: 1,
+      links: [
+        PlaceholderLink('Create an account', RouteNames.registerRole),
+        PlaceholderLink('Log in', RouteNames.login),
+      ],
     ),
   ),
   GoRoute(
@@ -34,6 +40,7 @@ List<RouteBase> authRoutes() => [
       title: 'Log in',
       route: RouteNames.login,
       phase: 1,
+      links: [PlaceholderLink('Create an account', RouteNames.registerRole)],
     ),
   ),
   GoRoute(
@@ -52,6 +59,7 @@ List<RouteBase> authRoutes() => [
       title: 'Choose role',
       route: RouteNames.registerRole,
       phase: 1,
+      links: [PlaceholderLink('Continue', RouteNames.registerDetails)],
     ),
   ),
   GoRoute(
@@ -61,6 +69,7 @@ List<RouteBase> authRoutes() => [
       title: 'Your details',
       route: RouteNames.registerDetails,
       phase: 1,
+      links: [PlaceholderLink('Create account', RouteNames.registerVerify)],
     ),
   ),
   GoRoute(
@@ -70,6 +79,7 @@ List<RouteBase> authRoutes() => [
       title: 'Verify',
       route: RouteNames.registerVerify,
       phase: 1,
+      links: [PlaceholderLink('Verified', RouteNames.registerWelcome)],
     ),
   ),
   GoRoute(
@@ -79,6 +89,18 @@ List<RouteBase> authRoutes() => [
       title: 'Welcome to Veloce',
       route: RouteNames.registerWelcome,
       phase: 1,
+      links: [
+        PlaceholderLink(
+          'Go to Home (renter)',
+          RouteNames.renterHome,
+          isTab: true,
+        ),
+        PlaceholderLink(
+          'Go to Home (owner)',
+          RouteNames.ownerHome,
+          isTab: true,
+        ),
+      ],
     ),
   ),
   GoRoute(
@@ -90,9 +112,15 @@ List<RouteBase> authRoutes() => [
       phase: 1,
     ),
   ),
-  if (kDebugMode)
+  if (kDebugMode) ...[
     GoRoute(
       path: RouteNames.devLogin,
       builder: (context, state) => const DevLoginPage(),
     ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: RouteNames.devRoutes,
+      builder: (context, state) => const DevRoutesPage(),
+    ),
+  ],
 ];

@@ -87,6 +87,11 @@ class _DevLoginView extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           OutlinedButton(
+            onPressed: () => context.push(RouteNames.devRoutes),
+            child: const Text('Browse all routes'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton(
             onPressed: cubit.signOut,
             child: const Text('Sign out'),
           ),
