@@ -30,6 +30,11 @@ had to pick one so the other phases can start.
    pending request needs a renter with none.
 10. **Generated code.** Entities, models, enums and `FirestoreFields` were generated from the ERD once and
     are now hand-maintained. Change them together in a `contract:` pull request.
+11. **Shells follow the mock.** `docs/resources/MOCK.html` has one bottom bar for both roles: a side
+    action, three tabs (Home, My Activity, Profile) and a notifications bell. Notifications and My cars are
+    full-screen pages, not tabs. Six screens the mock has were missing from §10 and were added
+    (`/car/:id/dates`, `/owner/cars/:id`, `.../published`, `.../requests`, `/profile/licence/change`,
+    `.../verify`). Placeholders carry the mock's outgoing links (`PlaceholderLink`).
 
 ## Consequences
 Phases 1–6 follow TECHNICAL.md's layout. If the team prefers the generic conventions, decisions 1–3

@@ -730,7 +730,7 @@ That is five preferences (rubric asks ≥3), all restored at relaunch. Demo: cha
 ---
 
 ## 10. Navigation — complete route table
-Phase 0 registers **every** route below with a placeholder page; the owning phase replaces the placeholder. Role shells use a bottom navigation bar.
+Phase 0 registers **every** route below with a placeholder page; the owning phase replaces the placeholder. Each placeholder lists the links the mock (`docs/resources/MOCK.html`) has on that screen (`PlaceholderLink`), so the whole flow can be walked before any screen is built; the owner keeps those navigations when replacing the page. Both role shells follow the mock's bottom bar: a side action (renter: Search cars → `/renter/results`; owner: My cars → `/owner/cars`), three tabs (Home, My Activity, Profile) and a notifications bell. Notifications and My cars are full-screen pages, not tabs.
 
 | Route | Page | Phase |
 | --- | --- | --- |
@@ -744,12 +744,14 @@ Phase 0 registers **every** route below with a placeholder page; the owning phas
 | `/register/welcome` | Registration success | P1 |
 | `/verify-email` | Email verification pending | P1 |
 | `/dev-login` | Debug-only quick login (kDebugMode) | P0 |
+| `/dev-routes` | Debug-only list of every route, opens each placeholder (kDebugMode) | P0 |
 | `/renter/home` | Explore / Saved tabs | P3 |
 | `/renter/search` | Area + dates picker | P3 |
 | `/renter/filters` | Filters sheet/page | P3 |
 | `/renter/results` | Results | P3 |
 | `/car/:id` | Car detail (owner sees read-only preview) | P3 |
 | `/car/:id/media` | Photos + video | P3 |
+| `/car/:id/dates` | Select dates for this car | P3 |
 | `/car/:id/book` | Review request + terms | P3 |
 | `/booking/:id/requested` | Request sent confirmation | P3 |
 | `/renter/activity` | Renter My Activity | P4 |
@@ -767,6 +769,9 @@ Phase 0 registers **every** route below with a placeholder page; the owning phas
 | `/owner/home` | Owner dashboard (slots) | P0 shell, slots by P2/P4/P6 |
 | `/owner/cars` | My cars | P2 |
 | `/owner/cars/new` | 7-step listing wizard | P2 |
+| `/owner/cars/:id` | My car (view as renter, edit, availability, documents) | P2 |
+| `/owner/cars/:id/published` | Your car is live | P2 |
+| `/owner/cars/:id/requests` | Pending requests for one car | P4 |
 | `/owner/cars/:id/edit` | Edit car (same wizard) | P2 |
 | `/owner/cars/:id/availability` | Single date-range picker | P2 |
 | `/owner/cars/:id/documents` | Add/replace car documents | P2 |
@@ -775,7 +780,7 @@ Phase 0 registers **every** route below with a placeholder page; the owning phas
 | `/owner/finances/car/:carId` | Car finances | P6 |
 | `/owner/finances/car/:carId/transactions` | Car transactions | P6 |
 | `/renter/payments` | Payment history | P6 |
-| `/renter/notifications`, `/owner/notifications` | Notifications tab | P6 |
+| `/renter/notifications`, `/owner/notifications` | Notifications (opened from the bell) | P6 |
 | `/booking/:id/review` | Write/edit reviews | P6 |
 | `/car/:id/reviews` | Car reviews | P6 |
 | `/user/:id/reviews`, `/profile/reviews` | Reviews received | P6 |
@@ -784,6 +789,8 @@ Phase 0 registers **every** route below with a placeholder page; the owning phas
 | `/profile/accounts`, `/profile/accounts/add` | Account switcher | P1 |
 | `/profile/payout` | Owner MoMo number | P1 |
 | `/profile/licence` | Renter licence | P1 |
+| `/profile/licence/change` | Change licence | P1 |
+| `/profile/licence/verify` | Verify licence (simulated) | P1 |
 | `/profile/identity` | Owner National ID | P1 |
 | `/profile/settings` | Theme, notifications switch | P1 |
 | `/profile/about`, `/profile/contact` | About; Contact (r.kevin@alustudent.com) | P1 |
