@@ -23,9 +23,11 @@ service cloud.firestore {
       allow read:   if signedIn();                       // public profile fields only
       allow create: if isSelf(uid)
                     && request.resource.data.role in ['renter', 'owner']
-                    && request.resource.data.ratingCount == 0;
+                    && request.resource.data.ratingCount == 0
+                    && request.resource.data.ratingAvg == 0
+                    && request.resource.data.completedCount == 0;
       allow update: if isSelf(uid)
-                    && !changed().hasAny(['role', 'ratingAvg', 'ratingCount', 'completedCount']);
+                    && !changed().hasAny(['role', 'verified', 'ratingAvg', 'ratingCount', 'completedCount']);
       allow delete: if false;
       match /private/{doc}       { allow read, write: if isSelf(uid); }
       match /favourites/{vid}    { allow read, write: if isSelf(uid); }          // P3
