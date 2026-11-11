@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/app/router/app_router.dart';
 import 'package:veloce/app/router/main_bar.dart';
@@ -7,10 +8,11 @@ import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/navigation/auth_redirect.dart';
 import 'package:veloce/core/navigation/route_names.dart';
-import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/widgets/placeholder_links.dart';
 import 'package:veloce/features/auth/domain/dev_route_catalog.dart';
 import 'package:veloce/features/auth/presentation/pages/dev_routes_page.dart';
+
+import '../../support/router_test_scope.dart';
 
 class _FakeSession implements AuthSession {
   _FakeSession(this.role);
@@ -20,6 +22,9 @@ class _FakeSession implements AuthSession {
 
   @override
   String? get currentUserId => role == null ? null : 'user';
+
+  @override
+  bool get isEmailVerified => role != null;
 
   @override
   Stream<void> get changes => const Stream.empty();
@@ -34,25 +39,31 @@ bool _isAuthPage(String path) =>
     ) !=
     null;
 
+late RouterTestScope scope;
+
 Future<GoRouter> _pumpApp(
   WidgetTester tester,
   UserRole? role, {
   String? initialLocation,
 }) async {
-  final router = createAppRouter(
-    _FakeSession(role),
-    initialLocation:
-        initialLocation ??
-        (role == UserRole.owner ? RouteNames.ownerHome : RouteNames.renterHome),
-  );
-  await tester.pumpWidget(
-    MaterialApp.router(routerConfig: router, theme: AppTheme.light),
-  );
-  await tester.pumpAndSettle();
+  final location =
+      initialLocation ??
+      (role == UserRole.owner ? RouteNames.ownerHome : RouteNames.renterHome);
+  scope = await RouterTestScope.create(role: role, path: location);
+  final router = createAppRouter(_FakeSession(role), initialLocation: location);
+  await tester.pumpWidget(scope.wrap(router));
+  if (location == RouteNames.splash) {
+    // The splash spins until the session is known, so it never settles.
+    await tester.pump(const Duration(milliseconds: 100));
+  } else {
+    await tester.pumpAndSettle();
+  }
   return router;
 }
 
 void main() {
+  tearDown(() => GetIt.instance.reset());
+
   testWidgets('both shells show the mock bottom bar and its bell and action', (
     tester,
   ) async {
