@@ -31,6 +31,9 @@ class FirebaseAuthSession implements AuthSession {
   UserRole? get role => _role;
 
   @override
+  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+
+  @override
   Stream<void> get changes => _changes.stream;
 
   Future<void> _onAuthChanged(User? user) async {
@@ -57,7 +60,4 @@ class FirebaseAuthSession implements AuthSession {
     await _subscription.cancel();
     await _changes.close();
   }
-
-  /// Exposed for tests of the sign-in state.
-  bool get isSignedIn => _auth.currentUser != null;
 }
