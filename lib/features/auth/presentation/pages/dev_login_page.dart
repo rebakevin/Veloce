@@ -92,6 +92,11 @@ class _DevLoginView extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           OutlinedButton(
+            onPressed: () => context.go(RouteNames.welcome),
+            child: const Text('Open the real sign-in flow'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton(
             onPressed: cubit.signOut,
             child: const Text('Sign out'),
           ),
