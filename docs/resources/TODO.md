@@ -42,7 +42,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 ### 0.B Firebase
 - [x] ★ Create Firebase project (Spark plan); add Android app; run `flutterfire configure`; commit `firebase_options.dart` + `google-services.json`
 - [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In) _(done: Kevin's Mac and the release keystore; waiting on the other 5 machines)_
-- [ ] ★ Enable Email/Password and Google providers; add a team keystore for release builds _(keystore done; providers are a console step)_
+- [x] ★ Enable Email/Password and Google providers; add a team keystore for release builds _(Android only; Google sign-in itself is first tested in Phase 1)_
 - [x] Create Firestore database; commit `firestore.rules` skeleton (§8.1) and `firestore.indexes.json` (§4.4); deploy
 - [ ] Share project access with all members
 
@@ -82,20 +82,20 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] `PendingReviewChecker` stub (returns false) registered inside `reviews_injection.dart` for P6 to replace
 
 ### 0.H Dev tooling & seed data
-- [x] ★ `/dev-login` page (debug only) with buttons for the seeded accounts _(not yet run on a device)_
+- [x] ★ `/dev-login` page (debug only) with buttons for the seeded accounts _(debug builds open on it; renter1 signed in on the Pixel 8 emulator)_
 - [x] ★ `tool/seed/seed.js` (Firebase Admin SDK; written, not yet run): 4 renters, 3 owners (email+password), users + private docs, 8 cars with photos/docs/availability, calendar blocks, one booking in **each status**, transactions matching the ledger rules, reviews, notifications, repair expenses, claims (agreed and disputed)
 - [x] ★ Seed README: how to run, reset, and the account list
-- [ ] Run seed on the shared dev project; confirm the numbers reconcile (held balance ≥ 0)
+- [x] Run seed on the shared dev project; confirm the numbers reconcile (held balance ≥ 0)
 
 ### 0.I Rules & docs
 - [x] Firestore rules skeleton with labelled blocks per phase; Supabase SQL committed
-- [ ] Architecture, setup and ERD ↔ Firestore sections drafted for the report
+- [x] Architecture, setup and ERD ↔ Firestore sections drafted for the report _(draft in `docs/report/phase-0-draft.md`)_
 - [ ] M0 kickoff call: walk through folders, contracts, slots, seed accounts; assign phases 2–6
 
 ### 0.J Definition of done
 - [ ] A fresh clone builds and runs on an emulator in < 15 minutes using only the README
 - [ ] Every route opens a placeholder; `/dev-login` signs in as any seeded account
-- [ ] CI green on `main`
+- [x] CI green on `main`
 
 ---
 
