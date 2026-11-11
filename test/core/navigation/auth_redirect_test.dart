@@ -19,6 +19,19 @@ void main() {
     );
   });
 
+  test('dev tool pages stay open to everyone', () {
+    for (final location in [RouteNames.devLogin, RouteNames.devRoutes]) {
+      expect(
+        authRedirect(userId: null, role: null, location: location),
+        isNull,
+      );
+      expect(
+        authRedirect(userId: 'u', role: UserRole.renter, location: location),
+        isNull,
+      );
+    }
+  });
+
   test('signed-in users leave auth pages for their own home', () {
     expect(
       authRedirect(

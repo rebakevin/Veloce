@@ -10,7 +10,7 @@ String? authRedirect({
 }) {
   final isAuthPage = _isAuthPage(location);
 
-  if (location == RouteNames.devLogin) return null;
+  if (RouteNames.isDevTool(location)) return null;
 
   if (userId == null) return isAuthPage ? null : RouteNames.welcome;
 
@@ -23,8 +23,15 @@ String? authRedirect({
 
   final home = _homeFor(role);
   if (isAuthPage) return home;
-  if (location.startsWith('/owner') && role != UserRole.owner) return home;
-  if (location.startsWith('/renter') && role != UserRole.renter) return home;
+  final required = requiredRoleFor(location);
+  if (required != null && required != role) return home;
+  return null;
+}
+
+/// The only role allowed on [location], or null when any signed-in user is.
+UserRole? requiredRoleFor(String location) {
+  if (location.startsWith('/owner')) return UserRole.owner;
+  if (location.startsWith('/renter')) return UserRole.renter;
   return null;
 }
 
