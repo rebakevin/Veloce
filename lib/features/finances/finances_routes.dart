@@ -2,6 +2,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:veloce/core/navigation/navigator_keys.dart';
 import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/core/navigation/seed_ids.dart';
+import 'package:veloce/core/widgets/placeholder_link.dart';
 import 'package:veloce/core/widgets/placeholder_page.dart';
 
 /// Full-screen routes of the finances feature, opened above the tab bar.
@@ -9,10 +11,20 @@ List<RouteBase> financesRoutes() => [
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerFinances,
-    builder: (context, state) => const PlaceholderPage(
+    builder: (context, state) => PlaceholderPage(
       title: 'Finances',
       route: RouteNames.ownerFinances,
       phase: 6,
+      links: [
+        PlaceholderLink(
+          'Car finances (sample)',
+          RouteNames.ownerCarFinances(SeedIds.car),
+        ),
+        const PlaceholderLink(
+          'View all transactions',
+          RouteNames.ownerTransactions,
+        ),
+      ],
     ),
   ),
   GoRoute(
@@ -27,10 +39,16 @@ List<RouteBase> financesRoutes() => [
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCarFinancesPattern,
-    builder: (context, state) => const PlaceholderPage(
+    builder: (context, state) => PlaceholderPage(
       title: 'Car finances',
       route: RouteNames.ownerCarFinancesPattern,
       phase: 6,
+      links: [
+        PlaceholderLink(
+          'View all transactions',
+          RouteNames.ownerCarTransactions(state.pathParameters['carId']!),
+        ),
+      ],
     ),
   ),
   GoRoute(
@@ -45,10 +63,16 @@ List<RouteBase> financesRoutes() => [
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.renterPayments,
-    builder: (context, state) => const PlaceholderPage(
+    builder: (context, state) => PlaceholderPage(
       title: 'Payment history',
       route: RouteNames.renterPayments,
       phase: 6,
+      links: [
+        PlaceholderLink(
+          'Payment (sample)',
+          RouteNames.booking(SeedIds.booking),
+        ),
+      ],
     ),
   ),
 ];

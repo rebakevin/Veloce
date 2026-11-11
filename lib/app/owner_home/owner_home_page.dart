@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
+import 'package:veloce/core/widgets/placeholder_link.dart';
+import 'package:veloce/core/widgets/placeholder_links.dart';
 import 'package:veloce/features/booking/booking.dart';
 import 'package:veloce/features/finances/finances.dart';
 import 'package:veloce/features/vehicles/vehicles.dart';
@@ -18,6 +21,9 @@ class OwnerHomePage extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.gutter),
         children: const [
           Text('Owner dashboard', style: AppTextStyles.title),
+          PlaceholderLinks(
+            links: [PlaceholderLink('List a car', RouteNames.ownerCarNew)],
+          ),
           SizedBox(height: AppSpacing.lg),
           PendingRequestsCard(),
           SizedBox(height: AppSpacing.md),

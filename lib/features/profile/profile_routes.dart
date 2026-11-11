@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:veloce/core/navigation/navigator_keys.dart';
 import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/core/widgets/placeholder_link.dart';
 import 'package:veloce/core/widgets/placeholder_page.dart';
 
 import 'presentation/pages/public_profile_page.dart';
@@ -13,6 +14,14 @@ GoRoute renterProfileTab() => GoRoute(
     title: 'Profile',
     route: RouteNames.renterProfile,
     phase: 1,
+    links: [
+      PlaceholderLink('Edit profile', RouteNames.profileEdit),
+      PlaceholderLink('Switch account', RouteNames.profileAccounts),
+      PlaceholderLink('Reviews', RouteNames.profileReviews),
+      PlaceholderLink('Payment history', RouteNames.renterPayments),
+      PlaceholderLink('Driving licences', RouteNames.profileLicence),
+      PlaceholderLink('About Veloce', RouteNames.profileAbout),
+    ],
   ),
 );
 
@@ -23,6 +32,13 @@ GoRoute ownerProfileTab() => GoRoute(
     title: 'Profile',
     route: RouteNames.ownerProfile,
     phase: 1,
+    links: [
+      PlaceholderLink('Edit profile', RouteNames.profileEdit),
+      PlaceholderLink('Switch account', RouteNames.profileAccounts),
+      PlaceholderLink('Reviews', RouteNames.profileReviews),
+      PlaceholderLink('Payment method', RouteNames.profilePayout),
+      PlaceholderLink('About Veloce', RouteNames.profileAbout),
+    ],
   ),
 );
 
@@ -44,6 +60,10 @@ List<RouteBase> profileRoutes() => [
       title: 'Accounts',
       route: RouteNames.profileAccounts,
       phase: 1,
+      links: [
+        PlaceholderLink('Log in to another', RouteNames.login),
+        PlaceholderLink('Add new account', RouteNames.registerRole),
+      ],
     ),
   ),
   GoRoute(
@@ -70,6 +90,30 @@ List<RouteBase> profileRoutes() => [
     builder: (context, state) => const PlaceholderPage(
       title: 'Driving licence',
       route: RouteNames.profileLicence,
+      phase: 1,
+      links: [
+        PlaceholderLink('Change licence', RouteNames.profileLicenceChange),
+      ],
+    ),
+  ),
+  GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: RouteNames.profileLicenceChange,
+    builder: (context, state) => const PlaceholderPage(
+      title: 'Change licence',
+      route: RouteNames.profileLicenceChange,
+      phase: 1,
+      links: [
+        PlaceholderLink('Verify and replace', RouteNames.profileLicenceVerify),
+      ],
+    ),
+  ),
+  GoRoute(
+    parentNavigatorKey: rootNavigatorKey,
+    path: RouteNames.profileLicenceVerify,
+    builder: (context, state) => const PlaceholderPage(
+      title: 'Verify licence',
+      route: RouteNames.profileLicenceVerify,
       phase: 1,
     ),
   ),

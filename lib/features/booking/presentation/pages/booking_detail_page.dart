@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/core/navigation/seed_ids.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/widgets/placeholder_link.dart';
+import 'package:veloce/core/widgets/placeholder_links.dart';
 import 'package:veloce/features/handover/handover.dart';
 import 'package:veloce/features/reviews/reviews.dart';
 
@@ -21,6 +24,26 @@ class BookingDetailPage extends StatelessWidget {
         children: [
           const Text('Phase 4: booking detail and timeline'),
           Text(RouteNames.booking(bookingId)),
+          const SizedBox(height: AppSpacing.lg),
+          PlaceholderLinks(
+            links: [
+              PlaceholderLink('Car', RouteNames.car(SeedIds.car)),
+              PlaceholderLink('Owner profile', RouteNames.user(SeedIds.owner)),
+              PlaceholderLink(
+                'Renter profile',
+                RouteNames.user(SeedIds.renter),
+              ),
+              PlaceholderLink(
+                'Rental agreement',
+                RouteNames.bookingAgreement(bookingId),
+              ),
+              PlaceholderLink('Pay now', RouteNames.bookingPay(bookingId)),
+              PlaceholderLink(
+                'Review request (owner)',
+                RouteNames.bookingDecision(bookingId),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.lg),
           HandoverSection(bookingId: bookingId),
           const SizedBox(height: AppSpacing.lg),
