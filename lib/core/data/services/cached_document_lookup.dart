@@ -16,10 +16,17 @@ class CachedDocumentLookup<T> {
   final CollectionReference<Map<String, dynamic>> _collection;
   final T Function(String id, Map<String, dynamic> map) _fromMap;
   final Map<String, T> _cache = {};
+  final Map<String, Future<Result<T>>> _inFlight = {};
 
-  Future<Result<T>> byId(String id) async {
+  /// Concurrent reads of the same id share one network request.
+  Future<Result<T>> byId(String id) {
     final cached = _cache[id];
-    if (cached != null) return Result.success(cached);
+    if (cached != null) return Future.value(Result.success(cached));
+    return _inFlight[id] ??= _fetch(id)
+        .whenComplete(() => _inFlight.remove(id));
+  }
+
+  Future<Result<T>> _fetch(String id) async {
     try {
       return _resolve(await _collection.doc(id).get());
     } on Object catch (error, stackTrace) {
