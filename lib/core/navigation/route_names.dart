@@ -12,6 +12,10 @@ abstract final class RouteNames {
   static const String registerWelcome = '/register/welcome';
   static const String verifyEmail = '/verify-email';
   static const String devLogin = '/dev-login';
+  static const String devRoutes = '/dev-routes';
+
+  /// Debug-only pages, open to everyone and left out of the route list.
+  static bool isDevTool(String path) => path == devLogin || path == devRoutes;
 
   // Renter tabs and discovery (Phase 3)
   static const String renterHome = '/renter/home';
@@ -22,6 +26,8 @@ abstract final class RouteNames {
   static String car(String id) => '/car/$id';
   static const String carMediaPattern = '/car/:id/media';
   static String carMedia(String id) => '/car/$id/media';
+  static const String carDatesPattern = '/car/:id/dates';
+  static String carDates(String id) => '/car/$id/dates';
   static const String carBookPattern = '/car/:id/book';
   static String carBook(String id) => '/car/$id/book';
   static const String bookingRequestedPattern = '/booking/:id/requested';
@@ -57,6 +63,12 @@ abstract final class RouteNames {
   static const String ownerHome = '/owner/home';
   static const String ownerCars = '/owner/cars';
   static const String ownerCarNew = '/owner/cars/new';
+  static const String ownerCarPattern = '/owner/cars/:id';
+  static String ownerCar(String id) => '/owner/cars/$id';
+  static const String ownerCarPublishedPattern = '/owner/cars/:id/published';
+  static String ownerCarPublished(String id) => '/owner/cars/$id/published';
+  static const String ownerCarRequestsPattern = '/owner/cars/:id/requests';
+  static String ownerCarRequests(String id) => '/owner/cars/$id/requests';
   static const String ownerCarEditPattern = '/owner/cars/:id/edit';
   static String ownerCarEdit(String id) => '/owner/cars/$id/edit';
   static const String ownerCarAvailabilityPattern =
@@ -94,6 +106,8 @@ abstract final class RouteNames {
   static const String profileAccountsAdd = '/profile/accounts/add';
   static const String profilePayout = '/profile/payout';
   static const String profileLicence = '/profile/licence';
+  static const String profileLicenceChange = '/profile/licence/change';
+  static const String profileLicenceVerify = '/profile/licence/verify';
   static const String profileIdentity = '/profile/identity';
   static const String profileSettings = '/profile/settings';
   static const String profileAbout = '/profile/about';
