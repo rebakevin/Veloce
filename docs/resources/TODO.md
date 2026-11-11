@@ -103,46 +103,46 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** Kevin · Collections written: `users`, `users/*/private/*`, `auditLogs` (registration) · Spec §2, §5.1, §6.1, §8.2
 
 ### 1.A Domain & data
-- [ ] `auth` domain: `AuthRepository`, use cases (`RegisterWithEmail`, `LoginWithEmail`, `SignInWithGoogle`, `SendPasswordReset`, `SendEmailVerification`, `SignOut`, `ObserveAuthState`)
-- [ ] Firebase datasource; map `FirebaseAuthException` codes to clear messages
-- [ ] `profile` domain: `ProfileRepository` (get/update profile, licence, owner identity, payout), photo upload via `MediaStorage`
+- [x] `auth` domain: `AuthRepository`, use cases (`RegisterWithEmail`, `LoginWithEmail`, `SignInWithGoogle`, `SendPasswordReset`, `SendEmailVerification`, `SignOut`, `ObserveAuthState`)
+- [x] Firebase datasource; map `FirebaseAuthException` codes to clear messages
+- [x] `profile` domain: `ProfileRepository` (get/update profile, licence, owner identity, payout), photo upload via `MediaStorage`
 
 ### 1.B State & routing
-- [ ] `AuthBloc` (global): `Unknown → Authenticated(user, role) | Unauthenticated`; session restored after restart
-- [ ] Router redirect: unauthenticated → `/welcome`; roles confined to their shell; unverified-email gate for request/publish/pay
-- [ ] Sign-out disposes route-level blocs and clears caches
-- [ ] `LoginBloc`, `RegisterBloc` (multi-step), `ForgotPasswordCubit`, `ProfileBloc`, `AccountsBloc`, `SettingsCubit`
+- [x] `AuthBloc` (global): `Unknown → Authenticated(user, role) | Unauthenticated`; session restored after restart
+- [x] Router redirect: unauthenticated → `/welcome`; roles confined to their shell; unverified-email gate for request/publish/pay
+- [x] Sign-out disposes route-level blocs and clears caches
+- [x] `LoginBloc`, `RegisterBloc` (multi-step), `ForgotPasswordCubit`, `ProfileBloc`, `AccountsBloc`, `SettingsCubit`
 
 ### 1.C Authentication screens
-- [ ] Splash → welcome/onboarding (`onboarding_seen` pref)
-- [ ] Login (email + password, Google button, "Forgot password?")
-- [ ] Register: role → details (name, phone, email, password, DOB 18+, licence or National ID with photo) → OTP + email verification → welcome
-- [ ] Google first sign-in → role choice → document steps; returning Google user → Home
-- [ ] Forgot-password page; verify-email pending page (resend)
-- [ ] Inline validation messages on every field; blank submissions blocked
-- [ ] Simulated verification failure state with retry
+- [x] Splash → welcome/onboarding (`onboarding_seen` pref)
+- [x] Login (email + password, Google button, "Forgot password?")
+- [x] Register: role → details (name, phone, email, password, DOB 18+, licence or National ID with photo) → OTP + email verification → welcome
+- [x] Google first sign-in → role choice → document steps; returning Google user → Home
+- [x] Forgot-password page; verify-email pending page (resend)
+- [x] Inline validation messages on every field; blank submissions blocked
+- [x] Simulated verification failure state with retry
 
 ### 1.D Profile screens
-- [ ] Profile tab (name, role label, phone, email, identity status, photo, sign out)
-- [ ] Edit profile (name, phone, DOB, photo)
-- [ ] Owner: payout MoMo number; National ID view/replace
-- [ ] Renter: driving licence add/change with simulated verification
-- [ ] Settings: theme (light/dark/system) and notifications switch → saved via `PreferencesService`
-- [ ] About page and Contact page (support email **r.kevin@alustudent.com**)
-- [ ] Public profile `/user/:id` (name, photo, rating, past rentals, first-time flag; contact **never** shown) with the two slots for P3/P6
-- [ ] **Account switcher**: list with Renter/Car owner labels and "current" mark; switch without password; add account (email or Google); remove from this device; expired session → asks sign-in again (§6.4)
+- [x] Profile tab (name, role label, phone, email, identity status, photo, sign out)
+- [x] Edit profile (name, phone, DOB, photo)
+- [x] Owner: payout MoMo number; National ID view/replace
+- [x] Renter: driving licence add/change with simulated verification
+- [x] Settings: theme (light/dark/system) and notifications switch → saved via `PreferencesService`
+- [x] About page and Contact page (support email **r.kevin@alustudent.com**)
+- [x] Public profile `/user/:id` (name, photo, rating, past rentals, first-time flag; contact **never** shown) with the two slots for P3/P6
+- [x] **Account switcher**: list with Renter/Car owner labels and "current" mark; switch without password; add account (email or Google); remove from this device; expired session → asks sign-in again (§6.4)
 
 ### 1.E Rules & data
-- [ ] `users` + `private` rules block (role immutable, rating fields protected)
-- [ ] Verify with a second account that private docs are unreadable
+- [x] `users` + `private` rules block (role immutable, rating fields protected) _(create now also requires zero rating/completed counts; `verified` is locked on update)_
+- [ ] Verify with a second account that private docs are unreadable _(needs two real accounts; rules edited locally, not yet deployed)_
 
 ### 1.F Tests
-- [ ] Unit: register/login use cases (success + each failure code), validators used by forms, account-switch logic
-- [ ] Bloc: `AuthBloc` (restore, logout), `LoginBloc`, `RegisterBloc`
-- [ ] Widget: login page shows validation errors and calls the bloc
+- [x] Unit: register/login use cases (success + each failure code), validators used by forms, account-switch logic
+- [x] Bloc: `AuthBloc` (restore, logout), `LoginBloc`, `RegisterBloc`
+- [x] Widget: login page shows validation errors and calls the bloc
 
 ### 1.G Docs & demo
-- [ ] Report: Authentication, validation, preferences, account switching sections
+- [ ] Report: Authentication, validation, preferences, account switching sections _(draft in `docs/report/phase-1-draft.md`)_
 - [ ] Demo segment A (~3 min): cold start, register → logout → login, Google, validation error, theme change → restart → persisted, account switch
 
 ---
