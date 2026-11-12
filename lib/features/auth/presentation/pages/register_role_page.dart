@@ -9,6 +9,8 @@ import 'package:veloce/core/theme/app_spacing.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/register_bloc.dart';
 import '../widgets/auth_scaffold.dart';
+import '../widgets/google_sign_up_button.dart';
+import '../widgets/or_divider.dart';
 import '../widgets/role_card.dart';
 import '../widgets/step_header.dart';
 
@@ -62,12 +64,16 @@ class RegisterRolePage extends StatelessWidget {
               description: 'I want to earn by renting out my car.',
               onTap: () => bloc.add(const RegisterRoleSelected(UserRole.owner)),
             ),
-            if (isGoogle) ...[
-              const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.xl),
+            if (isGoogle)
               TextButton(
                 onPressed: () => _back(context, isGoogle: true),
                 child: const Text('Use a different account'),
-              ),
+              )
+            else ...[
+              const OrDivider(),
+              const SizedBox(height: AppSpacing.lg),
+              const GoogleSignUpButton(),
             ],
           ],
         ),

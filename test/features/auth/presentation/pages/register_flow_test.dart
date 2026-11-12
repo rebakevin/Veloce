@@ -17,6 +17,7 @@ import 'package:veloce/features/auth/domain/entities/auth_user.dart';
 import 'package:veloce/features/auth/domain/usecases/complete_google_registration.dart';
 import 'package:veloce/features/auth/domain/usecases/register_with_email.dart';
 import 'package:veloce/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:veloce/features/auth/presentation/bloc/login_bloc.dart';
 import 'package:veloce/features/auth/presentation/bloc/register_bloc.dart';
 import 'package:veloce/features/auth/presentation/bloc/register_draft.dart';
 import 'package:veloce/features/auth/presentation/pages/register_details_page.dart';
@@ -29,6 +30,9 @@ import '../../domain/auth_fakes.dart';
 class _MockAuthBloc extends MockBloc<AuthEvent, AuthState>
     implements AuthBloc {}
 
+class _MockLoginBloc extends MockBloc<LoginEvent, LoginState>
+    implements LoginBloc {}
+
 class _MockRegisterBloc extends MockBloc<RegisterEvent, RegisterState>
     implements RegisterBloc {}
 
@@ -39,11 +43,15 @@ class _MockCompleteGoogle extends Mock implements CompleteGoogleRegistration {}
 void main() {
   late AppMessenger messenger;
   AuthUser? receivedGoogleUser;
+  late _MockLoginBloc login;
 
   setUp(() {
     messenger = AppMessenger();
     receivedGoogleUser = null;
+    login = _MockLoginBloc();
+    when(() => login.state).thenReturn(const LoginState());
     GetIt.instance
+      ..registerFactory<LoginBloc>(() => login)
       ..registerSingleton<AppMessenger>(messenger)
       ..registerSingleton<Clock>(const FixedClock())
       ..registerFactoryParam<RegisterBloc, AuthUser?, void>((googleUser, _) {
@@ -60,10 +68,14 @@ void main() {
 
   tearDown(() => GetIt.instance.reset());
 
-  Future<void> pumpFlow(WidgetTester tester, AuthState authState) async {
+  Future<void> pumpFlow(
+    WidgetTester tester,
+    AuthState authState, {
+    Stream<AuthState> authChanges = const Stream<AuthState>.empty(),
+  }) async {
     final auth = _MockAuthBloc();
     when(() => auth.state).thenReturn(authState);
-    whenListen(auth, const Stream<AuthState>.empty(), initialState: authState);
+    whenListen(auth, authChanges, initialState: authState);
     final router = GoRouter(
       initialLocation: RouteNames.registerRole,
       routes: [
@@ -135,6 +147,43 @@ void main() {
 
     expect(find.text('National ID number'), findsOneWidget);
     expect(find.text('Email'), findsNothing);
+  });
+
+  testWidgets('the role step offers Sign up with Google and sends the event', (
+    tester,
+  ) async {
+    await pumpFlow(tester, const AuthUnauthenticated());
+
+    expect(find.text('Sign up with Google'), findsOneWidget);
+    await tester.tap(find.text('Sign up with Google'));
+    await tester.pump();
+
+    verify(() => login.add(const LoginGoogleRequested())).called(1);
+  });
+
+  testWidgets('a Google sign-up in progress hides the Google button', (
+    tester,
+  ) async {
+    final google = anAuthUser(provider: AuthProviderKind.google);
+    await pumpFlow(tester, AuthNeedsProfile(google));
+
+    expect(find.text('Sign up with Google'), findsNothing);
+    expect(find.text('Use a different account'), findsOneWidget);
+  });
+
+  testWidgets('a Google user appearing mid-flow restarts it as Google', (
+    tester,
+  ) async {
+    final google = anAuthUser(provider: AuthProviderKind.google);
+    await pumpFlow(
+      tester,
+      const AuthUnauthenticated(),
+      authChanges: Stream.value(AuthNeedsProfile(google)),
+    );
+
+    expect(receivedGoogleUser, google);
+    expect(find.text('Use a different account'), findsOneWidget);
+    expect(find.text('Sign up with Google'), findsNothing);
   });
 
   testWidgets('a new OTP code is shown in a SnackBar', (tester) async {

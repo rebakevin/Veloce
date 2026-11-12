@@ -9,6 +9,7 @@ import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 
 import '../widgets/brand_mark.dart';
+import '../widgets/google_sign_up_button.dart';
 import '../widgets/onboarding_slide.dart';
 import '../widgets/page_index_cubit.dart';
 
@@ -162,6 +163,8 @@ class _WelcomeActions extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           OutlinedButton(onPressed: onLogin, child: const Text('Log in')),
+          const SizedBox(height: AppSpacing.md),
+          const GoogleSignUpButton(label: 'Continue with Google'),
         ],
       ),
     );
