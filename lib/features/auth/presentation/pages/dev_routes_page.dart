@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
 
 import '../../domain/dev_route_catalog.dart';
+import '../bloc/auth_bloc.dart';
 
 /// Debug-only list of every screen in the app, so a placeholder can be opened
 /// without typing its path. Reads the live router, so a new route shows up here
-/// without editing this page. Registered only when `kDebugMode`.
+/// without editing this page. Registered only when `kDebugMode`. A route for
+/// the other role is disabled: pushing it makes the router redirect to a page
+/// already on the stack, which crashes the navigator.
 class DevRoutesPage extends StatelessWidget {
   const DevRoutesPage({super.key});
 
@@ -52,7 +56,11 @@ class _RouteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final role = entry.role;
+    final auth = context.watch<AuthBloc>().state;
+    final allowed =
+        role == null || (auth is AuthAuthenticated && auth.role == role);
     return ListTile(
+      enabled: allowed,
       minTileHeight: AppSizes.iconControl,
       title: Text(entry.pattern),
       subtitle: role == null ? null : Text('${role.label} only'),
