@@ -7,6 +7,7 @@ import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/locked_contact_tile.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
+import 'package:veloce/core/widgets/user_avatar.dart';
 
 Widget _host(Widget child) => MaterialApp(
   theme: AppTheme.light,
@@ -20,6 +21,12 @@ void main() {
     );
 
     expect(find.text(FieldHints.email), findsOneWidget);
+  });
+
+  testWidgets('an avatar without a photo shows the initials', (tester) async {
+    await tester.pumpWidget(_host(const UserAvatar(name: 'Aline Uwase')));
+
+    expect(find.text('AU'), findsOneWidget);
   });
 
   testWidgets('status chip carries the status as text', (tester) async {
