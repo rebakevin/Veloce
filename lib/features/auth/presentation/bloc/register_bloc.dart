@@ -289,7 +289,7 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
       );
       // Google accounts are already verified, nothing was mailed.
       result = done.when(
-        success: (_) => const Result.success(true),
+        success: (_) => const Result.success(false),
         failure: Result.failure,
       );
     } else {

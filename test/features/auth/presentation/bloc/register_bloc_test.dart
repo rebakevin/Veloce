@@ -400,6 +400,7 @@ void main() {
         ..add(const RegisterDetailsSubmitted()),
       verify: (bloc) {
         expect(bloc.state.step, RegisterStep.done);
+        expect(bloc.state.verificationEmailSent, isFalse);
         expect(bloc.state.draft.name, 'Aline Uwase');
         verifyNever(() => verification.sendOtp(any()));
         verifyNever(() => register(any()));
