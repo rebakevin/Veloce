@@ -85,6 +85,8 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
                 autofillHints: const [AutofillHints.email],
+                onChanged: (_) =>
+                    context.read<ForgotPasswordCubit>().emailEdited(),
                 onSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: AppSpacing.xl),
