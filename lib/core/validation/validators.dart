@@ -32,22 +32,22 @@ abstract final class Validators {
     return null;
   }
 
-  /// Rwandan mobile number, e.g. `0788123456`.
+  /// Rwandan mobile number: 10 digits starting with 07.
   static String? phone(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return 'Enter your phone number.';
     if (!_phone.hasMatch(text)) {
-      return 'Enter a valid Rwandan number, like 0788123456.';
+      return 'Enter a valid Rwandan number: 10 digits starting with 07.';
     }
     return null;
   }
 
-  /// MoMo number typed without the leading 0, e.g. `788123456`.
+  /// MoMo number typed without the leading 0.
   static String? momoNumber(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return 'Enter your MoMo number.';
     if (!_momoDigits.hasMatch(text)) {
-      return 'Enter the ${AppConstants.momoDigits} digits after 0, like 788123456.';
+      return 'Enter the ${AppConstants.momoDigits} digits after the 0.';
     }
     return null;
   }
@@ -83,11 +83,13 @@ abstract final class Validators {
     return null;
   }
 
-  /// Rwandan plate such as `RAB 123 A`.
+  /// Rwandan plate: 3 letters starting with R, 3 digits, 1 letter.
   static String? plate(String? value) {
     final text = value?.trim().toUpperCase() ?? '';
     if (text.isEmpty) return 'Enter the number plate.';
-    if (!_plate.hasMatch(text)) return 'Use a plate like RAB 123 A.';
+    if (!_plate.hasMatch(text)) {
+      return 'Use 3 letters starting with R, 3 digits and 1 letter.';
+    }
     return null;
   }
 
