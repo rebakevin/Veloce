@@ -29,4 +29,16 @@ abstract final class DocumentRules {
     }
     return expiries.reduce((a, b) => a.isBefore(b) ? a : b);
   }
+
+  static String? plateMatches(String? documentPlate, String listingPlate) {
+    final typed = _normalise(documentPlate);
+    if (typed.isEmpty) return 'Enter the plate shown on the document.';
+    if (typed != _normalise(listingPlate)) {
+      return 'The plate on this document must match the listing.';
+    }
+    return null;
+  }
+
+  static String _normalise(String? plate) =>
+      (plate ?? '').replaceAll(' ', '').toUpperCase();
 }

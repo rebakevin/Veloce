@@ -77,4 +77,17 @@ void main() {
       expect(DocumentRules.docsValidUntil(documents), isNull);
     });
   });
+  group('plateMatches', () {
+    test('same plate with different spacing and case returns no error', () {
+      expect(DocumentRules.plateMatches('rab123a', 'RAB 123 A'), isNull);
+    });
+
+    test('different plate returns an error message', () {
+      expect(DocumentRules.plateMatches('RAC 456 B', 'RAB 123 A'), isNotNull);
+    });
+
+    test('empty plate returns an error message', () {
+      expect(DocumentRules.plateMatches('', 'RAB 123 A'), isNotNull);
+    });
+  });
 }
