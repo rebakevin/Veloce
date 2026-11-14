@@ -44,10 +44,6 @@ void main() {
     await pumpDialog(tester, needsPassword: false);
 
     expect(find.byType(TextField), findsNothing);
-    expect(
-      find.text("You'll be asked to confirm with Google."),
-      findsOneWidget,
-    );
     await tester.tap(find.text('Delete account'));
 
     verify(() => cubit.delete()).called(1);

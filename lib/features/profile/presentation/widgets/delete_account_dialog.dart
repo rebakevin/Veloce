@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/widgets/dialog_buttons.dart';
 
 import '../bloc/delete_account_cubit.dart';
 
@@ -59,10 +60,6 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
                 'payments and reviews, both given and received. It cannot be '
                 'undone.',
               ),
-              if (!widget.needsPassword) ...[
-                const SizedBox(height: AppSpacing.md),
-                const Text("You'll be asked to confirm with Google."),
-              ],
               if (widget.needsPassword) ...[
                 const SizedBox(height: AppSpacing.lg),
                 TextField(
@@ -86,21 +83,15 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: running ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-                foregroundColor: Theme.of(context).colorScheme.onError,
-              ),
-              onPressed: running
+            DialogButtons(
+              confirmLabel: 'Delete account',
+              destructive: true,
+              onCancel: running ? null : () => Navigator.of(context).pop(),
+              onConfirm: running
                   ? null
                   : () => context.read<DeleteAccountCubit>().delete(
                       password: widget.needsPassword ? _password.text : null,
                     ),
-              child: const Text('Delete account'),
             ),
           ],
         );

@@ -6,6 +6,7 @@ import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/widgets/dialog_buttons.dart';
 import 'package:veloce/core/widgets/section_header.dart';
 import 'package:veloce/features/auth/auth.dart';
 
@@ -175,13 +176,10 @@ class _ProfileContent extends StatelessWidget {
           'Your linked accounts stay on this device, so you can switch back.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sign out'),
+          DialogButtons(
+            confirmLabel: 'Sign out',
+            onCancel: () => Navigator.of(context).pop(false),
+            onConfirm: () => Navigator.of(context).pop(true),
           ),
         ],
       ),
