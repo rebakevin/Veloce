@@ -9,6 +9,8 @@ import 'package:veloce/core/validation/validators.dart';
 import 'package:veloce/core/widgets/app_text_field.dart';
 import 'package:veloce/core/widgets/date_picker_form_field.dart';
 import 'package:veloce/core/widgets/document_photo_field.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/photo_picker.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
@@ -29,7 +31,7 @@ class LicenceChangePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Change licence')),
+      appBar: const PageAppBar(title: 'Change licence'),
       body: ProfileLoadedBuilder(
         builder: (context, state) =>
             _LicenceForm(state: state, picker: photoPicker),
@@ -97,6 +99,7 @@ class _LicenceFormState extends State<_LicenceForm> {
         children: [
           AppTextField(
             label: 'Licence number',
+            hint: FieldHints.licenceNumber,
             controller: _number,
             textInputAction: TextInputAction.next,
             validator: Validators.licenceNumber,

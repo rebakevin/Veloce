@@ -5,10 +5,16 @@ import '../theme/app_text_styles.dart';
 
 /// Shown when a screen fails to load, with Retry.
 class ErrorView extends StatelessWidget {
-  const ErrorView({required this.message, super.key, this.onRetry});
+  const ErrorView({
+    required this.message,
+    super.key,
+    this.onRetry,
+    this.retryLabel = 'Try again',
+  });
 
   final String message;
   final VoidCallback? onRetry;
+  final String retryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -31,10 +37,7 @@ class ErrorView extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.lg),
-              OutlinedButton(
-                onPressed: onRetry,
-                child: const Text('Try again'),
-              ),
+              OutlinedButton(onPressed: onRetry, child: Text(retryLabel)),
             ],
           ],
         ),

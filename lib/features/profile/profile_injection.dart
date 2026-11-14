@@ -1,9 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
 
+import 'data/firestore_account_eraser.dart';
 import 'data/firestore_profile_repository.dart';
+import 'domain/repositories/account_eraser.dart';
 import 'domain/repositories/profile_repository.dart';
+import 'domain/usecases/delete_account.dart';
 import 'presentation/bloc/accounts_bloc.dart';
+import 'presentation/bloc/delete_account_cubit.dart';
 import 'presentation/bloc/profile_bloc.dart';
 import 'presentation/bloc/public_profile_cubit.dart';
 import 'presentation/bloc/settings_cubit.dart';
@@ -21,6 +25,23 @@ void registerProfile(GetIt getIt) {
         session: getIt(),
         clock: getIt(),
       ),
+    )
+    ..registerLazySingleton<AccountEraser>(
+      () => FirestoreAccountEraser(
+        firestore: getIt<FirebaseFirestore>(),
+        writes: getIt(),
+        storage: getIt(),
+      ),
+    )
+    ..registerLazySingleton<DeleteAccount>(
+      () => DeleteAccount(
+        auth: getIt(),
+        eraser: getIt(),
+        linkedAccounts: getIt(),
+      ),
+    )
+    ..registerFactory<DeleteAccountCubit>(
+      () => DeleteAccountCubit(deleteAccount: getIt()),
     )
     ..registerFactory<ProfileBloc>(
       () => ProfileBloc(repository: getIt(), clock: getIt()),

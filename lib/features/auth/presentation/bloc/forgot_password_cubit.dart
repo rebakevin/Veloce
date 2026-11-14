@@ -53,6 +53,11 @@ class ForgotPasswordCubit extends Cubit<ForgotPasswordState> {
     );
   }
 
+  /// The user typed: the inline error no longer applies.
+  void emailEdited() {
+    if (state.emailError != null) emit(const ForgotPasswordState());
+  }
+
   /// Back to the form, for "use a different email".
   void reset() => emit(const ForgotPasswordState());
 }

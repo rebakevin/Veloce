@@ -56,8 +56,9 @@ class RegisterState extends Equatable {
   /// OTP steps.
   final AuthUser? googleUser;
 
-  /// Set on [RegisterStep.done]: `false` means the verification email could
-  /// not be sent and the verify-email page should offer a resend.
+  /// Set on [RegisterStep.done]: whether a verification email went out.
+  /// `false` for a Google account (already verified, nothing mailed) or when
+  /// the email could not be sent (the verify-email page offers a resend).
   final bool verificationEmailSent;
 
   bool get isGoogle => googleUser != null;

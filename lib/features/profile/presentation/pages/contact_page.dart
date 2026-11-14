@@ -6,6 +6,7 @@ import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 
 import '../widgets/mail_launcher.dart';
 
@@ -30,7 +31,7 @@ class ContactPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Contact')),
+      appBar: const PageAppBar(title: 'Contact'),
       body: ListView(
         padding: Responsive.pagePadding(context)
             .copyWith(top: AppSpacing.xl, bottom: AppSpacing.xl),

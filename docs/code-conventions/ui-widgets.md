@@ -21,6 +21,7 @@
 
 - Validators are pure functions in the feature's `domain` (or `core` if truly shared), unit tested, and used by `TextFormField.validator`.
 - A form never decides rules inline. It calls the validator.
+- Every text field has a placeholder. `hint` is a required parameter on `AppTextField`, `FormTextField` and `PasswordField`, and the shared texts (email, name, password, phone, ID numbers) live in `FieldHints` (`core/widgets`). Date and photo pickers show their own prompt ("Choose a date").
 - Preserve user input on failure. Show field-level errors for validation and a snackbar or banner for network or server errors.
 - Disable the submit button while submitting.
 
@@ -33,6 +34,7 @@
 ## Navigation
 
 - Plain `Navigator.push` for detail screens, and an auth gate at the root decides the first screen. Routes are opened through small functions or static `route()` helpers on the screen, not scattered `MaterialPageRoute` literals.
+- A screen opened above the tab bar uses `PageAppBar` (`core/widgets`), not a bare `AppBar`. It shows the back button whenever the router can pop, including for the first page inside a `ShellRoute`, where `AppBar`'s own back button stays hidden. Tab roots keep a plain `AppBar`.
 - Role-restricted screens check the role in the gate. The server rules remain the real enforcement.
 
 ## Performance

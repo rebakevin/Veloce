@@ -44,6 +44,13 @@ class RegisterRolePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Google first: its role step comes after the account is chosen.
+            if (!isGoogle) ...[
+              const GoogleSignUpButton(),
+              const SizedBox(height: AppSpacing.lg),
+              const OrDivider(),
+              const SizedBox(height: AppSpacing.xl),
+            ],
             StepHeader(
               step: 1,
               total: isGoogle ? 2 : 4,
@@ -64,16 +71,12 @@ class RegisterRolePage extends StatelessWidget {
               description: 'I want to earn by renting out my car.',
               onTap: () => bloc.add(const RegisterRoleSelected(UserRole.owner)),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            if (isGoogle)
+            if (isGoogle) ...[
+              const SizedBox(height: AppSpacing.xl),
               TextButton(
                 onPressed: () => _back(context, isGoogle: true),
                 child: const Text('Use a different account'),
-              )
-            else ...[
-              const OrDivider(),
-              const SizedBox(height: AppSpacing.lg),
-              const GoogleSignUpButton(),
+              ),
             ],
           ],
         ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
-
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../bloc/register_bloc.dart';
@@ -108,6 +108,7 @@ class _OtpFormState extends State<OtpForm> {
         ),
         FormTextField(
           label: 'Verification code',
+          hint: FieldHints.verificationCode,
           controller: _code,
           errorText: widget.errorText,
           enabled: !widget.isBusy,
@@ -115,6 +116,8 @@ class _OtpFormState extends State<OtpForm> {
           textInputAction: TextInputAction.done,
           autofillHints: const [AutofillHints.oneTimeCode],
           maxLength: 6,
+          onChanged: (_) =>
+              context.read<RegisterBloc>().add(const RegisterOtpEdited()),
           onSubmitted: (_) => _verify(),
         ),
         const SizedBox(height: AppSpacing.xl),

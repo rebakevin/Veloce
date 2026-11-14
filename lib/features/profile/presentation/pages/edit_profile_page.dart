@@ -7,6 +7,8 @@ import 'package:veloce/core/validation/validators.dart';
 import 'package:veloce/core/widgets/app_text_field.dart';
 import 'package:veloce/core/widgets/date_picker_form_field.dart';
 import 'package:veloce/core/widgets/document_photo_field.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/photo_picker.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
@@ -28,7 +30,7 @@ class EditProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit profile')),
+      appBar: const PageAppBar(title: 'Edit profile'),
       body: ProfileActionListener(
         kind: ProfileActionKind.updateProfile,
         successMessage: 'Profile updated',
@@ -111,6 +113,7 @@ class _EditProfileFormState extends State<_EditProfileForm> {
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'Full name',
+            hint: FieldHints.fullName,
             controller: _name,
             textInputAction: TextInputAction.next,
             autofillHints: const [AutofillHints.name],
@@ -119,7 +122,7 @@ class _EditProfileFormState extends State<_EditProfileForm> {
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'Phone number',
-            hint: '0788123456',
+            hint: FieldHints.phone,
             controller: _phone,
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.next,

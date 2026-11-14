@@ -7,6 +7,8 @@ import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/validation/validators.dart';
 import 'package:veloce/core/widgets/app_text_field.dart';
 import 'package:veloce/core/widgets/document_photo_field.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/photo_picker.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
@@ -29,7 +31,7 @@ class IdentityPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('National ID')),
+      appBar: const PageAppBar(title: 'National ID'),
       body: ProfileActionListener(
         kind: ProfileActionKind.identity,
         successMessage: 'National ID verified and saved',
@@ -108,7 +110,7 @@ class _IdentityFormState extends State<_IdentityForm> {
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'National ID number',
-            hint: '16 digits',
+            hint: FieldHints.nationalId,
             controller: _number,
             keyboardType: TextInputType.number,
             validator: Validators.nationalId,

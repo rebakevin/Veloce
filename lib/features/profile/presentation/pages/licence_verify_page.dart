@@ -5,6 +5,7 @@ import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 
 import '../bloc/profile_bloc.dart';
 import '../widgets/profile_loaded_builder.dart';
@@ -18,7 +19,7 @@ class LicenceVerifyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Verify licence')),
+      appBar: const PageAppBar(title: 'Verify licence'),
       body: ProfileLoadedBuilder(
         builder: (context, state) {
           final action = state.action;

@@ -8,6 +8,7 @@ import 'obscure_cubit.dart';
 class PasswordField extends StatelessWidget {
   const PasswordField({
     required this.controller,
+    required this.hint,
     super.key,
     this.label = 'Password',
     this.errorText,
@@ -19,6 +20,7 @@ class PasswordField extends StatelessWidget {
 
   final TextEditingController controller;
   final String label;
+  final String hint;
   final String? errorText;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
@@ -32,6 +34,7 @@ class PasswordField extends StatelessWidget {
       child: BlocBuilder<ObscureCubit, bool>(
         builder: (context, obscured) => FormTextField(
           label: label,
+          hint: hint,
           controller: controller,
           errorText: errorText,
           onChanged: onChanged,

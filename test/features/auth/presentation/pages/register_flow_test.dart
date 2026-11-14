@@ -59,6 +59,7 @@ void main() {
         return RegisterBloc(
           registerWithEmail: _MockRegisterWithEmail(),
           completeGoogle: _MockCompleteGoogle(),
+          linkCurrentAccount: MockLinkCurrentAccount(),
           verification: VerificationSim(),
           clock: const FixedClock(),
           googleUser: googleUser,
