@@ -3,30 +3,41 @@
 //
 //   GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json node seed.js
 //   ... node seed.js --reset      # wipe every Veloce collection first
+//   node seed.js --dry-run        # no credentials: check the data and count documents
+//   node seed.js --dry-run --scenarios=phase-3   # base data + only that scenario file
 //
+// Per-phase dummy data lives in scenarios/phase-N.js (see scenarios/README.md).
+
 // Field names and enum keys mirror docs/resources/TECHNICAL.md §4.2 and the
 // Dart enums in lib/core/domain/enums. Keep the three in sync.
 
+const fs = require('fs');
+const path = require('path');
 const admin = require('firebase-admin');
+
+const DRY_RUN = process.argv.includes('--dry-run');
 
 const PROJECT_ID = 'veloce-1fe08';
 const PASSWORD = 'Veloce#2026'; // must equal DevAccounts.password in the app
 const PLATFORM_FEE = 2000;
 
 // Refuse ambient credentials (gcloud ADC may point at an unrelated project).
-const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-if (!keyPath) {
-  console.error('Set GOOGLE_APPLICATION_CREDENTIALS to the veloce-1fe08 service-account key. See tool/seed/README.md.');
-  process.exit(1);
-}
-const serviceAccount = require(require('path').resolve(keyPath));
-if (serviceAccount.project_id !== PROJECT_ID) {
-  console.error(`The key is for "${serviceAccount.project_id}", not "${PROJECT_ID}". Aborting.`);
-  process.exit(1);
-}
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount), projectId: PROJECT_ID });
-const db = admin.firestore();
 const { Timestamp } = admin.firestore;
+let db = null;
+if (!DRY_RUN) {
+  const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!keyPath) {
+    console.error('Set GOOGLE_APPLICATION_CREDENTIALS to the veloce-1fe08 service-account key. See tool/seed/README.md.');
+    process.exit(1);
+  }
+  const serviceAccount = require(path.resolve(keyPath));
+  if (serviceAccount.project_id !== PROJECT_ID) {
+    console.error(`The key is for "${serviceAccount.project_id}", not "${PROJECT_ID}". Aborting.`);
+    process.exit(1);
+  }
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount), projectId: PROJECT_ID });
+  db = admin.firestore();
+}
 
 const COLLECTIONS = [
   'users', 'vehicles', 'bookings', 'calendarBlocks', 'renterLocks', 'transactions',
@@ -43,7 +54,7 @@ const hoursFromNow = (hours) => new Date(now.getTime() + hours * 3600 * 1000);
 const photo = (seed) => `https://picsum.photos/seed/${seed}/800/600`;
 
 // ---------- people ----------
-const PEOPLE = [
+const BASE_PEOPLE = [
   { uid: 'renter1', role: 'renter', name: 'Aline Uwase', phone: '0788100001' },
   { uid: 'renter2', role: 'renter', name: 'Eric Mugisha', phone: '0788100002' },
   { uid: 'renter3', role: 'renter', name: 'Diane Ingabire', phone: '0788100003' },
@@ -52,10 +63,25 @@ const PEOPLE = [
   { uid: 'owner2', role: 'owner', name: 'Grace Mukamana', phone: '0788200002' },
   { uid: 'owner3', role: 'owner', name: 'Jean Claude Niyonzima', phone: '0788200003' },
 ];
+
+// ---------- scenario files (one per phase, see scenarios/README.md) ----------
+const scenarioArg = process.argv.find((arg) => arg.startsWith('--scenarios='));
+const onlyScenarios = scenarioArg ? scenarioArg.split('=')[1].split(',') : null;
+const scenarioDir = path.join(__dirname, 'scenarios');
+const SCENARIOS = fs.existsSync(scenarioDir)
+  ? fs.readdirSync(scenarioDir)
+      .filter((file) => /^phase-\d+\.js$/.test(file))
+      .sort()
+      .filter((file) => !onlyScenarios || onlyScenarios.includes(file.replace('.js', '')))
+      .map((file) => ({ file, ...require(path.join(scenarioDir, file)) }))
+  : [];
+const fromScenarios = (key) => SCENARIOS.flatMap((scenario) => scenario[key] ?? []);
+
+const PEOPLE = [...BASE_PEOPLE, ...fromScenarios('people')];
 const emailOf = (uid) => `${uid}@veloce.test`;
 
 // ---------- cars ----------
-const CARS = [
+const BASE_CARS = [
   ['car-1', 'owner1', 'RAB 101 A', 'Toyota', 'Vitz', 2018, 'hatchback', 'automatic', 'petrol', 5, 45000, [[3, 42000], [7, 38000]], 100000, 'Kacyiru', 'published'],
   ['car-2', 'owner1', 'RAB 202 B', 'Toyota', 'RAV4', 2020, 'suv', 'automatic', 'petrol', 5, 90000, [[3, 85000], [7, 80000]], 200000, 'Nyarutarama', 'published'],
   ['car-3', 'owner1', 'RAC 303 C', 'Suzuki', 'Swift', 2017, 'hatchback', 'manual', 'petrol', 5, 40000, [], 80000, 'Kimironko', 'published'],
@@ -69,6 +95,7 @@ const CARS = [
   longRates: tiers.map(([fromDays, pricePerDay]) => ({ fromDays, pricePerDay })),
   cautionFee, neighbourhood, status,
 }));
+const CARS = [...BASE_CARS, ...fromScenarios('cars')];
 const carById = Object.fromEntries(CARS.map((car) => [car.id, car]));
 
 // ---------- pricing (mirrors PricingCalculator) ----------
@@ -82,7 +109,7 @@ function quote(car, days) {
 // ---------- bookings: one in every status (plus an agreed-claim completion) ----------
 // Renter locks (approved, confirmed, active) use three different renters; the
 // pending request uses a fourth so it is not cancelled by a lock.
-const BOOKINGS = [
+const BASE_BOOKINGS = [
   { key: 'pending',   status: 'pending',   car: 'car-2', renter: 'renter4', start: 5,   days: 3 },
   { key: 'approved',  status: 'approved',  car: 'car-4', renter: 'renter1', start: 4,   days: 3 },
   { key: 'declined',  status: 'declined',  car: 'car-1', renter: 'renter2', start: 10,  days: 2, reason: 'The car is not available for those days.' },
@@ -94,7 +121,8 @@ const BOOKINGS = [
   { key: 'review',    status: 'review',    car: 'car-2', renter: 'renter2', start: -8,  days: 3, lateDays: 1, claim: 'disputed' },
   { key: 'completed', status: 'completed', car: 'car-4', renter: 'renter3', start: -15, days: 3, decision: 'no_issue' },
   { key: 'claimed',   status: 'completed', car: 'car-5', renter: 'renter1', start: -25, days: 4, decision: 'claim', claim: 'agreed' },
-].map((b, index) => {
+];
+const BOOKINGS = [...BASE_BOOKINGS, ...fromScenarios('bookings')].map((b, index) => {
   const car = carById[b.car];
   const q = quote(car, b.days);
   return { ...b, id: `booking-${b.key}`, reference: `VLC-${1001 + index}`, ownerId: car.ownerId, carData: car, q };
@@ -125,14 +153,14 @@ function bookingDoc(b) {
     totalPayable: b.q.total,
     status: b.status,
     reason: b.reason ?? null,
-    payDeadline: b.status === 'approved' ? ts(hoursFromNow(20)) : null,
-    expiresAt: b.status === 'pending' ? ts(hoursFromNow(20)) : null,
+    payDeadline: b.status === 'approved' ? ts(hoursFromNow(b.payDeadlineHours ?? 20)) : null,
+    expiresAt: b.status === 'pending' ? ts(hoursFromNow(b.expiresInHours ?? 20)) : null,
     agreementAckAt: paid ? ts(day(b.start - 2)) : null,
-    ownerPickupConfirmedAt: handedOver ? ts(day(b.start, 9)) : null,
-    renterPickupConfirmedAt: handedOver ? ts(day(b.start, 10)) : null,
+    ownerPickupConfirmedAt: handedOver || b.pickupConfirmed === 'owner' ? ts(day(b.start, 9)) : null,
+    renterPickupConfirmedAt: handedOver || b.pickupConfirmed === 'renter' ? ts(day(b.start, 10)) : null,
     returnedAt: returned ? ts(day(b.start + b.days, 17)) : null,
-    ownerReturnConfirmedAt: ['review', 'completed'].includes(b.status) ? ts(day(b.start + b.days, 18)) : null,
-    renterReturnConfirmedAt: ['review', 'completed'].includes(b.status) ? ts(day(b.start + b.days, 18)) : null,
+    ownerReturnConfirmedAt: ['review', 'completed'].includes(b.status) || b.returnConfirmed === 'owner' ? ts(day(b.start + b.days, 18)) : null,
+    renterReturnConfirmedAt: ['review', 'completed'].includes(b.status) || b.returnConfirmed === 'renter' ? ts(day(b.start + b.days, 18)) : null,
     lateDays: b.lateDays ?? 0,
     lateFee,
     lateFeeWaived: false,
@@ -166,9 +194,12 @@ function ledgerFor(b) {
     add('refund', caution, 'veloce', 'renter', day(b.start + b.days + 1));
   }
   if (b.status === 'completed' && b.decision === 'claim') {
-    add('claim_deduction', CLAIM_AGREED_AMOUNT, 'veloce', 'owner', day(b.start + b.days + 1));
-    add('refund', caution - CLAIM_AGREED_AMOUNT, 'veloce', 'renter', day(b.start + b.days + 1));
+    const claimAmount = b.claimAmount ?? CLAIM_AGREED_AMOUNT;
+    add('claim_deduction', claimAmount, 'veloce', 'owner', day(b.start + b.days + 1));
+    add('refund', caution - claimAmount, 'veloce', 'renter', day(b.start + b.days + 1));
   }
+  // Scenario-specific money movements: [type, amount, fromParty, toParty, dayOffset].
+  (b.extraLedger ?? []).forEach(([type, amount, fromParty, toParty, offset]) => add(type, amount, fromParty, toParty, day(offset)));
   return entries;
 }
 
@@ -176,14 +207,16 @@ const CLAIM_AGREED_AMOUNT = 60000;
 
 // ---------- seeding ----------
 async function wipe() {
+  if (DRY_RUN) return;
   console.log('Resetting every Veloce collection...');
   for (const name of COLLECTIONS) await db.recursiveDelete(db.collection(name));
 }
 
 async function seedAccounts() {
+  if (DRY_RUN) return;
   for (const person of PEOPLE) {
     const email = emailOf(person.uid);
-    const fields = { email, password: PASSWORD, displayName: person.name, emailVerified: true };
+    const fields = { email, password: PASSWORD, displayName: person.name, emailVerified: person.emailVerified !== false };
     try {
       await admin.auth().updateUser(person.uid, fields);
     } catch (error) {
@@ -194,17 +227,17 @@ async function seedAccounts() {
 }
 
 function reviewList() {
-  const completed = BOOKINGS.filter((b) => b.status === 'completed');
+  const completed = BOOKINGS.filter((b) => b.status === 'completed' && ['completed', 'claimed'].includes(b.key));
   const stars = { completed: [5, 5, 4], claimed: [3, 4, 5] };
   const comments = {
     completed: ['Careful driver, returned on time.', 'Smooth handover and a clean car.', 'Drives great, would rent again.'],
     claimed: ['Returned a day late with a scratch.', 'Helpful owner, clear instructions.', 'Comfortable for the whole trip.'],
   };
-  return completed.flatMap((b) => [
+  return [...fromScenarios('reviews'), ...completed.flatMap((b) => [
     { id: `${b.id}_${b.ownerId}_user`, bookingId: b.id, authorId: b.ownerId, subjectType: 'user', subjectId: b.renter, stars: stars[b.key][0], comment: comments[b.key][0] },
     { id: `${b.id}_${b.renter}_user`, bookingId: b.id, authorId: b.renter, subjectType: 'user', subjectId: b.ownerId, stars: stars[b.key][1], comment: comments[b.key][1] },
     { id: `${b.id}_${b.renter}_vehicle`, bookingId: b.id, authorId: b.renter, subjectType: 'vehicle', subjectId: b.car, stars: stars[b.key][2], comment: comments[b.key][2] },
-  ]);
+  ])];
 }
 
 function aggregate(reviews, subjectType, id) {
@@ -215,17 +248,23 @@ function aggregate(reviews, subjectType, id) {
 }
 
 async function commitAll(operations) {
+  if (DRY_RUN) {
+    const perCollection = {};
+    operations.forEach(([ref]) => { const root = ref.split('/')[0]; perCollection[root] = (perCollection[root] ?? 0) + 1; });
+    console.log('Dry run, nothing written. Documents per collection:', perCollection);
+    return;
+  }
   // Firestore batches hold at most 500 writes.
   for (let i = 0; i < operations.length; i += 400) {
     const batch = db.batch();
-    operations.slice(i, i + 400).forEach(([ref, data]) => batch.set(ref, data));
+    operations.slice(i, i + 400).forEach(([ref, data]) => batch.set(db.doc(ref), data));
     await batch.commit();
   }
 }
 
 async function seedFirestore() {
   const ops = [];
-  const set = (path, data) => ops.push([db.doc(path), data]);
+  const set = (docPath, data) => ops.push([docPath, data]);
   const reviews = reviewList();
   const completedCount = (uid) => BOOKINGS.filter((b) => b.status === 'completed' && (b.renter === uid || b.ownerId === uid)).length;
 
@@ -250,8 +289,8 @@ async function seedFirestore() {
   });
 
   CARS.forEach((car, index) => {
-    const insuranceExpiry = day(200 + index);
-    const medicalExpiry = day(300 + index);
+    const insuranceExpiry = day(car.insuranceDays ?? 200 + index);
+    const medicalExpiry = day(car.medicalDays ?? 300 + index);
     set(`vehicles/${car.id}`, {
       ownerId: car.ownerId, plate: car.plate, make: car.make, model: car.model, year: car.year, type: car.type,
       transmission: car.transmission, fuel: car.fuel, seats: car.seats, features: ['Air conditioning', 'Bluetooth', 'USB charging'],
@@ -259,7 +298,7 @@ async function seedFirestore() {
       dailyPrice: car.dailyPrice, longRates: car.longRates, cautionFee: car.cautionFee, neighbourhood: car.neighbourhood,
       fuelRule: 'Return with the same fuel level', smoking: 'No smoking', extras: index % 2 === 0 ? ['Child seat'] : [],
       rulesFileUrl: null, videoUrl: null, status: car.status,
-      availableFrom: ts(day(-5)), availableTo: ts(day(120)), docsValidUntil: ts(insuranceExpiry < medicalExpiry ? insuranceExpiry : medicalExpiry),
+      availableFrom: ts(day(car.availableFromDay ?? -5)), availableTo: ts(day(car.availableToDay ?? 120)), docsValidUntil: ts(insuranceExpiry < medicalExpiry ? insuranceExpiry : medicalExpiry),
       ...aggregate(reviews, 'vehicle', car.id), createdAt: ts(day(-50 + index)),
     });
     for (let n = 0; n < 3; n += 1) {
@@ -273,7 +312,7 @@ async function seedFirestore() {
     set(`vehicles/${car.id}/documents/medical`, {
       vehicleId: car.id, number: `MED-${car.plate.replace(/ /g, '')}`, expiry: ts(medicalExpiry), photoUrl: photo(`med-${car.id}`), verified: true,
     });
-    if (index % 2 === 0) {
+    if (car.yellowPaper ?? index % 2 === 0) {
       set(`vehicles/${car.id}/documents/yellowPaper`, {
         vehicleId: car.id, number: `YP-${car.plate.replace(/ /g, '')}`, expiry: ts(day(400)), photoUrl: photo(`yp-${car.id}`), verified: true,
       });
@@ -349,8 +388,43 @@ async function seedFirestore() {
   notify('renter2', 'claim_changed', 'Caution claim', 'The owner made a claim against your caution.', 'review', false);
   notify('renter3', 'review_due', 'Review due', 'Tell others how your rental went.', 'completed', true);
 
+  const ctx = { set, ts, day, photo, notify, hoursFromNow, emailOf, PEOPLE, CARS, BOOKINGS, PLATFORM_FEE };
+  SCENARIOS.forEach((scenario) => scenario.docs?.(ctx));
+
   await commitAll(ops);
   console.log(`Wrote ${ops.length} documents.`);
+}
+
+function validate() {
+  const duplicates = (label, ids) => {
+    const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+    if (dupes.length) throw new Error(`Duplicate ${label}: ${[...new Set(dupes)].join(', ')}`);
+  };
+  duplicates('person uid', PEOPLE.map((p) => p.uid));
+  duplicates('car id', CARS.map((c) => c.id));
+  duplicates('booking key', BOOKINGS.map((b) => b.key));
+  const uids = new Set(PEOPLE.map((p) => p.uid));
+  CARS.forEach((c) => { if (!uids.has(c.ownerId)) throw new Error(`Car ${c.id} has unknown owner ${c.ownerId}`); });
+  BOOKINGS.forEach((b) => { if (!uids.has(b.renter)) throw new Error(`Booking ${b.key} has unknown renter ${b.renter}`); });
+
+  const locks = {};
+  const blocks = {};
+  BOOKINGS.forEach((b) => {
+    if (['approved', 'confirmed', 'active'].includes(b.status)) {
+      if (locks[b.renter]) throw new Error(`Renter ${b.renter} holds two locks: ${locks[b.renter]} and ${b.id}`);
+      locks[b.renter] = b.id;
+    }
+    if (['approved', 'confirmed', 'active', 'returning', 'review'].includes(b.status)) {
+      (blocks[b.car] ??= []).forEach((other) => {
+        if (b.start < other.start + other.days && other.start < b.start + b.days) {
+          throw new Error(`Calendar blocks overlap on ${b.car}: ${other.id} and ${b.id}`);
+        }
+      });
+      blocks[b.car].push(b);
+    }
+  });
+  console.log(`Scenarios loaded: ${SCENARIOS.map((s) => s.file).join(', ') || 'none'}`);
+  console.log(`${PEOPLE.length} people, ${CARS.length} cars, ${BOOKINGS.length} bookings.`);
 }
 
 function reconcile() {
@@ -366,7 +440,8 @@ function reconcile() {
 }
 
 async function main() {
-  console.log(`Seeding ${PROJECT_ID}`);
+  console.log(`${DRY_RUN ? 'Dry run for' : 'Seeding'} ${PROJECT_ID}`);
+  validate();
   console.log('Held balance per booking (must never be negative):');
   reconcile();
   if (process.argv.includes('--reset')) await wipe();
