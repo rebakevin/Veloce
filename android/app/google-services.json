@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "765515995845-5t9g1ic10t4vtkavkf1rsg6pe9ksnauv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "rw.veloce.veloce",
+            "certificate_hash": "e94eaee8f46a2ba486d7baec9a55bf1751e545c4"
+          }
+        },
+        {
           "client_id": "765515995845-5v458rtuo54mp1gocplesqjj7vqv7vni.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
