@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:mocktail/mocktail.dart';
 import 'package:veloce/core/domain/entities/user_account.dart';
 import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
 import 'package:veloce/core/domain/enums/storage_bucket.dart';
@@ -18,6 +19,7 @@ import 'package:veloce/features/auth/domain/entities/registration_input.dart';
 import 'package:veloce/features/auth/domain/repositories/auth_repository.dart';
 import 'package:veloce/features/auth/domain/repositories/linked_account_store.dart';
 import 'package:veloce/features/auth/domain/repositories/registration_store.dart';
+import 'package:veloce/features/auth/domain/usecases/link_current_account.dart';
 
 import '../../../support/builders.dart';
 
@@ -38,6 +40,29 @@ AuthUser anAuthUser({
   displayName: 'Aline Uwase',
   provider: provider,
 );
+
+LinkedAccount aLinkedAccount() => const LinkedAccount(
+  uid: 'uid-1',
+  email: 'uid-1@example.com',
+  name: 'Aline Uwase',
+  role: UserRole.renter,
+  authType: AuthProviderKind.password,
+);
+
+class MockLinkCurrentAccount extends Mock implements LinkCurrentAccount {}
+
+/// Makes [link] succeed for both call shapes: with a password (email
+/// accounts) and without one (Google accounts).
+void stubLinkSucceeds(MockLinkCurrentAccount link) {
+  when(() => link(password: any(named: 'password')))
+      .thenAnswer((_) async => Result.success(aLinkedAccount()));
+  when(() => link()).thenAnswer((_) async => Result.success(aLinkedAccount()));
+}
+
+void verifyNoLink(MockLinkCurrentAccount link) {
+  verifyNever(() => link(password: any(named: 'password')));
+  verifyNever(() => link());
+}
 
 RegistrationInput aRegistration({
   UserRole role = UserRole.renter,
