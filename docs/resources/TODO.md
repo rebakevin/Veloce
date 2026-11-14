@@ -160,7 +160,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [ ] Plate `RAB 123 A` validator; year 2005–2026; price ≥ 5,000; caution ≥ 0
 - [ ] Long-rental tier validator (≤ 3; ≥ 2 days; strictly decreasing; ≥ 5,000)
 - [ ] Example text per tier ("5 days: 5 × 75,000 = 375,000") and 3-day preview (renter pays / owner receives = fee − 2,000) using `PricingCalculator`
-- [ ] Documents rule: insurance + medical required, yellow paper optional, plate must match, expiry in future
+- [x] Documents rule: insurance + medical required, yellow paper optional, plate must match, expiry in future
 
 ### 2.C Screens (7-step wizard, `/owner/cars/new` and `/owner/cars/:id/edit`)
 - [ ] Wizard shell with progress bar, back/next, per-step validation, draft kept in `CarWizardBloc`
