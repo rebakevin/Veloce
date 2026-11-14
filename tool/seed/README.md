@@ -19,6 +19,19 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/veloce-service-account.json npm run seed
 The script refuses to run without that variable, and refuses a key for any other
 project (your gcloud default login can point somewhere else).
 
+## Per-phase dummy data
+
+`scenarios/phase-N.js` adds the extra cars, bookings, reviews and notifications each phase needs, on top of the base data. `npm run seed` loads all of them. Each task file in `docs/tasks/` has a "Dummy data for this task" table. Rules for the files are in `scenarios/README.md`.
+
+Check the data without credentials (validates ids, locks, calendar overlaps and the held balance, and counts documents):
+
+```bash
+node seed.js --dry-run
+node seed.js --dry-run --scenarios=phase-3   # base + one scenario file
+```
+
+Extra accounts (same password): `owner4`, `owner5`, `p6-owner`, `renter5` to `renter15`. They are not on `/dev-login`, whose list is hard-coded in Dart; use the normal login form.
+
 ## Reset
 
 `npm run reset` deletes **every document** in the Veloce collections first, then
