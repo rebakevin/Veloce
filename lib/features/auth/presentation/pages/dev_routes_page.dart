@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 
 import '../../domain/dev_route_catalog.dart';
 
@@ -16,7 +16,7 @@ class DevRoutesPage extends StatelessWidget {
     final routes = GoRouter.of(context).configuration.routes;
     final entries = DevRouteCatalog.fromPatterns(patterns(routes));
     return Scaffold(
-      appBar: AppBar(title: Text('All routes (${entries.length})')),
+      appBar: PageAppBar(title: 'All routes (${entries.length})'),
       body: ListView.builder(
         padding: const EdgeInsets.all(AppSpacing.gutter),
         itemCount: entries.length,
