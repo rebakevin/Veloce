@@ -5,6 +5,7 @@ import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/validation/validators.dart';
 import 'package:veloce/core/widgets/app_text_field.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../bloc/profile_bloc.dart';
@@ -19,7 +20,7 @@ class PayoutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Payment method')),
+      appBar: const PageAppBar(title: 'Payment method'),
       body: ProfileActionListener(
         kind: ProfileActionKind.payout,
         successMessage: 'Payment method saved',

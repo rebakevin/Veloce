@@ -7,6 +7,7 @@ import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/empty_state.dart';
 import 'package:veloce/core/widgets/error_view.dart';
 import 'package:veloce/core/widgets/loading_view.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/rating_stars.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
 import 'package:veloce/core/widgets/user_avatar.dart';
@@ -41,7 +42,7 @@ class PublicProfileView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: const PageAppBar(title: 'Profile'),
       body: BlocBuilder<PublicProfileCubit, PublicProfileState>(
         builder: (context, state) => switch (state) {
           PublicProfileLoading() => const LoadingView(),

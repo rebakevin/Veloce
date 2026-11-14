@@ -9,6 +9,7 @@ import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
 import 'package:veloce/core/widgets/error_view.dart';
 import 'package:veloce/core/widgets/loading_view.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/features/auth/auth.dart';
 
 import '../bloc/accounts_bloc.dart';
@@ -38,7 +39,7 @@ class AccountsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Accounts')),
+      appBar: const PageAppBar(title: 'Accounts'),
       body: BlocConsumer<AccountsBloc, AccountsState>(
         listenWhen: (previous, current) =>
             current is AccountsLoaded &&
