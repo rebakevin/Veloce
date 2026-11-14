@@ -4,6 +4,7 @@ import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/widgets/app_text_field.dart';
 import 'package:veloce/core/widgets/field_hints.dart';
+import 'package:veloce/core/widgets/image_picker_tile.dart';
 import 'package:veloce/core/widgets/locked_contact_tile.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
@@ -27,6 +28,23 @@ void main() {
     await tester.pumpWidget(_host(const UserAvatar(name: 'Aline Uwase')));
 
     expect(find.text('AU'), findsOneWidget);
+  });
+
+  testWidgets('a photo that cannot load falls back to the add prompt', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        ImagePickerTile(
+          label: 'Profile photo',
+          onTap: () {},
+          imageUrl: 'https://photos.invalid/missing.jpg',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Profile photo'), findsOneWidget);
   });
 
   testWidgets('status chip carries the status as text', (tester) async {
