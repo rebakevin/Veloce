@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "765515995845-l3h27k9va69pic1bdogk79f66n5dsvn1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "rw.veloce.veloce",
+            "certificate_hash": "cbb3273666ae2dfdbc2da810780fcb6df1890777"
+          }
+        },
+        {
           "client_id": "765515995845-fkesg5ps3o2fcfuguo0ckqdoetsae191.apps.googleusercontent.com",
           "client_type": 3
         }
