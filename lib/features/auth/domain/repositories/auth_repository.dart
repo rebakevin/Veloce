@@ -38,10 +38,10 @@ abstract interface class AuthRepository {
   /// Re-reads the user from the server and returns the fresh values.
   Future<Result<AuthUser>> reloadUser();
 
-  /// Proves the signed-in user is present again, which Firebase demands before
-  /// deleting the account. Email accounts pass their [password]; Google
-  /// accounts open the Google chooser and ignore it.
-  Future<Result<void>> reauthenticate({String? password});
+  /// Proves an email user is present again with their [password], which
+  /// Firebase demands before deleting the account. Google accounts have no
+  /// silent way to do this, so deleting them skips it.
+  Future<Result<void>> reauthenticate({required String password});
 
   /// Deletes the signed-in Auth user. Rolls back a half-finished
   /// registration and ends an account deletion.

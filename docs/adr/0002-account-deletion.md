@@ -22,9 +22,13 @@ rules treated bookings, ledger rows and reviews as undeletable.
    parties) and reviews (author, subject, or a party of the booking). The app has no other delete
    path for the ledger or reviews, so "append-only" and "no delete" now hold by convention in the app
    and not by the rules alone. Audit logs stay create-only and remain.
-5. **Re-authenticate first.** Firebase refuses to delete a stale session, and by then the data would
-   be gone. Email users type their password, Google users pick their account again. Order:
-   re-authenticate, erase data, delete the Auth user, unlink from this device.
+5. **No prompt for Google users.** Firebase refuses to delete a stale session, and the only way
+   to refresh a Google session is a Google sheet, which the user must not see. So a Google account
+   has its data erased, then Firebase is asked to delete the Auth user and the refusal is ignored,
+   then the user is signed out. If the Auth record stays, it is a bare uid with no profile, which the
+   app treats as a new user: "Continue with Google" starts a fresh sign-up on it. Email accounts
+   type their password in the dialog, re-authenticate with it, erase, delete the Auth user and sign
+   out, so the email can be used to sign up again.
 6. **Uploaded files are removed best effort**, like `MediaStorage.delete` (ADR 0001, point 7).
 
 ## Consequences
@@ -34,5 +38,7 @@ rules treated bookings, ledger rows and reviews as undeletable.
 - The counterpart's own copy of the booking contact (`bookings/{id}/private/{side}`) cannot be
   deleted by the user leaving; it becomes unreachable once the booking is gone.
 - Notifications sent to other users about a deleted booking remain.
-- A failure after the data is gone but before the Auth user is deleted leaves a signed-in account
-  with no profile. Re-authenticating right before makes this unlikely.
+- A deleted Google account may leave its bare Firebase Auth record (visible in the console, not in
+  the app). Removing it needs a backend.
+- For an email account, a failure after the data is gone but before the Auth user is deleted leaves a
+  signed-in account with no profile. Re-authenticating right before makes this unlikely.

@@ -57,7 +57,7 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<Result<AuthUser>> reloadUser() => _guard(_source.reloadUser);
 
   @override
-  Future<Result<void>> reauthenticate({String? password}) =>
+  Future<Result<void>> reauthenticate({required String password}) =>
       _guard(() => _source.reauthenticate(password: password));
 
   @override

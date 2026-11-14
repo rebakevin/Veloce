@@ -157,9 +157,10 @@ class FakeAuthRepository implements AuthRepository {
       Result.success(user ?? anAuthUser());
 
   Result<void> reauthResult = const Result.success(null);
+  Result<void> deleteResult = const Result.success(null);
 
   @override
-  Future<Result<void>> reauthenticate({String? password}) async {
+  Future<Result<void>> reauthenticate({required String password}) async {
     calls.add('reauth:$password');
     return reauthResult;
   }
@@ -167,8 +168,8 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<Result<void>> deleteCurrentUser() async {
     calls.add('deleteUser');
-    user = null;
-    return const Result.success(null);
+    if (deleteResult is Success) user = null;
+    return deleteResult;
   }
 
   @override

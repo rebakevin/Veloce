@@ -54,13 +54,29 @@ void main() {
     verifyZeroInteractions(eraser);
   });
 
-  test('a Google account needs no password', () async {
+  test('a Google account is never prompted: no re-authentication', () async {
     auth.user = anAuthUser(provider: AuthProviderKind.google);
 
     final result = await deleteAccount();
 
     expect(result, isA<Success<void>>());
-    expect(auth.calls, ['reauth:null', 'deleteUser', 'signOut']);
+    expect(auth.calls, ['deleteUser', 'signOut']);
+    verify(() => eraser.eraseAll('uid-1')).called(1);
+  });
+
+  test('a Google account is still signed out when Firebase wants a fresh '
+      'sign-in to delete it', () async {
+    auth
+      ..user = anAuthUser(provider: AuthProviderKind.google)
+      ..deleteResult = const Result.failure(
+        PermissionFailure('For your security, please sign in again.'),
+      );
+
+    final result = await deleteAccount();
+
+    expect(result, isA<Success<void>>());
+    expect(auth.calls, ['deleteUser', 'signOut']);
+    verify(() => linked.remove('uid-1')).called(1);
   });
 
   test('a failed re-authentication keeps all data', () async {
