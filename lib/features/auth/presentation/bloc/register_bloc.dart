@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
@@ -14,6 +15,7 @@ import '../../domain/entities/google_registration_input.dart';
 import '../../domain/entities/registration_document.dart';
 import '../../domain/entities/registration_input.dart';
 import '../../domain/usecases/complete_google_registration.dart';
+import '../../domain/usecases/link_current_account.dart';
 import '../../domain/usecases/register_with_email.dart';
 import 'register_draft.dart';
 
@@ -27,12 +29,16 @@ part 'register_state.dart';
 /// email and password fields are skipped, there is no OTP, and the final step
 /// calls `CompleteGoogleRegistration`.
 ///
+/// A finished sign-up also links the new account to this device (best effort,
+/// after the result is emitted) so the account switcher can return to it.
+///
 /// On [RegisterStep.done] the screen dispatches `AuthProfileRefreshed` on
 /// [AuthBloc], then goes to the verify-email page (email users) or home.
 class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
   RegisterBloc({
     required this._registerWithEmail,
     required this._completeGoogle,
+    required this._linkCurrentAccount,
     required this._verification,
     required this._clock,
     AuthUser? googleUser,
@@ -56,6 +62,7 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
 
   final RegisterWithEmail _registerWithEmail;
   final CompleteGoogleRegistration _completeGoogle;
+  final LinkCurrentAccount _linkCurrentAccount;
   final VerificationProvider _verification;
   final Clock _clock;
 
@@ -310,6 +317,11 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
             message: failure.message,
           ),
         );
+    }
+    if (result case Success()) {
+      unawaited(
+        _linkCurrentAccount(password: state.isGoogle ? null : draft.password),
+      );
     }
   }
 
