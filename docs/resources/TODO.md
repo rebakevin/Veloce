@@ -41,7 +41,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 
 ### 0.B Firebase
 - [x] ★ Create Firebase project (Spark plan); add Android app; run `flutterfire configure`; commit `firebase_options.dart` + `google-services.json`
-- [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In) _(done: Kevin's Mac and the release keystore; waiting on the other 5 machines)_
+- [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In) _(done: Kevin's Mac, the release keystore and Ange's machine; waiting on the other 4 machines)_
 - [x] ★ Enable Email/Password and Google providers; add a team keystore for release builds _(Android only; Google sign-in itself is first tested in Phase 1)_
 - [x] Create Firestore database; commit `firestore.rules` skeleton (§8.1) and `firestore.indexes.json` (§4.4); deploy
 - [x] Share project access with all members
