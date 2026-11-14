@@ -28,11 +28,38 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
   }) : super(const LoginState()) {
     on<LoginSubmitted>(_onSubmitted);
     on<LoginGoogleRequested>(_onGoogleRequested);
+    on<LoginFieldEdited>(_onFieldEdited);
   }
 
   final LoginWithEmail _loginWithEmail;
   final SignInWithGoogle _signInWithGoogle;
   final LinkCurrentAccount _linkCurrentAccount;
+
+  /// Clears the edited field's inline error. Emits nothing otherwise, because
+  /// the page's listener reacts to every state (a repeat would re-show the
+  /// failure message).
+  void _onFieldEdited(LoginFieldEdited event, Emitter<LoginState> emit) {
+    if (state.status != LoginStatus.invalid) return;
+    final emailError = event.field == LoginField.email
+        ? null
+        : state.emailError;
+    final passwordError = event.field == LoginField.password
+        ? null
+        : state.passwordError;
+    if (emailError == state.emailError &&
+        passwordError == state.passwordError) {
+      return;
+    }
+    emit(
+      LoginState(
+        status: emailError == null && passwordError == null
+            ? LoginStatus.idle
+            : LoginStatus.invalid,
+        emailError: emailError,
+        passwordError: passwordError,
+      ),
+    );
+  }
 
   Future<void> _onSubmitted(
     LoginSubmitted event,

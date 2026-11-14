@@ -112,6 +112,9 @@ class _LoginViewState extends State<LoginView> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
+                onChanged: (_) => context.read<LoginBloc>().add(
+                  const LoginFieldEdited(LoginField.email),
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               PasswordField(
@@ -119,6 +122,9 @@ class _LoginViewState extends State<LoginView> {
                 controller: _password,
                 errorText: state.passwordError,
                 textInputAction: TextInputAction.done,
+                onChanged: (_) => context.read<LoginBloc>().add(
+                  const LoginFieldEdited(LoginField.password),
+                ),
                 onSubmitted: (_) => _submit(),
               ),
               Align(

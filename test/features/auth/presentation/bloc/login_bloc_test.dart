@@ -157,6 +157,62 @@ void main() {
     );
 
     blocTest<LoginBloc, LoginState>(
+      'editing a field clears only its own inline error',
+      build: build,
+      act: (bloc) => bloc
+        ..add(const LoginSubmitted(email: '', password: ''))
+        ..add(const LoginFieldEdited(LoginField.email)),
+      skip: 1,
+      expect: () => [
+        const LoginState(
+          status: LoginStatus.invalid,
+          passwordError: 'Enter your password.',
+        ),
+      ],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'clearing the last inline error returns to idle',
+      build: build,
+      act: (bloc) => bloc
+        ..add(const LoginSubmitted(email: '', password: ''))
+        ..add(const LoginFieldEdited(LoginField.email))
+        ..add(const LoginFieldEdited(LoginField.password)),
+      skip: 2,
+      expect: () => [const LoginState()],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'editing a field with no inline error emits nothing',
+      build: build,
+      act: (bloc) => bloc.add(const LoginFieldEdited(LoginField.email)),
+      expect: () => <LoginState>[],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'editing after a failed login does not repeat the failure',
+      setUp: () =>
+          when(
+            () => login(
+              email: any(named: 'email'),
+              password: any(named: 'password'),
+            ),
+          ).thenAnswer(
+            (_) async => const Result.failure(
+              ValidationFailure('Wrong email or password.'),
+            ),
+          ),
+      build: build,
+      act: (bloc) async {
+        bloc.add(const LoginSubmitted(email: 'a@b.rw', password: 'nope'));
+        await bloc.stream.firstWhere((s) => s.status == LoginStatus.failure);
+        bloc.add(const LoginFieldEdited(LoginField.password));
+      },
+      skip: 2,
+      expect: () => <LoginState>[],
+    );
+
+    blocTest<LoginBloc, LoginState>(
       'a malformed email is rejected before the request',
       build: build,
       act: (bloc) =>
