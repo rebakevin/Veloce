@@ -55,6 +55,7 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
     on<RegisterDraftEdited>(_onDraftEdited);
     on<RegisterDetailsSubmitted>(_onDetailsSubmitted);
     on<RegisterOtpSubmitted>(_onOtpSubmitted);
+    on<RegisterOtpEdited>(_onOtpEdited);
     on<RegisterOtpResent>(_onOtpResent);
     on<RegisterSubmitRetried>(_onSubmitRetried);
     on<RegisterBackPressed>(_onBackPressed);
@@ -193,6 +194,14 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
           ),
         );
     }
+  }
+
+  void _onOtpEdited(RegisterOtpEdited event, Emitter<RegisterState> emit) {
+    if (state.step != RegisterStep.otp ||
+        state.status != RegisterStatus.failure) {
+      return;
+    }
+    emit(state.copyWith(status: RegisterStatus.idle));
   }
 
   Future<void> _onOtpResent(

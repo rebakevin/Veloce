@@ -218,6 +218,31 @@ void main() {
       await bloc.close();
     });
 
+    test('typing after a wrong code clears the message', () async {
+      when(
+        () => verification.confirmOtp(
+          challenge: any(named: 'challenge'),
+          code: '000000',
+        ),
+      ).thenAnswer(
+        (_) async => const Result.failure(
+          ValidationFailure('That code is not correct.'),
+        ),
+      );
+      final bloc = await atOtpStep();
+      bloc.add(const RegisterOtpSubmitted('000000'));
+      await bloc.stream.firstWhere((s) => s.status == RegisterStatus.failure);
+
+      bloc.add(const RegisterOtpEdited());
+      final state = await bloc.stream.firstWhere(
+        (s) => s.status == RegisterStatus.idle,
+      );
+
+      expect(state.step, RegisterStep.otp);
+      expect(state.message, isNull);
+      await bloc.close();
+    });
+
     test('a malformed code is rejected without a request', () async {
       final bloc = await atOtpStep();
       bloc.add(const RegisterOtpSubmitted('12'));

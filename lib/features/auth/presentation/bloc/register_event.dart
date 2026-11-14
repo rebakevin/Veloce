@@ -72,6 +72,11 @@ final class RegisterOtpSubmitted extends RegisterEvent {
   List<Object?> get props => [code];
 }
 
+/// The user typed in the code field: a wrong-code message no longer applies.
+final class RegisterOtpEdited extends RegisterEvent {
+  const RegisterOtpEdited();
+}
+
 final class RegisterOtpResent extends RegisterEvent {
   const RegisterOtpResent();
 }

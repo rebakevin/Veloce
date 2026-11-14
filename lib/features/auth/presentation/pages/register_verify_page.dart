@@ -116,6 +116,8 @@ class _OtpFormState extends State<OtpForm> {
           textInputAction: TextInputAction.done,
           autofillHints: const [AutofillHints.oneTimeCode],
           maxLength: 6,
+          onChanged: (_) =>
+              context.read<RegisterBloc>().add(const RegisterOtpEdited()),
           onSubmitted: (_) => _verify(),
         ),
         const SizedBox(height: AppSpacing.xl),
