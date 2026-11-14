@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../bloc/auth_bloc.dart';
@@ -105,6 +105,7 @@ class _LoginViewState extends State<LoginView> {
               const SizedBox(height: AppSpacing.xl),
               FormTextField(
                 label: 'Email',
+                hint: FieldHints.email,
                 controller: _email,
                 errorText: state.emailError,
                 enabled: !state.isSubmitting,
@@ -114,6 +115,7 @@ class _LoginViewState extends State<LoginView> {
               ),
               const SizedBox(height: AppSpacing.lg),
               PasswordField(
+                hint: FieldHints.password,
                 controller: _password,
                 errorText: state.passwordError,
                 textInputAction: TextInputAction.done,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/theme/app_theme.dart';
+import 'package:veloce/core/widgets/app_text_field.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/locked_contact_tile.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
@@ -12,6 +14,14 @@ Widget _host(Widget child) => MaterialApp(
 );
 
 void main() {
+  testWidgets('a text field shows its placeholder while empty', (tester) async {
+    await tester.pumpWidget(
+      _host(const AppTextField(label: 'Email', hint: FieldHints.email)),
+    );
+
+    expect(find.text(FieldHints.email), findsOneWidget);
+  });
+
   testWidgets('status chip carries the status as text', (tester) async {
     await tester.pumpWidget(_host(StatusChip.booking(BookingStatus.pending)));
     expect(find.text('Pending approval'), findsOneWidget);

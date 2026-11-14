@@ -7,6 +7,7 @@ import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/validation/validators.dart';
 import 'package:veloce/core/widgets/app_text_field.dart';
 import 'package:veloce/core/widgets/document_photo_field.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/photo_picker.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
@@ -109,7 +110,7 @@ class _IdentityFormState extends State<_IdentityForm> {
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             label: 'National ID number',
-            hint: '16 digits',
+            hint: FieldHints.nationalId,
             controller: _number,
             keyboardType: TextInputType.number,
             validator: Validators.nationalId,

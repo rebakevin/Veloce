@@ -7,6 +7,7 @@ import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/validation/validators.dart';
 import 'package:veloce/core/widgets/app_text_field.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 import 'package:veloce/features/auth/auth.dart';
 
@@ -110,6 +111,7 @@ class _SignInBodyState extends State<_SignInBody> {
               if (showEmail) ...[
                 AppTextField(
                   label: 'Email',
+                  hint: FieldHints.email,
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
@@ -119,6 +121,7 @@ class _SignInBodyState extends State<_SignInBody> {
                 const SizedBox(height: AppSpacing.lg),
                 AppTextField(
                   label: 'Password',
+                  hint: FieldHints.password,
                   controller: _password,
                   obscureText: true,
                   textInputAction: TextInputAction.done,
