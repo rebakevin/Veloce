@@ -156,6 +156,14 @@ class FakeAuthRepository implements AuthRepository {
   Future<Result<AuthUser>> reloadUser() async =>
       Result.success(user ?? anAuthUser());
 
+  Result<void> reauthResult = const Result.success(null);
+
+  @override
+  Future<Result<void>> reauthenticate({String? password}) async {
+    calls.add('reauth:$password');
+    return reauthResult;
+  }
+
   @override
   Future<Result<void>> deleteCurrentUser() async {
     calls.add('deleteUser');

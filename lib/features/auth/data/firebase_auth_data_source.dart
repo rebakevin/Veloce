@@ -78,6 +78,25 @@ class FirebaseAuthDataSource {
     return _map(_auth.currentUser)!;
   }
 
+  Future<void> reauthenticate({String? password}) async {
+    final user = _requireUser();
+    final AuthCredential credential;
+    if (_map(user)!.provider == AuthProviderKind.google) {
+      await _ensureGoogleReady();
+      final idToken = (await _google.authenticate()).authentication.idToken;
+      if (idToken == null) {
+        throw FirebaseAuthException(code: 'invalid-credential');
+      }
+      credential = GoogleAuthProvider.credential(idToken: idToken);
+    } else {
+      credential = EmailAuthProvider.credential(
+        email: user.email ?? '',
+        password: password ?? '',
+      );
+    }
+    await user.reauthenticateWithCredential(credential).timeout(_timeout);
+  }
+
   Future<void> deleteCurrentUser() => _requireUser().delete().timeout(_timeout);
 
   Future<void> signOut() async {
