@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/app/router/main_bar.dart';
 import 'package:veloce/app/router/shell_action.dart';
 import 'package:veloce/app/router/shell_destination.dart';
-
 import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/features/notifications/notifications.dart';
 
 /// Bottom bar shared by the renter and owner shells, as in the mock: a side
 /// action, three tabs and the notifications bell.
@@ -25,16 +27,8 @@ class RoleShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: navigationShell,
-      floatingActionButton: kDebugMode
-          ? FloatingActionButton.small(
-              tooltip: 'All routes (debug)',
-              onPressed: () => context.push(RouteNames.devRoutes),
-              child: const Icon(Icons.map_outlined),
-            )
-          : null,
-      bottomNavigationBar: MainBar(
+    Widget buildMainBar({int unreadCount = 0}) {
+      return MainBar(
         destinations: destinations,
         selectedIndex: navigationShell.currentIndex,
         onSelected: (index) => navigationShell.goBranch(
@@ -44,7 +38,39 @@ class RoleShell extends StatelessWidget {
         sideAction: sideAction,
         onSide: () => context.push(sideAction.route),
         onNotifications: () => context.push(notificationsRoute),
-      ),
+        unreadNotificationsCount: unreadCount,
+      );
+    }
+
+    final hasNotificationsBloc = GetIt.instance
+        .isRegistered<NotificationsBloc>();
+
+    return Scaffold(
+      body: navigationShell,
+      floatingActionButton: kDebugMode
+          ? FloatingActionButton.small(
+              tooltip: 'All routes (debug)',
+              onPressed: () => context.push(RouteNames.devRoutes),
+              child: const Icon(Icons.map_outlined),
+            )
+          : null,
+      bottomNavigationBar: hasNotificationsBloc
+          ? BlocBuilder<NotificationsBloc, NotificationsState>(
+              bloc: GetIt.instance<NotificationsBloc>(),
+              builder: (context, state) {
+                final unreadCount = switch (state) {
+                  NotificationsLoaded(
+                    :final unreadCount,
+                    :final notificationsEnabled,
+                  ) =>
+                    notificationsEnabled ? unreadCount : 0,
+                  _ => 0,
+                };
+
+                return buildMainBar(unreadCount: unreadCount);
+              },
+            )
+          : buildMainBar(unreadCount: 0),
     );
   }
 }

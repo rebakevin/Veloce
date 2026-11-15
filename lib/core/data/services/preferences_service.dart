@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The five local preferences (TECHNICAL.md §9), restored on every launch.
 class PreferencesService {
-  const PreferencesService(this._preferences);
+  PreferencesService(this._preferences);
 
   static const String themeModeKey = 'theme_mode';
   static const String notificationsEnabledKey = 'notifications_enabled';
@@ -12,6 +14,11 @@ class PreferencesService {
   static const String lastTypeChipKey = 'last_type_chip';
 
   final SharedPreferences _preferences;
+  static final StreamController<bool> _notificationsEnabledController =
+      StreamController<bool>.broadcast();
+
+  Stream<bool> get notificationsEnabledChanges =>
+      _notificationsEnabledController.stream;
 
   ThemeMode get themeMode {
     final stored = _preferences.getString(themeModeKey);
@@ -27,8 +34,10 @@ class PreferencesService {
   bool get notificationsEnabled =>
       _preferences.getBool(notificationsEnabledKey) ?? true;
 
-  Future<void> setNotificationsEnabled({required bool enabled}) =>
-      _preferences.setBool(notificationsEnabledKey, enabled);
+  Future<void> setNotificationsEnabled({required bool enabled}) async {
+    await _preferences.setBool(notificationsEnabledKey, enabled);
+    _notificationsEnabledController.add(enabled);
+  }
 
   bool get onboardingSeen => _preferences.getBool(onboardingSeenKey) ?? false;
 

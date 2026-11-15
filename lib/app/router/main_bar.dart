@@ -15,6 +15,7 @@ class MainBar extends StatelessWidget {
     required this.sideAction,
     required this.onSide,
     required this.onNotifications,
+    this.unreadNotificationsCount = 0,
     super.key,
   });
 
@@ -24,6 +25,7 @@ class MainBar extends StatelessWidget {
   final ShellAction sideAction;
   final VoidCallback onSide;
   final VoidCallback onNotifications;
+  final int unreadNotificationsCount;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +64,7 @@ class MainBar extends StatelessWidget {
               icon: Icons.notifications_outlined,
               label: 'Notifications',
               onPressed: onNotifications,
+              badgeCount: unreadNotificationsCount,
             ),
           ],
         ),
@@ -85,16 +88,18 @@ class _RoundButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return DecoratedBox(
+    final button = DecoratedBox(
       decoration: BoxDecoration(
         color: colors.surface,
         shape: BoxShape.circle,
@@ -110,6 +115,17 @@ class _RoundButton extends StatelessWidget {
         ),
       ),
     );
+
+    if (badgeCount > 0) {
+      return Badge.count(
+        count: badgeCount,
+        backgroundColor: colors.star,
+        textColor: colors.surface,
+        child: button,
+      );
+    }
+
+    return button;
   }
 }
 
