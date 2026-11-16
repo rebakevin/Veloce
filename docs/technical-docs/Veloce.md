@@ -8,6 +8,7 @@ until both sides confirm handover.
 
 - GitHub repo: https://github.com/rebakevin/Veloce
 - Demo video: `TBD`
+- Project site (mock and design system): https://rebakevin.github.io/Veloce/
 - Mock: https://rebakevin.github.io/Veloce/mock.html
 - Design system: https://rebakevin.github.io/Veloce/design-system.html
 
@@ -523,6 +524,7 @@ A failed submit keeps everything the user typed.
 
 ## 15. UI
 
+- Project site: https://rebakevin.github.io/Veloce/
 - Mock: https://rebakevin.github.io/Veloce/mock.html
 - Design system: https://rebakevin.github.io/Veloce/design-system.html
 
