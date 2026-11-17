@@ -1,24 +1,23 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:veloce/core/navigation/navigator_keys.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/navigation/seed_ids.dart';
 import 'package:veloce/core/widgets/placeholder_link.dart';
 import 'package:veloce/core/widgets/placeholder_page.dart';
 
+import 'presentation/bloc/my_cars_bloc.dart';
+import 'presentation/pages/my_cars_page.dart';
+
 /// Full-screen routes of the vehicles feature, opened above the tab bar.
 List<RouteBase> vehiclesRoutes() => [
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCars,
-    builder: (context, state) => PlaceholderPage(
-      title: 'My cars',
-      route: RouteNames.ownerCars,
-      phase: 2,
-      links: [
-        const PlaceholderLink('List a car', RouteNames.ownerCarNew),
-        PlaceholderLink('Car card (sample)', RouteNames.ownerCar(SeedIds.car)),
-      ],
+    builder: (context, state) => BlocProvider(
+      create: (_) => GetIt.I<MyCarsBloc>()..add(const MyCarsStarted()),
+      child: const MyCarsPage(),
     ),
   ),
   GoRoute(
