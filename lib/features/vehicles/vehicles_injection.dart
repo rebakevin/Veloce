@@ -5,6 +5,7 @@ import 'domain/repositories/vehicle_repository.dart';
 import 'domain/usecases/remove_vehicle.dart';
 import 'domain/usecases/set_status.dart';
 import 'domain/usecases/watch_owner_vehicles.dart';
+import 'presentation/bloc/car_count_cubit.dart';
 import 'presentation/bloc/my_cars_bloc.dart';
 
 void registerVehicles(GetIt getIt) {
@@ -23,5 +24,8 @@ void registerVehicles(GetIt getIt) {
         setStatus: getIt(),
         removeVehicle: getIt(),
       ),
+    )
+    ..registerFactory<CarCountCubit>(
+      () => CarCountCubit(watchVehicles: getIt()),
     );
 }
