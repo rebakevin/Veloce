@@ -3,6 +3,7 @@ import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 
 /// `/profile/about`: what Veloce is and which version this is.
 class AboutPage extends StatelessWidget {
@@ -14,7 +15,7 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('About')),
+      appBar: const PageAppBar(title: 'About'),
       body: ListView(
         padding: Responsive.pagePadding(context)
             .copyWith(top: AppSpacing.xl, bottom: AppSpacing.xl),

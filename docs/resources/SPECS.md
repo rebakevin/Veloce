@@ -281,7 +281,7 @@ In-app only. List per role with icon by type, title, text, time, unread dot, mar
 
 ### 8.2 Profile [Mock + Change]
 
-Name, role, phone, email, identity status, edit profile, reviews received, payout MoMo number (owner), driving licence (renter: add or change, simulated verification), help and support, notifications switch, sign out. The profile gets an **About page** and a **Contact page**; Contact shows the support email, **r.kevin@alustudent.com**, which is how users reach support, since no-shows and non-returns are handled there.
+Name, role, phone, email, identity status, edit profile, reviews received, payout MoMo number (owner), driving licence (renter: add or change, simulated verification), help and support, notifications switch, sign out, delete account. The profile gets an **About page** and a **Contact page**; Contact shows the support email, **r.kevin@alustudent.com**, which is how users reach support, since no-shows and non-returns are handled there.
 
 **Account switcher** [Change: the mock has it as a prototype tool; it becomes a real feature]. A person with more than one account (for example one Renter and one Car owner account) can switch between them from the profile, without logging out and logging in again.
 
@@ -298,7 +298,7 @@ Name, role, phone, email, identity status, edit profile, reviews received, payou
 - The renter writes **two reviews, both mandatory**: one for the owner (experience stars plus a free-text comment) and one for the car (stars plus a comment).
 - **The car has its own reviews**, written by renters and shown on the car page.
 - A pending review blocks the user from sending new requests or approving new ones until it is done.
-- Reviews are **public**, can be **edited**, and **cannot be removed**.
+- Reviews are **public**, can be **edited**, and **cannot be removed**, except that deleting an account removes every review the user gave or received (ADR 0002).
 - Averages and counts show on cards and profiles, as in the mock.
 
 ### 8.4 Rental agreement [Mock]

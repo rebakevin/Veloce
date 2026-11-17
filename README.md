@@ -1,5 +1,9 @@
 # Veloce
 
+## Links
+- [Mock](https://rebakevin.github.io/Veloce/mock.html)
+- [Design system](https://rebakevin.github.io/Veloce/design-system.html)
+
 ## Prerequisites
 
 - Git

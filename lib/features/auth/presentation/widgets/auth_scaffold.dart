@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/widgets/app_back_button.dart';
 
 /// Page frame shared by the auth screens: safe area, side gutter, a centred
 /// column that scrolls (so landscape and large text never overflow).
@@ -24,11 +25,7 @@ class AuthScaffold extends StatelessWidget {
               title: title == null ? null : Text(title!),
               leading: onBack == null
                   ? null
-                  : IconButton(
-                      tooltip: 'Back',
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: onBack,
-                    ),
+                  : AppBackButton(onPressed: onBack!),
             ),
       body: SafeArea(
         child: Center(

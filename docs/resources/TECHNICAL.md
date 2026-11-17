@@ -649,7 +649,7 @@ service cloud.firestore {
                          get(/databases/$(db)/documents/vehicles/$(request.resource.data.vehicleId)).data.ownerId;
       allow update: if isParty(resource.data)
                     && validTransition(resource.data, request.resource.data);   // P4/P5 implement per §5.1 table
-      allow delete: if false;
+      allow delete: if isParty(resource.data);                      // account deletion (ADR 0002)
 
       match /private/{side} {
         allow write: if signedIn() && ((side == 'renter' && bk(id).renterId == me())
@@ -675,7 +675,8 @@ service cloud.firestore {
       allow read:   if signedIn() && (resource.data.ownerId == me() || resource.data.renterId == me());
       allow create: if signedIn() && isParty(bk(request.resource.data.bookingId))
                     && request.resource.data.amount > 0;          // type/amount checked against getAfter(booking)
-      allow update, delete: if false;                             // append-only
+      allow update: if false;                                     // append-only
+      allow delete: if signedIn() && (resource.data.ownerId == me() || resource.data.renterId == me());  // account deletion only
     }
     match /cautionClaims/{bid}  { allow read: if isParty(bk(bid)); allow write: if isParty(bk(bid)); }
     match /repairExpenses/{id}  { allow read, update, delete: if signedIn() && resource.data.ownerId == me();
@@ -686,7 +687,8 @@ service cloud.firestore {
       allow read:   if signedIn();
       allow create: if signedIn() && request.resource.data.authorId == me();
       allow update: if signedIn() && resource.data.authorId == me() && !changed().hasAny(['authorId','bookingId','subjectId','subjectType']);
-      allow delete: if false;                                     // spec: reviews cannot be removed
+      allow delete: if signedIn() && (resource.data.authorId == me() || resource.data.subjectId == me()
+                    || isParty(bk(resource.data.bookingId)));   // account deletion only (ADR 0002)
     }
     match /notifications/{id} {
       allow read, update, delete: if signedIn() && resource.data.userId == me();
@@ -706,7 +708,7 @@ service cloud.firestore {
 - **Ownership**: private user docs, licence/ID/payout, favourites, notifications are readable only by their owner; vehicle documents and repair expenses only by the vehicle's owner.
 - **Parties only**: a booking, its checklists, ledger rows and claims are visible only to its renter and owner.
 - **Contact lock**: phone/email/meeting point are readable by the *other* party only once `status ∈ {confirmed … review}`; before payment, or after a decline/expiry, they never are.
-- **Immutable fields**: `role`, rating aggregates, `authorId` on reviews cannot be changed by the client; ledger and audit logs are append-only; reviews cannot be deleted.
+- **Immutable fields**: `role`, rating aggregates, `authorId` on reviews cannot be changed by the client; audit logs are append-only; the ledger and reviews have no delete in the app and are removed only when a user deletes their account (ADR 0002).
 - **Valid transitions only**: bookings can change only along the §5.1 table, and money entries must match the booking's amounts (checked with `getAfter`).
 - **Privacy of other users**: search reads only public vehicle and user documents; nothing about one linked account is readable from another.
 

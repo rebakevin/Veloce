@@ -41,7 +41,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 
 ### 0.B Firebase
 - [x] ★ Create Firebase project (Spark plan); add Android app; run `flutterfire configure`; commit `firebase_options.dart` + `google-services.json`
-- [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In) _(done: Kevin's Mac and the release keystore; waiting on the other 5 machines)_
+- [ ] ★ Collect **debug SHA-1/SHA-256 from all 6 machines** + the release keystore; register them (Google Sign-In) _(done: Kevin's Mac, the release keystore and Ange's, Lincoln's and Victor's machines; waiting on the other 2 machines)_
 - [x] ★ Enable Email/Password and Google providers; add a team keystore for release builds _(Android only; Google sign-in itself is first tested in Phase 1)_
 - [x] Create Firestore database; commit `firestore.rules` skeleton (§8.1) and `firestore.indexes.json` (§4.4); deploy
 - [x] Share project access with all members
@@ -131,9 +131,11 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] About page and Contact page (support email **r.kevin@alustudent.com**)
 - [x] Public profile `/user/:id` (name, photo, rating, past rentals, first-time flag; contact **never** shown) with the two slots for P3/P6
 - [x] **Account switcher**: list with Renter/Car owner labels and "current" mark; switch without password; add account (email or Google); remove from this device; expired session → asks sign-in again (§6.4)
+- [x] **Delete account** on the Profile tab (both roles): re-authenticates, then deletes the user, their cars, bookings, ledger rows, notifications and every review given or received (ADR 0002)
 
 ### 1.E Rules & data
 - [x] `users` + `private` rules block (role immutable, rating fields protected) _(create now also requires zero rating/completed counts; `verified` is locked on update)_
+- [ ] Deploy the delete rules (users, bookings, transactions, reviews) and delete a seeded account with real bookings to check the cascade _(needs the emulator or a real project; not run here)_
 - [ ] Verify with a second account that private docs are unreadable _(needs two real accounts; rules edited locally, not yet deployed)_
 
 ### 1.F Tests

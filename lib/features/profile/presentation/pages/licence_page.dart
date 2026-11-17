@@ -5,6 +5,7 @@ import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/widgets/empty_state.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
 
@@ -19,7 +20,7 @@ class LicencePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Driving licence')),
+      appBar: const PageAppBar(title: 'Driving licence'),
       body: ProfileLoadedBuilder(
         builder: (context, state) {
           final licence = state.licence;

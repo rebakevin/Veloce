@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
-/// Round avatar: the photo, or the initials on a brand tint.
+/// Round avatar: the photo over the initials on a brand tint.
 class UserAvatar extends StatelessWidget {
   const UserAvatar({
     required this.name,
@@ -26,15 +26,13 @@ class UserAvatar extends StatelessWidget {
       child: CircleAvatar(
         radius: radius,
         backgroundColor: colors.brandTint,
-        backgroundImage: url == null ? null : CachedNetworkImageProvider(url),
-        child: url == null
-            ? Text(
-                _initials(name),
-                style: AppTextStyles.cardTitle.copyWith(
-                  color: colors.brandDeep,
-                ),
-              )
-            : null,
+        // The photo paints over the initials, which stay visible while it
+        // loads or if it cannot be loaded.
+        foregroundImage: url == null ? null : CachedNetworkImageProvider(url),
+        child: Text(
+          _initials(name),
+          style: AppTextStyles.cardTitle.copyWith(color: colors.brandDeep),
+        ),
       ),
     );
   }

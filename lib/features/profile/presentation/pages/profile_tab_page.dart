@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/widgets/dialog_buttons.dart';
 import 'package:veloce/core/widgets/section_header.dart';
 import 'package:veloce/features/auth/auth.dart';
 
 import '../bloc/profile_bloc.dart';
 import '../widgets/contact_details_card.dart';
+import '../widgets/delete_account_dialog.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_link_tile.dart';
 import '../widgets/profile_loaded_builder.dart';
@@ -128,6 +131,19 @@ class _ProfileContent extends StatelessWidget {
           icon: const Icon(Icons.logout),
           label: const Text('Sign out'),
         ),
+        const SizedBox(height: AppSpacing.sm),
+        TextButton.icon(
+          onPressed: () => showDeleteAccountDialog(
+            context,
+            needsPassword:
+                state.contact.authProvider == AuthProviderKind.password,
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          icon: const Icon(Icons.delete_forever_outlined),
+          label: const Text('Delete account'),
+        ),
       ],
     );
   }
@@ -160,13 +176,10 @@ class _ProfileContent extends StatelessWidget {
           'Your linked accounts stay on this device, so you can switch back.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sign out'),
+          DialogButtons(
+            confirmLabel: 'Sign out',
+            onCancel: () => Navigator.of(context).pop(false),
+            onConfirm: () => Navigator.of(context).pop(true),
           ),
         ],
       ),

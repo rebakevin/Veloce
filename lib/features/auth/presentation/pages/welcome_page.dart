@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:veloce/core/data/services/preferences_service.dart';
+import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
@@ -41,6 +42,7 @@ class WelcomeView extends StatefulWidget {
 
 class _WelcomeViewState extends State<WelcomeView> {
   static const Duration _slideDuration = Duration(milliseconds: 300);
+  static const double _actionsWidth = 360;
   final PageController _controller = PageController();
 
   int get _last => onboardingSlides.length - 1;
@@ -69,6 +71,28 @@ class _WelcomeViewState extends State<WelcomeView> {
 
   @override
   Widget build(BuildContext context) {
+    // The slides and the buttons share the height, which landscape does not
+    // have: there the buttons move beside the slides.
+    final landscape = Responsive.isLandscape(context);
+    final slides = Column(
+      children: [
+        Expanded(
+          child: PageView(
+            controller: _controller,
+            onPageChanged: _onPageChanged,
+            children: [
+              for (final slide in onboardingSlides)
+                OnboardingSlide(data: slide),
+            ],
+          ),
+        ),
+        const _Dots(),
+      ],
+    );
+    final actions = _WelcomeActions(
+      onCreateAccount: () => _open(RouteNames.registerRole),
+      onLogin: () => _open(RouteNames.login),
+    );
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -94,19 +118,22 @@ class _WelcomeViewState extends State<WelcomeView> {
               ),
             ),
             Expanded(
-              child: PageView(
-                controller: _controller,
-                onPageChanged: _onPageChanged,
-                children: [
-                  for (final slide in onboardingSlides)
-                    OnboardingSlide(data: slide),
-                ],
-              ),
-            ),
-            const _Dots(),
-            _WelcomeActions(
-              onCreateAccount: () => _open(RouteNames.registerRole),
-              onLogin: () => _open(RouteNames.login),
+              child: landscape
+                  ? Row(
+                      children: [
+                        Expanded(child: slides),
+                        SizedBox(
+                          width: _actionsWidth,
+                          child: SingleChildScrollView(child: actions),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        Expanded(child: slides),
+                        actions,
+                      ],
+                    ),
             ),
           ],
         ),

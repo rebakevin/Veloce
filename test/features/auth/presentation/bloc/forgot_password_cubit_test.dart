@@ -26,6 +26,25 @@ void main() {
     );
 
     blocTest<ForgotPasswordCubit, ForgotPasswordState>(
+      'typing after an inline error clears it',
+      build: () => ForgotPasswordCubit(reset),
+      act: (cubit) => cubit
+        ..submit('nope')
+        ..emailEdited(),
+      expect: () => [
+        const ForgotPasswordState(emailError: 'Enter a valid email address.'),
+        const ForgotPasswordState(),
+      ],
+    );
+
+    blocTest<ForgotPasswordCubit, ForgotPasswordState>(
+      'typing with no error emits nothing',
+      build: () => ForgotPasswordCubit(reset),
+      act: (cubit) => cubit.emailEdited(),
+      expect: () => <ForgotPasswordState>[],
+    );
+
+    blocTest<ForgotPasswordCubit, ForgotPasswordState>(
       'a valid email is sent',
       setUp: () =>
           when(() => reset('a@b.rw'))

@@ -82,6 +82,40 @@ void main() {
     googleUser: google,
   );
 
+  testWidgets('every field with its error fits a small phone at large text', (
+    tester,
+  ) async {
+    tester.view
+      ..physicalSize = const Size(320, 568)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await pumpDetails(
+      tester,
+      renterState(
+        errors: {
+          RegisterField.name: 'Name is required.',
+          RegisterField.phone: 'Enter your phone number.',
+          RegisterField.email: 'Enter your email address.',
+          RegisterField.password: 'Enter a password.',
+          RegisterField.dateOfBirth: 'Choose your date of birth.',
+          RegisterField.documentNumber: 'Licence number is required.',
+          RegisterField.licenceExpiry: 'Choose the licence expiry date.',
+          RegisterField.photo: 'Add a photo of your document.',
+        },
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Add a photo of your document.'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows an inline message under every invalid field', (
     tester,
   ) async {

@@ -28,6 +28,7 @@ void main() {
   late _MockRegister register;
   late _MockGoogle completeGoogle;
   late _MockVerification verification;
+  late MockLinkCurrentAccount link;
 
   const challenge = OtpChallenge(phone: '0788123456', code: '123456');
   final photo = Uint8List.fromList([1, 2, 3]);
@@ -49,6 +50,8 @@ void main() {
     register = _MockRegister();
     completeGoogle = _MockGoogle();
     verification = _MockVerification();
+    link = MockLinkCurrentAccount();
+    stubLinkSucceeds(link);
     when(() => verification.sendOtp(any()))
         .thenAnswer((_) async => const Result.success(challenge));
     when(
@@ -67,6 +70,7 @@ void main() {
   RegisterBloc build({bool google = false}) => RegisterBloc(
     registerWithEmail: register,
     completeGoogle: completeGoogle,
+    linkCurrentAccount: link,
     verification: verification,
     clock: const FixedClock(),
     googleUser: google ? anAuthUser(provider: AuthProviderKind.google) : null,
@@ -214,6 +218,31 @@ void main() {
       await bloc.close();
     });
 
+    test('typing after a wrong code clears the message', () async {
+      when(
+        () => verification.confirmOtp(
+          challenge: any(named: 'challenge'),
+          code: '000000',
+        ),
+      ).thenAnswer(
+        (_) async => const Result.failure(
+          ValidationFailure('That code is not correct.'),
+        ),
+      );
+      final bloc = await atOtpStep();
+      bloc.add(const RegisterOtpSubmitted('000000'));
+      await bloc.stream.firstWhere((s) => s.status == RegisterStatus.failure);
+
+      bloc.add(const RegisterOtpEdited());
+      final state = await bloc.stream.firstWhere(
+        (s) => s.status == RegisterStatus.idle,
+      );
+
+      expect(state.step, RegisterStep.otp);
+      expect(state.message, isNull);
+      await bloc.close();
+    });
+
     test('a malformed code is rejected without a request', () async {
       final bloc = await atOtpStep();
       bloc.add(const RegisterOtpSubmitted('12'));
@@ -252,6 +281,39 @@ void main() {
       );
 
       expect(done.verificationEmailSent, isTrue);
+      await bloc.close();
+    });
+
+    test('a finished sign-up links the account with its password', () async {
+      final bloc = await atOtpStep();
+      bloc.add(const RegisterOtpSubmitted('123456'));
+      await bloc.stream.firstWhere((s) => s.step == RegisterStep.done);
+
+      verify(() => link(password: 'secret123')).called(1);
+      await bloc.close();
+    });
+
+    test('a sign-up that cannot link the account still finishes', () async {
+      when(() => link(password: any(named: 'password')))
+          .thenAnswer((_) async => const Result.failure(NetworkFailure()));
+      final bloc = await atOtpStep();
+      bloc.add(const RegisterOtpSubmitted('123456'));
+
+      final done = await bloc.stream.firstWhere(
+        (s) => s.step == RegisterStep.done,
+      );
+      expect(done.status, RegisterStatus.idle);
+      await bloc.close();
+    });
+
+    test('a failed sign-up links nothing', () async {
+      when(() => register(any()))
+          .thenAnswer((_) async => const Result.failure(NetworkFailure()));
+      final bloc = await atOtpStep();
+      bloc.add(const RegisterOtpSubmitted('123456'));
+      await bloc.stream.firstWhere((s) => s.status == RegisterStatus.failure);
+
+      verifyNoLink(link);
       await bloc.close();
     });
 
@@ -338,10 +400,34 @@ void main() {
         ..add(const RegisterDetailsSubmitted()),
       verify: (bloc) {
         expect(bloc.state.step, RegisterStep.done);
+        expect(bloc.state.verificationEmailSent, isFalse);
         expect(bloc.state.draft.name, 'Aline Uwase');
         verifyNever(() => verification.sendOtp(any()));
         verifyNever(() => register(any()));
         verify(() => completeGoogle(any())).called(1);
+      },
+    );
+
+    blocTest<RegisterBloc, RegisterState>(
+      'links the new Google account without a password',
+      setUp: () =>
+          when(() => completeGoogle(any()))
+              .thenAnswer((_) async => Result.success(anAuthUser())),
+      build: () => build(google: true),
+      act: (bloc) => bloc
+        ..add(const RegisterRoleSelected(UserRole.owner))
+        ..add(
+          RegisterDraftEdited(
+            phone: '0788123456',
+            dateOfBirth: DateTime(1990),
+            documentNumber: '1199880012345678',
+            photoBytes: photo,
+          ),
+        )
+        ..add(const RegisterDetailsSubmitted()),
+      verify: (_) {
+        verify(() => link()).called(1);
+        verifyNever(() => link(password: any(named: 'password')));
       },
     );
 

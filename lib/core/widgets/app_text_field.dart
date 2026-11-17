@@ -3,16 +3,17 @@ import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
-/// Labelled text field that runs a pure validator from `Validators`.
+/// Labelled text field that runs a pure validator from `Validators`. The
+/// [hint] placeholder is required, see `FieldHints`.
 class AppTextField extends StatelessWidget {
   const AppTextField({
     required this.label,
+    required this.hint,
     super.key,
     this.controller,
     this.validator,
     this.keyboardType,
     this.obscureText = false,
-    this.hint,
     this.onChanged,
     this.textInputAction,
     this.autofillHints,
@@ -24,7 +25,7 @@ class AppTextField extends StatelessWidget {
   final String? Function(String? value)? validator;
   final TextInputType? keyboardType;
   final bool obscureText;
-  final String? hint;
+  final String hint;
   final ValueChanged<String>? onChanged;
   final TextInputAction? textInputAction;
   final Iterable<String>? autofillHints;

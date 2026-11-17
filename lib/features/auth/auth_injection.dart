@@ -121,12 +121,17 @@ void registerAuth(GetIt getIt) {
       ),
     )
     ..registerFactory<LoginBloc>(
-      () => LoginBloc(loginWithEmail: getIt(), signInWithGoogle: getIt()),
+      () => LoginBloc(
+        loginWithEmail: getIt(),
+        signInWithGoogle: getIt(),
+        linkCurrentAccount: getIt(),
+      ),
     )
     ..registerFactoryParam<RegisterBloc, AuthUser?, void>(
       (googleUser, _) => RegisterBloc(
         registerWithEmail: getIt(),
         completeGoogle: getIt(),
+        linkCurrentAccount: getIt(),
         verification: getIt<VerificationProvider>(),
         clock: getIt<Clock>(),
         googleUser: googleUser,

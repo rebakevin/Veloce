@@ -23,14 +23,20 @@ class _MockGoogle extends Mock implements SignInWithGoogle {}
 void main() {
   late _MockLogin login;
   late _MockGoogle google;
+  late MockLinkCurrentAccount link;
 
   setUp(() {
     login = _MockLogin();
     google = _MockGoogle();
+    link = MockLinkCurrentAccount();
+    stubLinkSucceeds(link);
   });
 
-  LoginBloc build() =>
-      LoginBloc(loginWithEmail: login, signInWithGoogle: google);
+  LoginBloc build() => LoginBloc(
+    loginWithEmail: login,
+    signInWithGoogle: google,
+    linkCurrentAccount: link,
+  );
 
   group('LoginBloc email', () {
     blocTest<LoginBloc, LoginState>(
@@ -49,6 +55,58 @@ void main() {
         ),
         const LoginState(status: LoginStatus.success),
       ],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'a successful login links the account with the typed password',
+      setUp: () =>
+          when(() => login(email: 'a@b.rw', password: 'secret123'))
+              .thenAnswer((_) async => Result.success(anAuthUser())),
+      build: build,
+      act: (bloc) => bloc.add(
+        const LoginSubmitted(email: 'a@b.rw', password: 'secret123'),
+      ),
+      verify: (_) => verify(() => link(password: 'secret123')).called(1),
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'a login that cannot link the account still succeeds',
+      setUp: () {
+        when(() => login(email: 'a@b.rw', password: 'secret123'))
+            .thenAnswer((_) async => Result.success(anAuthUser()));
+        when(() => link(password: any(named: 'password')))
+            .thenAnswer((_) async => const Result.failure(NetworkFailure()));
+      },
+      build: build,
+      act: (bloc) => bloc.add(
+        const LoginSubmitted(email: 'a@b.rw', password: 'secret123'),
+      ),
+      expect: () => [
+        const LoginState(
+          status: LoginStatus.submitting,
+          method: LoginMethod.email,
+        ),
+        const LoginState(status: LoginStatus.success),
+      ],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'a failed login links nothing',
+      setUp: () =>
+          when(
+            () => login(
+              email: any(named: 'email'),
+              password: any(named: 'password'),
+            ),
+          ).thenAnswer(
+            (_) async => const Result.failure(
+              ValidationFailure('Wrong email or password.'),
+            ),
+          ),
+      build: build,
+      act: (bloc) =>
+          bloc.add(const LoginSubmitted(email: 'a@b.rw', password: 'nope')),
+      verify: (_) => verifyNoLink(link),
     );
 
     blocTest<LoginBloc, LoginState>(
@@ -96,6 +154,62 @@ void main() {
           password: any(named: 'password'),
         ),
       ),
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'editing a field clears only its own inline error',
+      build: build,
+      act: (bloc) => bloc
+        ..add(const LoginSubmitted(email: '', password: ''))
+        ..add(const LoginFieldEdited(LoginField.email)),
+      skip: 1,
+      expect: () => [
+        const LoginState(
+          status: LoginStatus.invalid,
+          passwordError: 'Enter your password.',
+        ),
+      ],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'clearing the last inline error returns to idle',
+      build: build,
+      act: (bloc) => bloc
+        ..add(const LoginSubmitted(email: '', password: ''))
+        ..add(const LoginFieldEdited(LoginField.email))
+        ..add(const LoginFieldEdited(LoginField.password)),
+      skip: 2,
+      expect: () => [const LoginState()],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'editing a field with no inline error emits nothing',
+      build: build,
+      act: (bloc) => bloc.add(const LoginFieldEdited(LoginField.email)),
+      expect: () => <LoginState>[],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'editing after a failed login does not repeat the failure',
+      setUp: () =>
+          when(
+            () => login(
+              email: any(named: 'email'),
+              password: any(named: 'password'),
+            ),
+          ).thenAnswer(
+            (_) async => const Result.failure(
+              ValidationFailure('Wrong email or password.'),
+            ),
+          ),
+      build: build,
+      act: (bloc) async {
+        bloc.add(const LoginSubmitted(email: 'a@b.rw', password: 'nope'));
+        await bloc.stream.firstWhere((s) => s.status == LoginStatus.failure);
+        bloc.add(const LoginFieldEdited(LoginField.password));
+      },
+      skip: 2,
+      expect: () => <LoginState>[],
     );
 
     blocTest<LoginBloc, LoginState>(
@@ -156,6 +270,28 @@ void main() {
         ),
         const LoginState(status: LoginStatus.success),
       ],
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'a returning Google user is linked without a password',
+      setUp: () => when(() => google()).thenAnswer(
+        (_) async => Result.success(ReturningGoogleUser(googleUser, aUser())),
+      ),
+      build: build,
+      act: (bloc) => bloc.add(const LoginGoogleRequested()),
+      verify: (_) {
+        verify(() => link()).called(1);
+        verifyNever(() => link(password: any(named: 'password')));
+      },
+    );
+
+    blocTest<LoginBloc, LoginState>(
+      'a new Google user is not linked until registration finishes',
+      setUp: () => when(() => google())
+          .thenAnswer((_) async => Result.success(NewGoogleUser(googleUser))),
+      build: build,
+      act: (bloc) => bloc.add(const LoginGoogleRequested()),
+      verify: (_) => verifyNoLink(link),
     );
 
     blocTest<LoginBloc, LoginState>(

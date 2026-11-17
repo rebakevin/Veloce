@@ -78,6 +78,7 @@ abstract final class AppTheme {
         focusedBorder: _fieldBorder(colors.brand),
         errorBorder: _fieldBorder(colors.danger),
         focusedErrorBorder: _fieldBorder(colors.danger),
+        hintStyle: TextStyle(color: colors.muted),
         errorStyle: AppTextStyles.caption.copyWith(color: colors.danger),
       ),
       dividerTheme: DividerThemeData(

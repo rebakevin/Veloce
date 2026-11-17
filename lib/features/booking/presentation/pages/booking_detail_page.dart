@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/navigation/seed_ids.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/placeholder_link.dart';
 import 'package:veloce/core/widgets/placeholder_links.dart';
 import 'package:veloce/features/handover/handover.dart';
@@ -18,7 +18,7 @@ class BookingDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Booking')),
+      appBar: const PageAppBar(title: 'Booking'),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.gutter),
         children: [

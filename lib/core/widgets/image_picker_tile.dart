@@ -9,6 +9,10 @@ import '../theme/app_spacing.dart';
 /// Picking itself happens in the caller via `image_picker` with
 /// `imageQuality: 80` and `maxWidth: 1600`.
 class ImagePickerTile extends StatelessWidget {
+  /// The tile's height when it holds a photo, and its least height otherwise
+  /// (the add prompt grows past it with large text).
+  static const double _height = 120;
+
   const ImagePickerTile({
     required this.label,
     required this.onTap,
@@ -36,40 +40,89 @@ class ImagePickerTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Ink(
-          height: 120,
           decoration: BoxDecoration(
             color: colors.paper,
             borderRadius: BorderRadius.circular(AppRadius.md),
             border: Border.all(color: colors.line, width: 1.5),
-            image: bytes != null
-                ? DecorationImage(image: MemoryImage(bytes), fit: BoxFit.cover)
-                : url != null
-                ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
-                : null,
+            image: bytes == null
+                ? null
+                : DecorationImage(image: MemoryImage(bytes), fit: BoxFit.cover),
           ),
-          child: bytes == null && url == null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add_a_photo_outlined, color: colors.brand),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(label),
-                    ],
-                  ),
+          child: bytes != null
+              ? ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: _height),
+                  child: _RemoveButton(onRemove: onRemove),
                 )
-              : Align(
-                  alignment: Alignment.topRight,
-                  child: onRemove == null
-                      ? null
-                      : IconButton.filledTonal(
-                          tooltip: 'Remove photo',
-                          onPressed: onRemove,
-                          icon: const Icon(Icons.close),
+              : url == null
+              ? ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: _height),
+                  child: _AddPrompt(label: label),
+                )
+              : SizedBox(
+                  height: _height,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Under the photo: shown while it loads and when it
+                        // cannot be loaded (offline, host gone).
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _AddPrompt(label: label),
                         ),
+                        Image.network(
+                          url,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                        ),
+                        _RemoveButton(onRemove: onRemove),
+                      ],
+                    ),
+                  ),
                 ),
         ),
       ),
+    );
+  }
+}
+
+class _AddPrompt extends StatelessWidget {
+  const _AddPrompt({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.add_a_photo_outlined, color: context.colors.brand),
+          const SizedBox(height: AppSpacing.xs),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
+class _RemoveButton extends StatelessWidget {
+  const _RemoveButton({required this.onRemove});
+
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topRight,
+      child: onRemove == null
+          ? null
+          : IconButton.filledTonal(
+              tooltip: 'Remove photo',
+              onPressed: onRemove,
+              icon: const Icon(Icons.close),
+            ),
     );
   }
 }

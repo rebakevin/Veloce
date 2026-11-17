@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/section_header.dart';
 
 import '../bloc/settings_cubit.dart';
@@ -27,7 +28,7 @@ class SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: const PageAppBar(title: 'Settings'),
       body: BlocBuilder<SettingsCubit, SettingsState>(
         builder: (context, state) => ListView(
           padding: Responsive.pagePadding(context)

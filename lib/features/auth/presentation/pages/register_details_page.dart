@@ -8,6 +8,7 @@ import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/widgets/date_picker_field.dart';
 import 'package:veloce/core/widgets/document_photo_field.dart';
+import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/photo_picker.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
@@ -138,6 +139,7 @@ class _RegisterDetailsFormState extends State<RegisterDetailsForm> {
             ),
             FormTextField(
               label: 'Full name',
+              hint: FieldHints.fullName,
               controller: _name,
               errorText: errors[RegisterField.name],
               textInputAction: TextInputAction.next,
@@ -147,7 +149,7 @@ class _RegisterDetailsFormState extends State<RegisterDetailsForm> {
             const SizedBox(height: AppSpacing.lg),
             FormTextField(
               label: 'Phone number',
-              hint: '0788123456',
+              hint: FieldHints.phone,
               controller: _phone,
               errorText: errors[RegisterField.phone],
               keyboardType: TextInputType.phone,
@@ -159,6 +161,7 @@ class _RegisterDetailsFormState extends State<RegisterDetailsForm> {
               const SizedBox(height: AppSpacing.lg),
               FormTextField(
                 label: 'Email',
+                hint: FieldHints.email,
                 controller: _email,
                 errorText: errors[RegisterField.email],
                 keyboardType: TextInputType.emailAddress,
@@ -168,6 +171,7 @@ class _RegisterDetailsFormState extends State<RegisterDetailsForm> {
               ),
               const SizedBox(height: AppSpacing.lg),
               PasswordField(
+                hint: FieldHints.newPassword,
                 controller: _password,
                 errorText: errors[RegisterField.password],
                 textInputAction: TextInputAction.next,
@@ -194,6 +198,7 @@ class _RegisterDetailsFormState extends State<RegisterDetailsForm> {
             const SizedBox(height: AppSpacing.lg),
             FormTextField(
               label: isOwner ? 'National ID number' : 'Driving licence number',
+              hint: isOwner ? FieldHints.nationalId : FieldHints.licenceNumber,
               controller: _document,
               errorText: errors[RegisterField.documentNumber],
               keyboardType: isOwner ? TextInputType.number : null,

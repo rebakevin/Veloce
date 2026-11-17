@@ -28,7 +28,7 @@ service cloud.firestore {
                     && request.resource.data.completedCount == 0;
       allow update: if isSelf(uid)
                     && !changed().hasAny(['role', 'verified', 'ratingAvg', 'ratingCount', 'completedCount']);
-      allow delete: if false;
+      allow delete: if isSelf(uid);                      // account deletion
       match /private/{doc}       { allow read, write: if isSelf(uid); }
       match /favourites/{vid}    { allow read, write: if isSelf(uid); }          // P3
     }
@@ -61,7 +61,7 @@ service cloud.firestore {
                          get(/databases/$(db)/documents/vehicles/$(request.resource.data.vehicleId)).data.ownerId;
       allow update: if isParty(resource.data)
                     && validTransition(resource.data, request.resource.data);
-      allow delete: if false;
+      allow delete: if isParty(resource.data);              // account deletion
 
       match /private/{side} {
         allow write: if signedIn() && ((side == 'renter' && bk(id).renterId == me())
@@ -92,7 +92,9 @@ service cloud.firestore {
       allow read:   if signedIn() && (resource.data.ownerId == me() || resource.data.renterId == me());
       allow create: if signedIn() && isParty(bk(request.resource.data.bookingId))
                     && request.resource.data.amount > 0;   // P4/P5 check type and amount with getAfter()
-      allow update, delete: if false;                       // append-only
+      allow update: if false;                               // append-only
+      allow delete: if signedIn()                           // account deletion only
+                    && (resource.data.ownerId == me() || resource.data.renterId == me());
     }
     match /cautionClaims/{bid} {
       allow read, write: if isParty(bk(bid));
@@ -108,7 +110,11 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.authorId == me();
       allow update: if signedIn() && resource.data.authorId == me()
                     && !changed().hasAny(['authorId', 'bookingId', 'subjectId', 'subjectType']);
-      allow delete: if false;                               // spec: reviews cannot be removed
+      // No delete button in the app. Only account deletion removes reviews: the
+      // author's, and those received (the user, or a car through its booking).
+      allow delete: if signedIn()
+                    && (resource.data.authorId == me() || resource.data.subjectId == me()
+                        || isParty(bk(resource.data.bookingId)));
     }
     match /notifications/{id} {
       allow read, update, delete: if signedIn() && resource.data.userId == me();

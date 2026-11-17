@@ -5,14 +5,15 @@ import 'package:veloce/core/theme/app_text_styles.dart';
 
 /// Labelled text field that shows an inline [errorText] under the input. The
 /// message comes from the bloc state (the validators run there), so unlike
-/// `AppTextField` it needs no `Form`.
+/// `AppTextField` it needs no `Form`. The [hint] placeholder is required, see
+/// `FieldHints`.
 class FormTextField extends StatelessWidget {
   const FormTextField({
     required this.label,
+    required this.hint,
     required this.controller,
     super.key,
     this.errorText,
-    this.hint,
     this.keyboardType,
     this.textInputAction,
     this.autofillHints,
@@ -27,7 +28,7 @@ class FormTextField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String? errorText;
-  final String? hint;
+  final String hint;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final Iterable<String>? autofillHints;

@@ -2,10 +2,12 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/features/auth/auth.dart';
+import 'package:veloce/features/profile/presentation/bloc/delete_account_cubit.dart';
 import 'package:veloce/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:veloce/features/profile/presentation/pages/profile_tab_page.dart';
 
@@ -13,6 +15,17 @@ import 'profile_page_harness.dart';
 
 class _MockAuthBloc extends MockBloc<AuthEvent, AuthState>
     implements AuthBloc {}
+
+class _MockDeleteAccountCubit extends MockCubit<DeleteAccountState>
+    implements DeleteAccountCubit {}
+
+void registerGetItDeleteCubit() {
+  GetIt.instance.registerFactory<DeleteAccountCubit>(() {
+    final cubit = _MockDeleteAccountCubit();
+    when(() => cubit.state).thenReturn(const DeleteAccountIdle());
+    return cubit;
+  });
+}
 
 void main() {
   late MockProfileBloc profileBloc;
@@ -103,5 +116,17 @@ void main() {
     await tester.pumpAndSettle();
 
     verifyNever(() => authBloc.add(any()));
+  });
+
+  testWidgets('delete account opens the confirmation', (tester) async {
+    registerGetItDeleteCubit();
+    await pumpTab(tester, loadedProfile());
+
+    await tester.scrollUntilVisible(find.text('Delete account'), 200);
+    await tester.tap(find.text('Delete account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete your account?'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
   });
 }
