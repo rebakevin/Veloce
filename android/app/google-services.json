@@ -30,6 +30,22 @@
           }
         },
         {
+          "client_id": "765515995845-80hm743bnsig5v9qddg3buaftoe1k7sv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "rw.veloce.veloce",
+            "certificate_hash": "261a4312bdee1e6558a009927daa9181dc35f665"
+          }
+        },
+        {
+          "client_id": "765515995845-cb3jmo0shb4npkmmtqqqkklte31klmu4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "rw.veloce.veloce",
+            "certificate_hash": "5b04a6a695452b3085e0d64c5c5d02d3eabf98e8"
+          }
+        },
+        {
           "client_id": "765515995845-ej2j2ts3gi238jb3k44gbm05jvfdhblh.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
