@@ -8,14 +8,66 @@ service cloud.firestore {
     function isSelf(id)   { return signedIn() && me() == id; }
     function changed()    { return request.resource.data.diff(resource.data).affectedKeys(); }
     function bk(id)       { return get(/databases/$(db)/documents/bookings/$(id)).data; }
+    function bkafter(id)  { return getAfter(/databases/$(db)/documents/bookings/$(id)).data; }
     function isParty(b)   { return signedIn() && (b.renterId == me() || b.ownerId == me()); }
+    function hasReason()  { return request.resource.data.reason is string
+                                   && request.resource.data.reason.size() > 0; }
+    function serverUpdated() { return request.resource.data.updatedAt == request.time; }
 
     // Phase 4 and Phase 5 each add their rows of the TECHNICAL.md §5.1 table
     // here, joined with `||`. Until then no booking update is allowed.
     function validTransition(before, after) {
       // P4: pending/approved/confirmed transitions, locks, contact unlock.
       // P5: confirmed -> active, active -> return, return/review -> completed.
-      return false;
+      return (
+        before.status == 'pending' && after.status == 'approved'
+        && before.ownerId == me()
+        && serverUpdated()
+        && changed().hasOnly(['status', 'payDeadline', 'updatedAt'])
+      ) || (
+        before.status == 'pending' && after.status == 'declined'
+        && before.ownerId == me()
+        && hasReason()
+        && serverUpdated()
+        && changed().hasOnly(['status', 'reason', 'updatedAt'])
+      ) || (
+        before.status == 'pending' && after.status == 'cancelled'
+        && before.renterId == me()
+        && serverUpdated()
+        && changed().hasOnly(['status', 'reason', 'updatedAt'])
+      ) || (
+        before.status == 'pending' && after.status == 'expired'
+        && isParty(before)
+        && serverUpdated()
+        && changed().hasOnly(['status', 'reason', 'updatedAt'])
+      ) || (
+        before.status == 'approved' && after.status == 'confirmed'
+        && before.renterId == me()
+        && serverUpdated()
+        && changed().hasOnly(['status', 'updatedAt'])
+      ) || (
+        before.status == 'approved' && after.status == 'cancelled'
+        && isParty(before)
+        && serverUpdated()
+        && changed().hasOnly(['status', 'reason', 'updatedAt'])
+      ) || (
+        before.status == 'approved' && after.status == 'expired'
+        && isParty(before)
+        && serverUpdated()
+        && changed().hasOnly(['status', 'reason', 'updatedAt'])
+      ) || (
+        before.status == 'confirmed' && after.status == 'cancelled'
+        && isParty(before)
+        && serverUpdated()
+        && changed().hasOnly(['status', 'reason', 'updatedAt'])
+      ) || (
+        before.renterId == me()
+        && before.status == after.status
+        && before.status in ['approved', 'confirmed']
+        && after.agreementAckAt == request.time
+        && serverUpdated()
+        && changed().hasOnly(['agreementAckAt', 'updatedAt'])
+      );
     }
 
     // ---------- P1: users ----------
@@ -79,19 +131,57 @@ service cloud.firestore {
     // ---------- P4: calendar and renter locks ----------
     match /calendarBlocks/{id} {
       allow read:  if signedIn();
-      allow write: if signedIn() && isParty(bk(id));
+      allow create: if signedIn() && isParty(bkafter(id))
+                    && bkafter(id).status in ['approved', 'confirmed'];
+      allow update: if false;
+      allow delete: if signedIn() && isParty(bk(id))
+                    && bkafter(id).status in ['cancelled', 'expired', 'declined'];
     }
     match /renterLocks/{renterId} {
       allow read:   if signedIn();
-      allow create: if signedIn() && bk(request.resource.data.bookingId).ownerId == me();
-      allow delete: if signedIn() && isParty(bk(resource.data.bookingId));
+      allow create: if signedIn()
+                    && !exists(/databases/$(db)/documents/renterLocks/$(renterId))
+                    && bkafter(request.resource.data.bookingId).ownerId == me()
+                    && bkafter(request.resource.data.bookingId).renterId == renterId
+                    && bkafter(request.resource.data.bookingId).status == 'approved';
+      allow update: if false;
+      allow delete: if signedIn() && isParty(bk(resource.data.bookingId))
+                    && bkafter(resource.data.bookingId).status
+                         in ['cancelled', 'expired', 'return', 'review', 'completed'];
     }
 
     // ---------- P4 / P5: ledger, claims, repairs ----------
     match /transactions/{tx} {
       allow read:   if signedIn() && (resource.data.ownerId == me() || resource.data.renterId == me());
-      allow create: if signedIn() && isParty(bk(request.resource.data.bookingId))
-                    && request.resource.data.amount > 0;   // P4/P5 check type and amount with getAfter()
+      allow create: if signedIn()
+                    && isParty(bk(request.resource.data.bookingId))
+                    && request.resource.data.amount > 0
+                    && request.resource.data.status == 'success'
+                    && request.resource.data.at == request.time
+                    && request.resource.data.ownerId
+                         == bk(request.resource.data.bookingId).ownerId
+                    && request.resource.data.renterId
+                         == bk(request.resource.data.bookingId).renterId
+                    && request.resource.data.vehicleId
+                         == bk(request.resource.data.bookingId).vehicleId
+                    && (
+                      (
+                        request.resource.data.type == 'charge'
+                        && request.resource.data.fromParty == 'renter'
+                        && request.resource.data.toParty == 'veloce'
+                        && bk(request.resource.data.bookingId).renterId == me()
+                        && bkafter(request.resource.data.bookingId).status == 'confirmed'
+                        && request.resource.data.amount
+                             == bkafter(request.resource.data.bookingId).totalPayable
+                      ) || (
+                        request.resource.data.type == 'refund'
+                        && request.resource.data.fromParty == 'veloce'
+                        && request.resource.data.toParty == 'renter'
+                        && bkafter(request.resource.data.bookingId).status == 'cancelled'
+                        && request.resource.data.amount
+                             == bkafter(request.resource.data.bookingId).totalPayable
+                      )
+                    );
       allow update: if false;                               // append-only
       allow delete: if signedIn()                           // account deletion only
                     && (resource.data.ownerId == me() || resource.data.renterId == me());
