@@ -27,6 +27,20 @@ class BookingView extends Equatable {
   UserAccount counterpartFor(UserRole role) =>
       role == UserRole.renter ? owner : renter;
 
+  BookingView copyWith({
+    Booking? booking,
+    BookingStatus? effectiveStatus,
+    Vehicle? vehicle,
+    UserAccount? renter,
+    UserAccount? owner,
+  }) => BookingView(
+    booking: booking ?? this.booking,
+    effectiveStatus: effectiveStatus ?? this.effectiveStatus,
+    vehicle: vehicle ?? this.vehicle,
+    renter: renter ?? this.renter,
+    owner: owner ?? this.owner,
+  );
+
   bool get isOpen =>
       effectiveStatus == BookingStatus.pending ||
       effectiveStatus == BookingStatus.approved;
