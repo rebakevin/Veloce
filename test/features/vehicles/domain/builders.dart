@@ -101,7 +101,7 @@ class FakeVehicleRepository implements VehicleRepository {
   final Map<String, VehicleStatus> statuses = {};
 
   @override
-    @override
+  @override
   Stream<Result<List<Vehicle>>> watchOwnerVehicles(String ownerId) =>
       const Stream.empty();
 
