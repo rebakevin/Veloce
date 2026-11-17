@@ -173,7 +173,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [ ] My cars list: photo, plate, price, status, availability line, next rental, edit / availability / pause-resume / remove (confirmation dialog)
 - [ ] Availability screen: one date range only; booked days locked
 - [ ] Documents screen: add yellow paper later, replace expired documents; paused-by-expiry banner
-- [ ] `CarCountCard` slot for owner home
+- [x] `CarCountCard` slot for owner home
 
 ### 2.D Rules & indexes
 - [ ] `vehicles` block (owner-only writes; documents owner-only); add indexes from §4.4
