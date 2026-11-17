@@ -4,6 +4,7 @@ import 'data/firestore_vehicle_repository.dart';
 import 'domain/repositories/vehicle_repository.dart';
 import 'domain/usecases/remove_vehicle.dart';
 import 'domain/usecases/set_status.dart';
+import 'domain/usecases/watch_owner_vehicles.dart';
 
 void registerVehicles(GetIt getIt) {
   getIt
@@ -11,5 +12,8 @@ void registerVehicles(GetIt getIt) {
       () => FirestoreVehicleRepository(firestore: getIt(), writes: getIt()),
     )
     ..registerFactory<SetStatus>(() => SetStatus(getIt(), getIt()))
-    ..registerFactory<RemoveVehicle>(() => RemoveVehicle(getIt(), getIt()));
+    ..registerFactory<RemoveVehicle>(() => RemoveVehicle(getIt(), getIt()))
+    ..registerFactory<WatchOwnerVehicles>(
+      () => WatchOwnerVehicles(getIt(), getIt()),
+    );
 }
