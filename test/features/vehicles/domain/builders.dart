@@ -3,8 +3,10 @@ import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/fuel_type.dart';
 import 'package:veloce/core/domain/enums/transmission.dart';
+import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
+import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/vehicles/domain/repositories/vehicle_repository.dart';
@@ -94,16 +96,16 @@ class FixedClock implements Clock {
 }
 
 class FakeVehicleRepository implements VehicleRepository {
-  FakeVehicleRepository({this.bookings = const []});
+  FakeVehicleRepository({this.bookings = const [], this.vehicleStream});
 
   final List<Booking> bookings;
+  final Stream<Result<List<Vehicle>>>? vehicleStream;
   final List<String> removed = [];
   final Map<String, VehicleStatus> statuses = {};
 
   @override
-  @override
   Stream<Result<List<Vehicle>>> watchOwnerVehicles(String ownerId) =>
-      const Stream.empty();
+      vehicleStream ?? const Stream.empty();
 
   @override
   Future<Result<List<Booking>>> bookingsOf(String vehicleId) async =>
@@ -120,4 +122,20 @@ class FakeVehicleRepository implements VehicleRepository {
     removed.add(vehicleId);
     return const Result.success(null);
   }
+}
+
+class FakeAuthSession implements AuthSession {
+  const FakeAuthSession(this.currentUserId);
+
+  @override
+  final String? currentUserId;
+
+  @override
+  UserRole? get role => UserRole.owner;
+
+  @override
+  bool get isEmailVerified => true;
+
+  @override
+  Stream<void> get changes => const Stream.empty();
 }
