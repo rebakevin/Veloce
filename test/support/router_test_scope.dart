@@ -20,6 +20,7 @@ import 'package:veloce/features/profile/presentation/bloc/accounts_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/public_profile_cubit.dart';
 import 'package:veloce/features/profile/presentation/bloc/settings_cubit.dart';
+import 'package:veloce/features/vehicles/presentation/bloc/car_count_cubit.dart';
 import 'package:veloce/features/vehicles/presentation/bloc/my_cars_bloc.dart';
 
 import 'builders.dart';
@@ -68,6 +69,9 @@ class _FixedClock implements Clock {
 
 class MockMyCarsBloc extends MockBloc<MyCarsEvent, MyCarsState>
     implements MyCarsBloc {}
+
+class MockCarCountCubit extends MockCubit<CarCountState>
+    implements CarCountCubit {}
 
 /// The register flow bounces to the page of the bloc's step, so a deep link
 /// only stays put when the bloc is at that step.
@@ -195,6 +199,12 @@ class RouterTestScope {
         () => idle<MockMyCarsBloc, MyCarsState>(
           MockMyCarsBloc(),
           const MyCarsEmpty(),
+        ),
+      )
+      ..registerFactory<CarCountCubit>(
+        () => idle<MockCarCountCubit, CarCountState>(
+          MockCarCountCubit(),
+          const CarCountLoaded(published: 2, paused: 1),
         ),
       );
   }
