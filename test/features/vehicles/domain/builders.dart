@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:veloce/core/domain/entities/booking.dart';
+import 'package:veloce/core/domain/entities/document_photo.dart';
+import 'package:veloce/core/domain/entities/long_rate.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/fuel_type.dart';
@@ -9,6 +13,7 @@ import 'package:veloce/core/domain/enums/vehicle_type.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/vehicles/domain/entities/wizard_draft.dart';
 import 'package:veloce/features/vehicles/domain/repositories/vehicle_repository.dart';
 
 Booking aBooking({
@@ -138,4 +143,30 @@ class FakeAuthSession implements AuthSession {
 
   @override
   Stream<void> get changes => const Stream.empty();
+}
+
+List<DocumentPhoto> somePhotos(int count) => List.generate(
+  count,
+  (_) => DocumentPhoto(bytes: Uint8List(1), extension: 'jpg'),
+);
+
+WizardDraft aWizardDraft() {
+  return WizardDraft(
+    photos: somePhotos(3),
+    plate: 'RAB 123 A',
+    make: 'Toyota',
+    model: 'RAV4',
+    year: 2020,
+    type: VehicleType.suv,
+    neighbourhood: 'Kimironko',
+    description: 'Clean and reliable.',
+    transmission: Transmission.automatic,
+    fuel: FuelType.petrol,
+    seats: 5,
+    dailyPrice: 50000,
+    longRates: const [LongRate(fromDays: 3, pricePerDay: 45000)],
+    cautionFee: 50000,
+    fuelRule: 'Return as received',
+    smoking: 'No smoking',
+  );
 }
