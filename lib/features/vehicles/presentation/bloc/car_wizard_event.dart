@@ -23,3 +23,16 @@ final class WizardNextPressed extends CarWizardEvent {
 final class WizardBackPressed extends CarWizardEvent {
   const WizardBackPressed();
 }
+
+final class WizardDocumentVerifyRequested extends CarWizardEvent {
+  const WizardDocumentVerifyRequested(this.kind);
+
+  final DocumentKind kind;
+
+  @override
+  List<Object?> get props => [kind];
+}
+
+final class WizardPublishPressed extends CarWizardEvent {
+  const WizardPublishPressed();
+}
