@@ -112,9 +112,8 @@ class _BookingDetailBody extends StatelessWidget {
     final role = state.role;
     final colors = context.colors;
     final canCancel = switch (view.effectiveStatus) {
-      BookingStatus.pending ||
-      BookingStatus.approved ||
-      BookingStatus.confirmed => true,
+      BookingStatus.pending => role == UserRole.renter,
+      BookingStatus.approved || BookingStatus.confirmed => true,
       _ => false,
     };
 
