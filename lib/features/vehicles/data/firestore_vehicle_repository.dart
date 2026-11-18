@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:veloce/core/constants/firestore_fields.dart';
 import 'package:veloce/core/constants/firestore_paths.dart';
 import 'package:veloce/core/data/models/booking_model.dart';
+import 'package:veloce/core/data/models/vehicle_document_model.dart';
 import 'package:veloce/core/data/models/vehicle_model.dart';
+import 'package:veloce/core/data/models/vehicle_photo_model.dart';
 import 'package:veloce/core/data/services/failure_mapper.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
@@ -10,6 +12,7 @@ import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/services/atomic_write.dart';
 import 'package:veloce/core/error/result.dart';
 
+import '../domain/entities/publish_request.dart';
 import '../domain/repositories/vehicle_repository.dart';
 
 class FirestoreVehicleRepository implements VehicleRepository {
@@ -55,6 +58,38 @@ class FirestoreVehicleRepository implements VehicleRepository {
             .map((doc) => BookingModel.fromMap(doc.id, doc.data()))
             .toList(),
       );
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<String>> publish(PublishRequest request) async {
+    try {
+      final write = _writes.begin();
+      final id = write.newId(FirestorePaths.vehicles);
+      final vehiclePath = FirestorePaths.vehicle(id);
+      final photosPath = '$vehiclePath/${FirestorePaths.photos}';
+      final documentsPath = '$vehiclePath/${FirestorePaths.documents}';
+
+      write.set(
+        vehiclePath,
+        VehicleModel.toMap(request.vehicle.copyWith(id: id)),
+      );
+      for (final photo in request.photos) {
+        write.set(
+          '$photosPath/${write.newId(photosPath)}',
+          VehiclePhotoModel.toMap(photo.copyWith(vehicleId: id)),
+        );
+      }
+      for (final document in request.documents) {
+        write.set(
+          '$documentsPath/${document.kind.key}',
+          VehicleDocumentModel.toMap(document.copyWith(vehicleId: id)),
+        );
+      }
+      await write.commit().timeout(_timeout);
+      return Result.success(id);
     } on Object catch (error, stackTrace) {
       return Result.failure(mapToFailure(error, stackTrace));
     }
