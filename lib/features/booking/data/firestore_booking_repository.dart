@@ -651,6 +651,14 @@ class FirestoreBookingRepository implements BookingRepository {
     final reason = booking.status == BookingStatus.pending
         ? 'The owner did not respond in time.'
         : 'Payment was not made in time.';
+    var lock = renterLock;
+    if (lock == null && booking.status == BookingStatus.approved) {
+      final loaded = await _readLock(booking.renterId);
+      if (loaded case Failure<RenterLock?>(:final failure)) {
+        return Result.failure(failure);
+      }
+      lock = (loaded as Success<RenterLock?>).value;
+    }
     try {
       final write = _writes.begin();
       write.update(FirestorePaths.booking(booking.id), {
@@ -659,7 +667,7 @@ class FirestoreBookingRepository implements BookingRepository {
         FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
       });
       write.delete('${FirestorePaths.calendarBlocks}/${booking.id}');
-      if (renterLock?.bookingId == booking.id) {
+      if (lock?.bookingId == booking.id) {
         write.delete('${FirestorePaths.renterLocks}/${booking.renterId}');
       }
       _audit.record(
