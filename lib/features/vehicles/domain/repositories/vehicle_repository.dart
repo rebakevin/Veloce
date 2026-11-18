@@ -3,10 +3,14 @@ import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/error/result.dart';
 
+import '../entities/publish_request.dart';
+
 abstract interface class VehicleRepository {
   Stream<Result<List<Vehicle>>> watchOwnerVehicles(String ownerId);
 
   Future<Result<List<Booking>>> bookingsOf(String vehicleId);
+
+  Future<Result<String>> publish(PublishRequest request);
 
   Future<Result<void>> setStatus(String vehicleId, VehicleStatus status);
 
