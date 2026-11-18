@@ -7,7 +7,9 @@ import 'package:veloce/core/navigation/seed_ids.dart';
 import 'package:veloce/core/widgets/placeholder_link.dart';
 import 'package:veloce/core/widgets/placeholder_page.dart';
 
+import 'presentation/bloc/car_wizard_bloc.dart';
 import 'presentation/bloc/my_cars_bloc.dart';
+import 'presentation/pages/car_wizard_page.dart';
 import 'presentation/pages/my_cars_page.dart';
 
 /// Full-screen routes of the vehicles feature, opened above the tab bar.
@@ -23,16 +25,9 @@ List<RouteBase> vehiclesRoutes() => [
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCarNew,
-    builder: (context, state) => PlaceholderPage(
-      title: 'List a car',
-      route: RouteNames.ownerCarNew,
-      phase: 2,
-      links: [
-        PlaceholderLink(
-          'Publish car',
-          RouteNames.ownerCarPublished(SeedIds.car),
-        ),
-      ],
+    builder: (context, state) => BlocProvider(
+      create: (_) => CarWizardBloc(),
+      child: const CarWizardPage(),
     ),
   ),
   GoRoute(
