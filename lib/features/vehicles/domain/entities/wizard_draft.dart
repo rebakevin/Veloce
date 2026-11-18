@@ -1,9 +1,46 @@
 import 'package:equatable/equatable.dart';
 import 'package:veloce/core/domain/entities/document_photo.dart';
 import 'package:veloce/core/domain/entities/long_rate.dart';
+import 'package:veloce/core/domain/enums/document_kind.dart';
 import 'package:veloce/core/domain/enums/fuel_type.dart';
 import 'package:veloce/core/domain/enums/transmission.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
+
+class DraftDocument extends Equatable {
+  const DraftDocument({
+    this.photo,
+    this.number = '',
+    this.plate = '',
+    this.expiry,
+    this.verified = false,
+  });
+
+  final DocumentPhoto? photo;
+  final String number;
+  final String plate;
+  final DateTime? expiry;
+  final bool verified;
+
+  DraftDocument copyWith({
+    DocumentPhoto? photo,
+    bool clearPhoto = false,
+    String? number,
+    String? plate,
+    DateTime? expiry,
+    bool? verified,
+  }) {
+    return DraftDocument(
+      photo: clearPhoto ? null : photo ?? this.photo,
+      number: number ?? this.number,
+      plate: plate ?? this.plate,
+      expiry: expiry ?? this.expiry,
+      verified: verified ?? this.verified,
+    );
+  }
+
+  @override
+  List<Object?> get props => [photo, number, plate, expiry, verified];
+}
 
 class WizardDraft extends Equatable {
   const WizardDraft({
@@ -28,6 +65,7 @@ class WizardDraft extends Equatable {
     this.smoking = '',
     this.extras = const [],
     this.rulesPdf,
+    this.documents = const {},
   });
 
   final List<DocumentPhoto> photos;
@@ -51,6 +89,7 @@ class WizardDraft extends Equatable {
   final String smoking;
   final List<String> extras;
   final DocumentPhoto? rulesPdf;
+  final Map<DocumentKind, DraftDocument> documents;
 
   WizardDraft copyWith({
     List<DocumentPhoto>? photos,
@@ -76,6 +115,7 @@ class WizardDraft extends Equatable {
     List<String>? extras,
     DocumentPhoto? rulesPdf,
     bool clearRulesPdf = false,
+    Map<DocumentKind, DraftDocument>? documents,
   }) {
     return WizardDraft(
       photos: photos ?? this.photos,
@@ -99,6 +139,7 @@ class WizardDraft extends Equatable {
       smoking: smoking ?? this.smoking,
       extras: extras ?? this.extras,
       rulesPdf: clearRulesPdf ? null : rulesPdf ?? this.rulesPdf,
+      documents: documents ?? this.documents,
     );
   }
 
@@ -125,5 +166,6 @@ class WizardDraft extends Equatable {
     smoking,
     extras,
     rulesPdf,
+    documents,
   ];
 }

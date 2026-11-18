@@ -1,8 +1,10 @@
+import 'package:veloce/core/domain/enums/document_kind.dart';
 import 'package:veloce/core/domain/services/pricing_calculator.dart';
 import 'package:veloce/core/validation/validators.dart';
 
 import '../entities/wizard_draft.dart';
 import '../entities/wizard_step.dart';
+import 'document_rules.dart';
 
 enum WizardField {
   photos,
@@ -21,6 +23,9 @@ enum WizardField {
   cautionFee,
   fuelRule,
   smoking,
+  documentInsurance,
+  documentMedical,
+  documentYellowPaper,
 }
 
 abstract final class WizardStepRules {
@@ -28,6 +33,12 @@ abstract final class WizardStepRules {
   static const int maxPhotos = 6;
   static const int minSeats = 2;
   static const int maxSeats = 9;
+
+  static const Map<DocumentKind, WizardField> _documentFields = {
+    DocumentKind.insurance: WizardField.documentInsurance,
+    DocumentKind.medical: WizardField.documentMedical,
+    DocumentKind.yellowPaper: WizardField.documentYellowPaper,
+  };
 
   static Map<WizardField, String> validate(
     WizardStep step,
@@ -40,7 +51,7 @@ abstract final class WizardStepRules {
       WizardStep.specs => _specs(draft),
       WizardStep.pricing => _pricing(draft, calculator),
       WizardStep.rules => _rules(draft),
-      WizardStep.documents => const {},
+      WizardStep.documents => _documents(draft),
       WizardStep.review => {
         for (final earlier in WizardStep.values.take(
           WizardStep.documents.index,
@@ -48,6 +59,21 @@ abstract final class WizardStepRules {
           ...validate(earlier, draft, calculator: calculator),
       },
     };
+  }
+
+  static String? documentProblem(
+    WizardDraft draft,
+    DocumentKind kind,
+    DateTime now,
+  ) {
+    final document = draft.documents[kind];
+    if (document == null || document.photo == null) {
+      return 'Add a photo of the ${kind.label.toLowerCase()}.';
+    }
+    return Validators.requiredText(document.number, field: 'Document number') ??
+        DocumentRules.plateMatches(document.plate, draft.plate) ??
+        DocumentRules.expiry(document.expiry, now: now) ??
+        (document.verified ? null : 'Verify this document.');
   }
 
   static Map<WizardField, String> _media(WizardDraft draft) {
@@ -121,6 +147,19 @@ abstract final class WizardStepRules {
         field: 'Smoking rule',
       ),
     });
+  }
+
+  static Map<WizardField, String> _documents(WizardDraft draft) {
+    final now = DateTime.now();
+    final errors = <WizardField, String>{};
+    for (final kind in DocumentKind.values) {
+      final isRequired = DocumentRules.requiredKinds.contains(kind);
+      final hasPhoto = draft.documents[kind]?.photo != null;
+      if (!isRequired && !hasPhoto) continue;
+      final problem = documentProblem(draft, kind, now);
+      if (problem != null) errors[_documentFields[kind]!] = problem;
+    }
+    return errors;
   }
 
   static Map<WizardField, String> _collect(Map<WizardField, String?> checks) {

@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:veloce/core/domain/entities/long_rate.dart';
+import 'package:veloce/core/domain/enums/document_kind.dart';
+import 'package:veloce/features/vehicles/domain/entities/wizard_draft.dart';
 import 'package:veloce/features/vehicles/domain/entities/wizard_step.dart';
 import 'package:veloce/features/vehicles/domain/rules/wizard_step_rules.dart';
 
@@ -95,6 +97,67 @@ void main() {
       );
 
       expect(errors, isEmpty);
+    });
+  });
+  group('documents step', () {
+    DraftDocument goodDocument() => DraftDocument(
+      photo: somePhotos(1).first,
+      number: 'N-1',
+      plate: 'RAB 123 A',
+      expiry: DateTime(2099),
+      verified: true,
+    );
+
+    test('no documents returns insurance and medical errors', () {
+      final errors = WizardStepRules.validate(
+        WizardStep.documents,
+        aWizardDraft(),
+      );
+
+      expect(errors.keys, [
+        WizardField.documentInsurance,
+        WizardField.documentMedical,
+      ]);
+    });
+
+    test('both required documents and no yellow paper returns no errors', () {
+      final draft = aWizardDraft().copyWith(
+        documents: {
+          DocumentKind.insurance: goodDocument(),
+          DocumentKind.medical: goodDocument(),
+        },
+      );
+
+      final errors = WizardStepRules.validate(WizardStep.documents, draft);
+
+      expect(errors, isEmpty);
+    });
+
+    test('a document with another plate returns an error', () {
+      final draft = aWizardDraft().copyWith(
+        documents: {
+          DocumentKind.insurance: goodDocument().copyWith(plate: 'RAC 456 B'),
+          DocumentKind.medical: goodDocument(),
+        },
+      );
+
+      final errors = WizardStepRules.validate(WizardStep.documents, draft);
+
+      expect(errors.keys, [WizardField.documentInsurance]);
+    });
+
+    test('a yellow paper with a photo but no number returns an error', () {
+      final draft = aWizardDraft().copyWith(
+        documents: {
+          DocumentKind.insurance: goodDocument(),
+          DocumentKind.medical: goodDocument(),
+          DocumentKind.yellowPaper: goodDocument().copyWith(number: ''),
+        },
+      );
+
+      final errors = WizardStepRules.validate(WizardStep.documents, draft);
+
+      expect(errors.keys, [WizardField.documentYellowPaper]);
     });
   });
 }
