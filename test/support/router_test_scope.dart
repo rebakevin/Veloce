@@ -8,6 +8,7 @@ import 'package:veloce/core/data/services/preferences_service.dart';
 import 'package:veloce/core/data/services/verification_sim.dart';
 import 'package:veloce/core/domain/entities/contact.dart';
 import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
+import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/navigation/route_names.dart';
@@ -15,12 +16,14 @@ import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
 import 'package:veloce/features/auth/auth.dart';
 import 'package:veloce/features/auth/data/dev_sign_in.dart';
+import 'package:veloce/features/booking/booking.dart';
 import 'package:veloce/features/profile/domain/entities/public_profile.dart';
 import 'package:veloce/features/profile/presentation/bloc/accounts_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/public_profile_cubit.dart';
 import 'package:veloce/features/profile/presentation/bloc/settings_cubit.dart';
 
+import '../features/booking/support/booking_test_data.dart';
 import 'builders.dart';
 
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
@@ -51,6 +54,22 @@ class MockAccountsBloc extends MockBloc<AccountsEvent, AccountsState>
 
 class MockSettingsCubit extends MockCubit<SettingsState>
     implements SettingsCubit {}
+
+class MockActivityBloc extends MockBloc<ActivityEvent, ActivityState>
+    implements ActivityBloc {}
+
+class MockBookingDetailBloc
+    extends MockBloc<BookingDetailEvent, BookingDetailState>
+    implements BookingDetailBloc {}
+
+class MockDecisionBloc extends MockBloc<DecisionEvent, DecisionState>
+    implements DecisionBloc {}
+
+class MockPaymentBloc extends MockBloc<PaymentEvent, PaymentState>
+    implements PaymentBloc {}
+
+class MockExpirySweeperCubit extends MockCubit<ExpirySweeperState>
+    implements ExpirySweeperCubit {}
 
 class _MockPreferences extends Mock implements PreferencesService {}
 
@@ -185,6 +204,41 @@ class RouterTestScope {
             themeMode: ThemeMode.system,
             notificationsEnabled: true,
           ),
+        ),
+      )
+      ..registerFactory<ActivityBloc>(
+        () => idle<MockActivityBloc, ActivityState>(
+          MockActivityBloc(),
+          ActivityLoaded(role: role, bookings: const []),
+        ),
+      )
+      ..registerFactoryParam<BookingDetailBloc, String, void>(
+        (id, _) => idle<MockBookingDetailBloc, BookingDetailState>(
+          MockBookingDetailBloc(),
+          BookingDetailLoaded(
+            view: bookingView(id: id),
+            role: role,
+          ),
+        ),
+      )
+      ..registerFactoryParam<DecisionBloc, String, void>(
+        (id, _) => idle<MockDecisionBloc, DecisionState>(
+          MockDecisionBloc(),
+          DecisionLoaded(view: bookingView(id: id)),
+        ),
+      )
+      ..registerFactoryParam<PaymentBloc, String, void>(
+        (id, _) => idle<MockPaymentBloc, PaymentState>(
+          MockPaymentBloc(),
+          PaymentLoaded(
+            view: bookingView(id: id, status: BookingStatus.approved),
+          ),
+        ),
+      )
+      ..registerFactory<ExpirySweeperCubit>(
+        () => idle<MockExpirySweeperCubit, ExpirySweeperState>(
+          MockExpirySweeperCubit(),
+          const ExpirySweeperIdle(),
         ),
       );
   }
