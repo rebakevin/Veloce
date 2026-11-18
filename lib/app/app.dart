@@ -6,6 +6,7 @@ import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/theme/theme_cubit.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
 import 'package:veloce/features/auth/auth.dart';
+import 'package:veloce/features/booking/booking.dart';
 
 /// Root widget: theme, messenger and router. Blocs that outlive a route (theme,
 /// later auth) are provided here; screen blocs live at their route.
@@ -21,16 +22,21 @@ class VeloceApp extends StatelessWidget {
       providers: [
         BlocProvider.value(value: getIt<ThemeCubit>()),
         BlocProvider.value(value: getIt<AuthBloc>()..add(const AuthStarted())),
+        BlocProvider<ExpirySweeperCubit>(
+          create: (_) => getIt<ExpirySweeperCubit>()..sweep(),
+        ),
       ],
-      child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, themeMode) => MaterialApp.router(
-          title: 'Veloce',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: themeMode,
-          scaffoldMessengerKey: getIt<AppMessenger>().key,
-          routerConfig: router,
+      child: BookingExpiryObserver(
+        child: BlocBuilder<ThemeCubit, ThemeMode>(
+          builder: (context, themeMode) => MaterialApp.router(
+            title: 'Veloce',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeMode,
+            scaffoldMessengerKey: getIt<AppMessenger>().key,
+            routerConfig: router,
+          ),
         ),
       ),
     );
