@@ -15,6 +15,11 @@ import 'domain/usecases/cancel_booking.dart';
 import 'domain/usecases/decline_booking.dart';
 import 'domain/usecases/expire_bookings.dart';
 import 'domain/usecases/pay_booking.dart';
+import 'presentation/bloc/activity_bloc.dart';
+import 'presentation/bloc/booking_detail_bloc.dart';
+import 'presentation/bloc/decision_bloc.dart';
+import 'presentation/bloc/expiry_sweeper_cubit.dart';
+import 'presentation/bloc/payment_bloc.dart';
 
 /// Registers the booking feature's dependencies. Owned by Phase 4.
 void registerBooking(GetIt getIt) {
@@ -52,5 +57,42 @@ void registerBooking(GetIt getIt) {
     ..registerLazySingleton<AcknowledgeAgreement>(
       () => AcknowledgeAgreement(getIt()),
     )
-    ..registerLazySingleton<ExpireBookings>(() => ExpireBookings(getIt()));
+    ..registerLazySingleton<ExpireBookings>(() => ExpireBookings(getIt()))
+    ..registerFactory<ActivityBloc>(
+      () => ActivityBloc(
+        repository: getIt(),
+        cancelBooking: getIt(),
+        expireBookings: getIt(),
+        session: getIt(),
+      ),
+    )
+    ..registerFactoryParam<BookingDetailBloc, String, void>(
+      (bookingId, _) => BookingDetailBloc(
+        bookingId: bookingId,
+        repository: getIt(),
+        cancelBooking: getIt(),
+        acknowledgeAgreement: getIt(),
+        session: getIt(),
+      ),
+    )
+    ..registerFactoryParam<DecisionBloc, String, void>(
+      (bookingId, _) => DecisionBloc(
+        bookingId: bookingId,
+        repository: getIt(),
+        approve: getIt(),
+        decline: getIt(),
+        session: getIt(),
+      ),
+    )
+    ..registerFactoryParam<PaymentBloc, String, void>(
+      (bookingId, _) => PaymentBloc(
+        bookingId: bookingId,
+        repository: getIt(),
+        pay: getIt(),
+        session: getIt(),
+      ),
+    )
+    ..registerFactory<ExpirySweeperCubit>(
+      () => ExpirySweeperCubit(expireBookings: getIt(), session: getIt()),
+    );
 }
