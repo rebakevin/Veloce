@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
+import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
+import 'package:veloce/core/widgets/app_messenger.dart';
 
 import '../../domain/entities/wizard_draft.dart';
 import '../../domain/entities/wizard_step.dart';
 import '../bloc/car_wizard_bloc.dart';
 import '../widgets/details_step.dart';
+import '../widgets/documents_step.dart';
 import '../widgets/media_step.dart';
 import '../widgets/pricing_step.dart';
+import '../widgets/review_step.dart';
 import '../widgets/rules_step.dart';
 import '../widgets/specs_step.dart';
 
@@ -27,7 +33,20 @@ class CarWizardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<CarWizardBloc, CarWizardState>(
+    return BlocConsumer<CarWizardBloc, CarWizardState>(
+      listenWhen: (previous, current) =>
+          previous.submission != current.submission,
+      listener: (context, state) {
+        if (state.submission == WizardSubmission.published) {
+          context.pushReplacement(
+            RouteNames.ownerCarPublished(state.publishedId!),
+          );
+        } else if (state.submission == WizardSubmission.failure) {
+          GetIt.I<AppMessenger>().error(
+            state.message ?? 'We could not publish the car. Try again.',
+          );
+        }
+      },
       builder: (context, state) {
         final bloc = context.read<CarWizardBloc>();
         void change(WizardDraft draft) => bloc.add(WizardDraftChanged(draft));
@@ -80,8 +99,15 @@ class CarWizardPage extends StatelessWidget {
                     errors: state.errors,
                     onChanged: change,
                   ),
-                  WizardStep.documents ||
-                  WizardStep.review => const Text('This step is built next.'),
+                  WizardStep.documents => DocumentsStep(
+                    draft: state.draft,
+                    errors: state.errors,
+                    verifying: state.verifying,
+                    onChanged: change,
+                    onVerify: (kind) =>
+                        bloc.add(WizardDocumentVerifyRequested(kind)),
+                  ),
+                  WizardStep.review => ReviewStep(draft: state.draft),
                 },
               ],
             ),
@@ -93,17 +119,28 @@ class CarWizardPage extends StatelessWidget {
                 children: [
                   if (!state.isFirstStep) ...[
                     OutlinedButton(
-                      onPressed: () => bloc.add(const WizardBackPressed()),
+                      onPressed: state.isBusy
+                          ? null
+                          : () => bloc.add(const WizardBackPressed()),
                       child: const Text('Back'),
                     ),
                     const SizedBox(width: AppSpacing.md),
                   ],
                   Expanded(
                     child: FilledButton(
-                      onPressed: state.isLastStep
+                      onPressed: state.isBusy
                           ? null
-                          : () => bloc.add(const WizardNextPressed()),
-                      child: Text(state.isLastStep ? 'Publish' : 'Next'),
+                          : () => bloc.add(
+                              state.isLastStep
+                                  ? const WizardPublishPressed()
+                                  : const WizardNextPressed(),
+                            ),
+                      child: state.submission == WizardSubmission.publishing
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(state.isLastStep ? 'Publish' : 'Next'),
                     ),
                   ),
                 ],

@@ -9,6 +9,7 @@ import 'package:veloce/core/widgets/placeholder_page.dart';
 
 import 'presentation/bloc/car_wizard_bloc.dart';
 import 'presentation/bloc/my_cars_bloc.dart';
+import 'presentation/pages/car_published_page.dart';
 import 'presentation/pages/car_wizard_page.dart';
 import 'presentation/pages/my_cars_page.dart';
 
@@ -26,7 +27,7 @@ List<RouteBase> vehiclesRoutes() => [
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCarNew,
     builder: (context, state) => BlocProvider(
-      create: (_) => CarWizardBloc(),
+      create: (_) => GetIt.I<CarWizardBloc>(),
       child: const CarWizardPage(),
     ),
   ),
@@ -60,18 +61,8 @@ List<RouteBase> vehiclesRoutes() => [
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCarPublishedPattern,
-    builder: (context, state) => PlaceholderPage(
-      title: 'Your car is live',
-      route: RouteNames.ownerCarPublishedPattern,
-      phase: 2,
-      links: [
-        PlaceholderLink(
-          'View listing',
-          RouteNames.car(state.pathParameters['id']!),
-        ),
-        const PlaceholderLink('Manage my cars', RouteNames.ownerCars),
-      ],
-    ),
+    builder: (context, state) =>
+        CarPublishedPage(vehicleId: state.pathParameters['id']!),
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
