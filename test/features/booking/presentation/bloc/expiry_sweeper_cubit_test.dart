@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/booking/presentation/bloc/expiry_sweeper_cubit.dart';
@@ -21,6 +22,7 @@ void main() {
     expireBookings = MockExpireBookings();
     session = MockAuthSession();
     when(() => session.currentUserId).thenReturn('renter-1');
+    when(() => session.role).thenReturn(UserRole.renter);
   });
 
   blocTest<ExpirySweeperCubit, ExpirySweeperState>(

@@ -51,7 +51,7 @@ class ExpirySweeperCubit extends Cubit<ExpirySweeperState> {
 
   Future<void> sweep() async {
     if (state is ExpirySweeperRunning) return;
-    if (_session.currentUserId == null) {
+    if (_session.currentUserId == null || _session.role == null) {
       emit(const ExpirySweeperDone(0));
       return;
     }
