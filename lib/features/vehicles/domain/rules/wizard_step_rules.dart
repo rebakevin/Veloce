@@ -34,7 +34,7 @@ abstract final class WizardStepRules {
   static const int minSeats = 2;
   static const int maxSeats = 9;
 
-  static const Map<DocumentKind, WizardField> _documentFields = {
+  static const Map<DocumentKind, WizardField> documentFields = {
     DocumentKind.insurance: WizardField.documentInsurance,
     DocumentKind.medical: WizardField.documentMedical,
     DocumentKind.yellowPaper: WizardField.documentYellowPaper,
@@ -157,7 +157,7 @@ abstract final class WizardStepRules {
       final hasPhoto = draft.documents[kind]?.photo != null;
       if (!isRequired && !hasPhoto) continue;
       final problem = documentProblem(draft, kind, now);
-      if (problem != null) errors[_documentFields[kind]!] = problem;
+      if (problem != null) errors[documentFields[kind]!] = problem;
     }
     return errors;
   }

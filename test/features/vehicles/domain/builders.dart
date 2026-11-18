@@ -5,14 +5,20 @@ import 'package:veloce/core/domain/entities/document_photo.dart';
 import 'package:veloce/core/domain/entities/long_rate.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
+import 'package:veloce/core/domain/enums/document_kind.dart';
 import 'package:veloce/core/domain/enums/fuel_type.dart';
+import 'package:veloce/core/domain/enums/storage_bucket.dart';
 import 'package:veloce/core/domain/enums/transmission.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
+import 'package:veloce/core/domain/services/media_storage.dart';
+import 'package:veloce/core/domain/services/verification_provider.dart';
+import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/vehicles/domain/entities/publish_request.dart';
 import 'package:veloce/features/vehicles/domain/entities/wizard_draft.dart';
 import 'package:veloce/features/vehicles/domain/repositories/vehicle_repository.dart';
 
@@ -101,11 +107,17 @@ class FixedClock implements Clock {
 }
 
 class FakeVehicleRepository implements VehicleRepository {
-  FakeVehicleRepository({this.bookings = const [], this.vehicleStream});
+  FakeVehicleRepository({
+    this.bookings = const [],
+    this.vehicleStream,
+    this.publishFails = false,
+  });
 
   final List<Booking> bookings;
   final Stream<Result<List<Vehicle>>>? vehicleStream;
+  final bool publishFails;
   final List<String> removed = [];
+  final List<PublishRequest> published = [];
   final Map<String, VehicleStatus> statuses = {};
 
   @override
@@ -115,6 +127,13 @@ class FakeVehicleRepository implements VehicleRepository {
   @override
   Future<Result<List<Booking>>> bookingsOf(String vehicleId) async =>
       Result.success(bookings);
+
+  @override
+  Future<Result<String>> publish(PublishRequest request) async {
+    if (publishFails) return const Result.failure(NetworkFailure());
+    published.add(request);
+    return const Result.success('car-new');
+  }
 
   @override
   Future<Result<void>> setStatus(String vehicleId, VehicleStatus status) async {
@@ -145,6 +164,61 @@ class FakeAuthSession implements AuthSession {
   Stream<void> get changes => const Stream.empty();
 }
 
+class FakeMediaStorage implements MediaStorage {
+  FakeMediaStorage({this.failOnUpload});
+
+  final int? failOnUpload;
+  final List<String> uploaded = [];
+  final List<String> deleted = [];
+
+  @override
+  Future<Result<String>> upload({
+    required Uint8List bytes,
+    required String extension,
+    required StorageBucket bucket,
+  }) async {
+    if (uploaded.length == failOnUpload) {
+      return const Result.failure(NetworkFailure());
+    }
+    final url = 'https://files.test/${uploaded.length}.$extension';
+    uploaded.add(url);
+    return Result.success(url);
+  }
+
+  @override
+  Future<Result<void>> delete(String url) async {
+    deleted.add(url);
+    return const Result.success(null);
+  }
+}
+
+class FakeVerificationProvider implements VerificationProvider {
+  FakeVerificationProvider({this.succeeds = true});
+
+  final bool succeeds;
+
+  @override
+  Future<Result<OtpChallenge>> sendOtp(String phone) async =>
+      const Result.failure(UnknownFailure());
+
+  @override
+  Future<Result<void>> confirmOtp({
+    required OtpChallenge challenge,
+    required String code,
+  }) async => const Result.failure(UnknownFailure());
+
+  @override
+  Future<Result<void>> verifyDocument({
+    required String documentNumber,
+    required String photoUrl,
+  }) async {
+    if (succeeds) return const Result<void>.success(null);
+    return const Result<void>.failure(
+      ValidationFailure('We could not verify this document. Try again.'),
+    );
+  }
+}
+
 List<DocumentPhoto> somePhotos(int count) => List.generate(
   count,
   (_) => DocumentPhoto(bytes: Uint8List(1), extension: 'jpg'),
@@ -168,5 +242,24 @@ WizardDraft aWizardDraft() {
     cautionFee: 50000,
     fuelRule: 'Return as received',
     smoking: 'No smoking',
+  );
+}
+
+DraftDocument aDraftDocument({DateTime? expiry}) {
+  return DraftDocument(
+    photo: somePhotos(1).first,
+    number: 'N-1',
+    plate: 'RAB 123 A',
+    expiry: expiry ?? DateTime(2099),
+    verified: true,
+  );
+}
+
+WizardDraft aPublishableDraft() {
+  return aWizardDraft().copyWith(
+    documents: {
+      DocumentKind.insurance: aDraftDocument(),
+      DocumentKind.medical: aDraftDocument(),
+    },
   );
 }
