@@ -56,29 +56,10 @@ final class RegisterDraftEdited extends RegisterEvent {
   ];
 }
 
-/// "Continue" on the details step. Validates every field; email users then
-/// get an OTP, Google users are registered straight away.
+/// "Continue" on the details step. Validates every field, then creates the
+/// account for both email and Google users.
 final class RegisterDetailsSubmitted extends RegisterEvent {
   const RegisterDetailsSubmitted();
-}
-
-/// "Verify" on the OTP step.
-final class RegisterOtpSubmitted extends RegisterEvent {
-  const RegisterOtpSubmitted(this.code);
-
-  final String code;
-
-  @override
-  List<Object?> get props => [code];
-}
-
-/// The user typed in the code field: a wrong-code message no longer applies.
-final class RegisterOtpEdited extends RegisterEvent {
-  const RegisterOtpEdited();
-}
-
-final class RegisterOtpResent extends RegisterEvent {
-  const RegisterOtpResent();
 }
 
 /// Retry after a failed final step (document check, email taken, offline).

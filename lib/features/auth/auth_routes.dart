@@ -10,7 +10,6 @@ import 'presentation/pages/forgot_password_page.dart';
 import 'presentation/pages/login_page.dart';
 import 'presentation/pages/register_details_page.dart';
 import 'presentation/pages/register_role_page.dart';
-import 'presentation/pages/register_verify_page.dart';
 import 'presentation/pages/register_welcome_page.dart';
 import 'presentation/pages/splash_page.dart';
 import 'presentation/pages/verify_email_page.dart';
@@ -51,10 +50,6 @@ List<RouteBase> authRoutes() => [
       GoRoute(
         path: RouteNames.registerDetails,
         builder: (context, state) => const RegisterDetailsPage(),
-      ),
-      GoRoute(
-        path: RouteNames.registerVerify,
-        builder: (context, state) => const RegisterVerifyPage(),
       ),
       GoRoute(
         path: RouteNames.registerWelcome,

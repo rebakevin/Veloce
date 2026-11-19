@@ -68,7 +68,7 @@ class RegisterDetailsPage extends StatelessWidget {
 }
 
 /// The fields of the details step. Every edit goes to the bloc as it happens,
-/// so the draft survives going back from the OTP step.
+/// so the draft survives going back to the role step.
 class RegisterDetailsForm extends StatefulWidget {
   const RegisterDetailsForm({required this.pickPhoto, super.key});
 
@@ -133,7 +133,7 @@ class _RegisterDetailsFormState extends State<RegisterDetailsForm> {
           children: [
             StepHeader(
               step: 2,
-              total: isGoogle ? 2 : 4,
+              total: isGoogle ? 2 : 3,
               title: isOwner ? 'Owner details' : 'Renter details',
               subtitle: 'We check these before you can rent or list a car.',
             ),

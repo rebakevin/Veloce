@@ -88,7 +88,6 @@ class _FixedClock implements Clock {
 /// only stays put when the bloc is at that step.
 RegisterStep _registerStepFor(String path) => switch (path) {
   RouteNames.registerDetails => RegisterStep.details,
-  RouteNames.registerVerify => RegisterStep.otp,
   RouteNames.registerWelcome => RegisterStep.done,
   _ => RegisterStep.role,
 };

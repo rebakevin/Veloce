@@ -6,7 +6,6 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
-import 'package:veloce/core/domain/services/verification_provider.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/auth/domain/entities/google_registration_input.dart';
@@ -22,19 +21,14 @@ class _MockRegister extends Mock implements RegisterWithEmail {}
 
 class _MockGoogle extends Mock implements CompleteGoogleRegistration {}
 
-class _MockVerification extends Mock implements VerificationProvider {}
-
 void main() {
   late _MockRegister register;
   late _MockGoogle completeGoogle;
-  late _MockVerification verification;
   late MockLinkCurrentAccount link;
 
-  const challenge = OtpChallenge(phone: '0788123456', code: '123456');
   final photo = Uint8List.fromList([1, 2, 3]);
 
   setUpAll(() {
-    registerFallbackValue(challenge);
     registerFallbackValue(aRegistration());
     registerFallbackValue(
       GoogleRegistrationInput(
@@ -49,17 +43,8 @@ void main() {
   setUp(() {
     register = _MockRegister();
     completeGoogle = _MockGoogle();
-    verification = _MockVerification();
     link = MockLinkCurrentAccount();
     stubLinkSucceeds(link);
-    when(() => verification.sendOtp(any()))
-        .thenAnswer((_) async => const Result.success(challenge));
-    when(
-      () => verification.confirmOtp(
-        challenge: any(named: 'challenge'),
-        code: any(named: 'code'),
-      ),
-    ).thenAnswer((_) async => const Result.success(null));
     when(() => register(any())).thenAnswer(
       (_) async => Result.success(
         RegistrationOutcome(user: anAuthUser(), verificationEmailSent: true),
@@ -71,7 +56,6 @@ void main() {
     registerWithEmail: register,
     completeGoogle: completeGoogle,
     linkCurrentAccount: link,
-    verification: verification,
     clock: const FixedClock(),
     googleUser: google ? anAuthUser(provider: AuthProviderKind.google) : null,
   );
@@ -89,13 +73,20 @@ void main() {
         photoBytes: photo,
       );
 
-  /// Drives a fresh bloc to the OTP step.
-  Future<RegisterBloc> atOtpStep() async {
-    final bloc = build()
+  /// Drives a fresh bloc through the details step. The stream listener is
+  /// attached before the events, so a short-lived failure state is not missed.
+  Future<RegisterBloc> submitRenter({
+    bool Function(RegisterState state)? until,
+  }) async {
+    final bloc = build();
+    final settled = bloc.stream.firstWhere(
+      until ?? (state) => state.step == RegisterStep.done,
+    );
+    bloc
       ..add(const RegisterRoleSelected(UserRole.renter))
       ..add(validRenterEdits())
       ..add(const RegisterDetailsSubmitted());
-    await bloc.stream.firstWhere((s) => s.step == RegisterStep.otp);
+    await settled;
     return bloc;
   }
 
@@ -127,7 +118,7 @@ void main() {
               containsAll(RegisterField.values),
             ),
       ],
-      verify: (_) => verifyNever(() => verification.sendOtp(any())),
+      verify: (_) => verifyNever(() => register(any())),
     );
 
     blocTest<RegisterBloc, RegisterState>(
@@ -179,115 +170,25 @@ void main() {
         expect(bloc.state.fieldErrors.containsKey(RegisterField.phone), isTrue);
       },
     );
-
-    blocTest<RegisterBloc, RegisterState>(
-      'valid details send an OTP and expose its code on the otp step',
-      build: build,
-      act: (bloc) => bloc
-        ..add(const RegisterRoleSelected(UserRole.renter))
-        ..add(validRenterEdits())
-        ..add(const RegisterDetailsSubmitted()),
-      verify: (bloc) {
-        expect(bloc.state.step, RegisterStep.otp);
-        expect(bloc.state.challenge?.code, '123456');
-        verify(() => verification.sendOtp('0788123456')).called(1);
-      },
-    );
   });
 
-  group('RegisterBloc otp and submit', () {
-    test('a wrong code keeps the otp step with a failure message', () async {
-      when(
-        () => verification.confirmOtp(
-          challenge: any(named: 'challenge'),
-          code: '000000',
-        ),
-      ).thenAnswer(
-        (_) async => const Result.failure(
-          ValidationFailure('That code is not correct.'),
-        ),
-      );
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpSubmitted('000000'));
-      final state = await bloc.stream.firstWhere(
-        (s) => s.status == RegisterStatus.failure,
-      );
-      expect(state.step, RegisterStep.otp);
-      expect(state.message, 'That code is not correct.');
-      verifyNever(() => register(any()));
-      await bloc.close();
-    });
+  group('RegisterBloc submit', () {
+    test('valid details register the account straight away', () async {
+      final bloc = await submitRenter();
 
-    test('typing after a wrong code clears the message', () async {
-      when(
-        () => verification.confirmOtp(
-          challenge: any(named: 'challenge'),
-          code: '000000',
-        ),
-      ).thenAnswer(
-        (_) async => const Result.failure(
-          ValidationFailure('That code is not correct.'),
-        ),
-      );
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpSubmitted('000000'));
-      await bloc.stream.firstWhere((s) => s.status == RegisterStatus.failure);
-
-      bloc.add(const RegisterOtpEdited());
-      final state = await bloc.stream.firstWhere(
-        (s) => s.status == RegisterStatus.idle,
-      );
-
-      expect(state.step, RegisterStep.otp);
-      expect(state.message, isNull);
-      await bloc.close();
-    });
-
-    test('a malformed code is rejected without a request', () async {
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpSubmitted('12'));
-      final state = await bloc.stream.firstWhere(
-        (s) => s.status == RegisterStatus.failure,
-      );
-      expect(state.message, 'Enter the 6-digit code.');
-      verifyNever(
-        () => verification.confirmOtp(
-          challenge: any(named: 'challenge'),
-          code: any(named: 'code'),
-        ),
-      );
-      await bloc.close();
-    });
-
-    test('a simulated verification failure can be retried', () async {
-      var attempts = 0;
-      when(
-        () => verification.confirmOtp(
-          challenge: any(named: 'challenge'),
-          code: any(named: 'code'),
-        ),
-      ).thenAnswer(
-        (_) async => ++attempts == 1
-            ? const Result.failure(ValidationFailure('Verification failed.'))
-            : const Result.success(null),
-      );
-      final bloc = await atOtpStep();
-
-      bloc.add(const RegisterOtpSubmitted('123456'));
-      await bloc.stream.firstWhere((s) => s.status == RegisterStatus.failure);
-      bloc.add(const RegisterOtpSubmitted('123456'));
-      final done = await bloc.stream.firstWhere(
-        (s) => s.step == RegisterStep.done,
-      );
-
-      expect(done.verificationEmailSent, isTrue);
+      expect(bloc.state.step, RegisterStep.done);
+      expect(bloc.state.status, RegisterStatus.idle);
+      expect(bloc.state.verificationEmailSent, isTrue);
+      final input =
+          verify(() => register(captureAny())).captured.single
+              as RegistrationInput;
+      expect(input.email, 'aline@example.com');
+      expect(input.role, UserRole.renter);
       await bloc.close();
     });
 
     test('a finished sign-up links the account with its password', () async {
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpSubmitted('123456'));
-      await bloc.stream.firstWhere((s) => s.step == RegisterStep.done);
+      final bloc = await submitRenter();
 
       verify(() => link(password: 'secret123')).called(1);
       await bloc.close();
@@ -296,47 +197,20 @@ void main() {
     test('a sign-up that cannot link the account still finishes', () async {
       when(() => link(password: any(named: 'password')))
           .thenAnswer((_) async => const Result.failure(NetworkFailure()));
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpSubmitted('123456'));
+      final bloc = await submitRenter();
 
-      final done = await bloc.stream.firstWhere(
-        (s) => s.step == RegisterStep.done,
-      );
-      expect(done.status, RegisterStatus.idle);
+      expect(bloc.state.status, RegisterStatus.idle);
       await bloc.close();
     });
 
     test('a failed sign-up links nothing', () async {
       when(() => register(any()))
           .thenAnswer((_) async => const Result.failure(NetworkFailure()));
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpSubmitted('123456'));
-      await bloc.stream.firstWhere((s) => s.status == RegisterStatus.failure);
+      final bloc = await submitRenter(
+        until: (state) => state.status == RegisterStatus.failure,
+      );
 
       verifyNoLink(link);
-      await bloc.close();
-    });
-
-    test('resending the OTP issues a fresh challenge', () async {
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpResent());
-      await Future<void>.delayed(Duration.zero);
-      verify(() => verification.sendOtp(any())).called(2);
-      await bloc.close();
-    });
-
-    test('a correct code registers the user and finishes', () async {
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpSubmitted('123456'));
-      final done = await bloc.stream.firstWhere(
-        (s) => s.step == RegisterStep.done,
-      );
-      expect(done.status, RegisterStatus.idle);
-      final input =
-          verify(() => register(captureAny())).captured.single
-              as RegistrationInput;
-      expect(input.email, 'aline@example.com');
-      expect(input.role, UserRole.renter);
       await bloc.close();
     });
 
@@ -352,37 +226,25 @@ void main() {
                 ),
               ),
       );
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterOtpSubmitted('123456'));
-      final failed = await bloc.stream.firstWhere(
-        (s) => s.status == RegisterStatus.failure,
+      final bloc = await submitRenter(
+        until: (state) => state.status == RegisterStatus.failure,
       );
+      final failed = bloc.state;
       expect(failed.step, RegisterStep.submitting);
       expect(failed.message, const NetworkFailure().message);
 
       bloc.add(const RegisterSubmitRetried());
       final done = await bloc.stream.firstWhere(
-        (s) => s.step == RegisterStep.done,
+        (state) => state.step == RegisterStep.done,
       );
       expect(done.verificationEmailSent, isFalse);
-      await bloc.close();
-    });
-
-    test('back from otp returns to details and drops the challenge', () async {
-      final bloc = await atOtpStep();
-      bloc.add(const RegisterBackPressed());
-      final state = await bloc.stream.firstWhere(
-        (s) => s.step == RegisterStep.details,
-      );
-      expect(state.challenge, isNull);
-      expect(state.draft.email, 'aline@example.com');
       await bloc.close();
     });
   });
 
   group('RegisterBloc google path', () {
     blocTest<RegisterBloc, RegisterState>(
-      'skips email, password and otp and completes the profile',
+      'skips email and password and completes the profile',
       setUp: () =>
           when(() => completeGoogle(any()))
               .thenAnswer((_) async => Result.success(anAuthUser())),
@@ -402,7 +264,6 @@ void main() {
         expect(bloc.state.step, RegisterStep.done);
         expect(bloc.state.verificationEmailSent, isFalse);
         expect(bloc.state.draft.name, 'Aline Uwase');
-        verifyNever(() => verification.sendOtp(any()));
         verifyNever(() => register(any()));
         verify(() => completeGoogle(any())).called(1);
       },

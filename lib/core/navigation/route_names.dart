@@ -8,7 +8,6 @@ abstract final class RouteNames {
   static const String forgotPassword = '/forgot-password';
   static const String registerRole = '/register/role';
   static const String registerDetails = '/register/details';
-  static const String registerVerify = '/register/verify';
   static const String registerWelcome = '/register/welcome';
   static const String verifyEmail = '/verify-email';
   static const String devLogin = '/dev-login';
