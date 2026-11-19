@@ -10,7 +10,7 @@ Status note: everything below is implemented and covered by unit, bloc and widge
 | --- | --- |
 | Email and password | `RegisterWithEmail` creates the Firebase user, then `FirestoreRegistrationStore` writes `users/{uid}`, its `private` documents and an audit entry in one atomic write. `LoginWithEmail` signs in. Logout is `SignOut` through `AuthBloc`. |
 | Google | `SignInWithGoogle` signs in with the Google ID token. If `users/{uid}` does not exist yet the state is `AuthNeedsProfile` and the user goes to role choice and the document steps (`CompleteGoogleRegistration`). A returning Google user goes straight Home. Implemented, to be verified on device. |
-| Simulated OTP | `VerificationSim` (behind `VerificationProvider`) generates a 6-digit code per phone number. The register flow's step 3 shows it in a SnackBar ("Demo code for ..."). A wrong code returns "That code is not correct. Please try again." and `shouldSucceed = false` forces the failure and retry state. It is a simulation: no SMS is sent. |
+| Phone number | The phone number is collected and saved on the profile, but it is not verified. Registration no longer has a phone-code step because the project has no SMS provider. |
 | Email verification | `SendEmailVerification` sends the Firebase link. `VerifyEmailPage` has a resend button, and `AuthBloc` handles `EmailVerificationRefreshed` by reloading the Firebase user so `isEmailVerified` is current. |
 | Password reset | `ForgotPasswordCubit` calls `SendPasswordReset` (`sendPasswordResetEmail`) from the forgot-password page. |
 | Session restore | `AuthBloc` subscribes to the Firebase user stream on `AuthStarted`. The first event carries the user Firebase persisted, and the bloc then reads `users/{uid}` for the role. `SplashPage` waits for that and routes with `authDestination`. |
@@ -90,7 +90,7 @@ Spec §8.2 asks for switching between accounts on one device without typing the 
 Steps from `TODO.md` 1.G. Implemented, to be verified on device before recording.
 
 - [ ] Cold start (app killed): splash, then welcome or login (0:15)
-- [ ] Register a new account: role, details, simulated OTP (read the code from the SnackBar), welcome (0:50)
+- [ ] Register a new account: role, details, account creation, welcome, then email verification (0:50)
 - [ ] Log out, then log in with the same credentials (0:25)
 - [ ] Google sign-in (0:25)
 - [ ] Validation error: submit the login form blank, then with a bad email; show the inline messages (0:20)
@@ -99,6 +99,6 @@ Steps from `TODO.md` 1.G. Implemented, to be verified on device before recording
 
 ## Still to add by hand
 
-- Screenshots: login with errors, OTP step, verify-email page, settings theme, accounts page, Firestore console `users` documents.
+- Screenshots: login with errors, registration details, verify-email page, settings theme, accounts page, Firestore console `users` documents.
 - Result of the second-account check on the private documents, and the live Google sign-in result.
 - Reference list (Firebase Auth, Google Sign-In, `flutter_secure_storage`, `shared_preferences`).

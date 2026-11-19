@@ -77,7 +77,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] `PricingCalculator` (+ long-rental tiers) with unit tests
 - [x] `BookingStateMachine` (transition table + `effectiveStatus`) with unit tests
 - [x] `LedgerWriter` (+ held-balance invariant test), `AuditLogger`, `NotificationWriter` Firestore implementations
-- [x] `MomoGatewaySim` (success/failure toggle), `VerificationSim` (OTP + document check)
+- [x] `MomoGatewaySim` (success/failure toggle), `VerificationSim` (document check)
 - [x] `PreferencesService` (5 keys, §9) + `ThemeCubit`
 - [x] `PendingReviewChecker` stub (returns false) registered inside `reviews_injection.dart` for P6 to replace
 
@@ -116,7 +116,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 ### 1.C Authentication screens
 - [x] Splash → welcome/onboarding (`onboarding_seen` pref)
 - [x] Login (email + password, Google button, "Forgot password?")
-- [x] Register: role → details (name, phone, email, password, DOB 18+, licence or National ID with photo) → OTP + email verification → welcome
+- [x] Register: role → details (name, phone, email, password, DOB 18+, licence or National ID with photo) → email verification → welcome
 - [x] Google first sign-in → role choice → document steps; returning Google user → Home
 - [x] Forgot-password page; verify-email pending page (resend)
 - [x] Inline validation messages on every field; blank submissions blocked
