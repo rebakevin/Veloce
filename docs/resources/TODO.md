@@ -196,10 +196,10 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `users/*/favourites`, `bookings` (create only) + `bookings/*/private/renter` · Spec §5.2–5.4 · Slot: `OwnerCarsSection`
 
 ### 3.A Domain & data
-- [ ] `SearchRepository`: published vehicles + filters + availability window + `calendarBlocks` check (§4.5)
-- [ ] `FavouritesRepository` (add/remove/watch); `RequestRepository.createBooking`
-- [ ] Use cases: `SearchVehicles`, `GetVehicleDetail`, `ToggleFavourite`, `CreateBookingRequest`
-- [ ] `CreateBookingRequest` rules: dates inside window and free, own car blocked, renter has no lock, `PendingReviewChecker` is clear, email verified; writes booking (rate/totals locked via `PricingCalculator`), reference `VLC-####`, renter contact doc, `expiresAt` = +24 h, audit log, notification to the owner
+- [x] `SearchRepository`: published vehicles + filters + availability window + `calendarBlocks` check (§4.5)
+- [x] `FavouritesRepository` (add/remove/watch); `RequestRepository.createBooking`
+- [x] Use cases: `SearchVehicles`, `GetVehicleDetail`, `ToggleFavourite`, `CreateBookingRequest`
+- [x] `CreateBookingRequest` rules: dates inside window and free, own car blocked, renter has no lock, `PendingReviewChecker` is clear, email verified; writes booking (rate/totals locked via `PricingCalculator`), reference `VLC-####`, renter contact doc, `expiresAt` = +24 h, audit log, notification to the owner
 
 ### 3.B State
 - [ ] `SearchCubit` (area, dates, type chip; saves `last_search_area`, `last_type_chip`), `FiltersCubit`, `ResultsBloc`, `CarDetailBloc`, `FavouritesBloc` (single source for hearts, Saved count), `RequestBloc`
