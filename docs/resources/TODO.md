@@ -202,7 +202,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] `CreateBookingRequest` rules: dates inside window and free, own car blocked, renter has no lock, `PendingReviewChecker` is clear, email verified; writes booking (rate/totals locked via `PricingCalculator`), reference `VLC-####`, renter contact doc, `expiresAt` = +24 h, audit log, notification to the owner
 
 ### 3.B State
-- [ ] `SearchCubit` (area, dates, type chip; saves `last_search_area`, `last_type_chip`), `FiltersCubit`, `ResultsBloc`, `CarDetailBloc`, `FavouritesBloc` (single source for hearts, Saved count), `RequestBloc`
+- [x] `SearchCubit` (area, dates, type chip; saves `last_search_area`, `last_type_chip`), `FiltersCubit`, `ResultsBloc`, `CarDetailBloc`, `FavouritesBloc` (single source for hearts, Saved count), `RequestBloc`
 
 ### 3.C Screens
 - [ ] Renter Home: greeting, search card, type chips, car cards, Explore / Saved tabs, "how it works"
