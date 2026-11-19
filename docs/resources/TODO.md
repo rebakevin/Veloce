@@ -224,7 +224,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] Widget: car card heart toggles; request button disabled until terms ticked
 
 ### 3.F Docs & demo
-- [ ] Report: search algorithm, request flow, state-management example sections
+- [x] Report: search algorithm, request flow, state-management example sections
 - [ ] Demo segment C (~2 min): search with filters, heart a car and show **two widgets update** (card heart + Saved count), send a request and show the new `bookings` doc in the console
 
 ---
