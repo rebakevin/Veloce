@@ -205,15 +205,15 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] `SearchCubit` (area, dates, type chip; saves `last_search_area`, `last_type_chip`), `FiltersCubit`, `ResultsBloc`, `CarDetailBloc`, `FavouritesBloc` (single source for hearts, Saved count), `RequestBloc`
 
 ### 3.C Screens
-- [ ] Renter Home: greeting, search card, type chips, car cards, Explore / Saved tabs, "how it works"
-- [ ] Area + date range picker (past days disabled); filters (price min/max, type, transmission, seats, active count, reset)
-- [ ] Results with count and empty state
-- [ ] Car card (photo, name/year, price, specs, owner rating, area, availability) with heart
-- [ ] Car detail: carousel, media screen, specs, features, rules, rules PDF link, owner block (info only), calendar with blocked days + window limit, live price breakdown, long-rental note ("3+ days: RWF 80,000 per day"), terms checkbox, "Request booking"
-- [ ] Owner viewing own car: read-only preview (no booking UI)
-- [ ] Request review screen (breakdown without platform fee) → confirmation `/booking/:id/requested`
-- [ ] `OwnerCarsSection` slot for the public profile
-- [ ] Hero transition on car photo; loading skeletons; empty states
+- [x] Renter Home: greeting, search card, type chips, car cards, Explore / Saved tabs, "how it works"
+- [x] Area + date range picker (past days disabled); filters (price min/max, type, transmission, seats, active count, reset)
+- [x] Results with count and empty state
+- [x] Car card (photo, name/year, price, specs, owner rating, area, availability) with heart
+- [x] Car detail: carousel, media screen, specs, features, rules, rules PDF link, owner block (info only), calendar with blocked days + window limit, live price breakdown, long-rental note ("3+ days: RWF 80,000 per day"), terms checkbox, "Request booking"
+- [x] Owner viewing own car: read-only preview (no booking UI)
+- [x] Request review screen (breakdown without platform fee) → confirmation `/booking/:id/requested`
+- [x] `OwnerCarsSection` slot for the public profile
+- [x] Hero transition on car photo; loading skeletons; empty states
 
 ### 3.D Rules & indexes
 - [ ] `favourites` and booking-create rule tests; indexes for search
