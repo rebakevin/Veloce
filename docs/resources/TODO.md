@@ -219,9 +219,9 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [ ] `favourites` and booking-create rule tests; indexes for search _(rules changed and tests written; emulator run still pending)_
 
 ### 3.E Tests
-- [ ] Unit: search filtering/availability logic, request validation (each failure), favourites toggle
-- [ ] Bloc: `FavouritesBloc`, `ResultsBloc`, `RequestBloc`
-- [ ] Widget: car card heart toggles; request button disabled until terms ticked
+- [x] Unit: search filtering/availability logic, request validation (each failure), favourites toggle
+- [x] Bloc: `FavouritesBloc`, `ResultsBloc`, `RequestBloc`
+- [x] Widget: car card heart toggles; request button disabled until terms ticked
 
 ### 3.F Docs & demo
 - [ ] Report: search algorithm, request flow, state-management example sections
