@@ -216,7 +216,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] Hero transition on car photo; loading skeletons; empty states
 
 ### 3.D Rules & indexes
-- [ ] `favourites` and booking-create rule tests; indexes for search
+- [ ] `favourites` and booking-create rule tests; indexes for search _(rules changed and tests written; emulator run still pending)_
 
 ### 3.E Tests
 - [ ] Unit: search filtering/availability logic, request validation (each failure), favourites toggle
