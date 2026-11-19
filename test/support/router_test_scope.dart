@@ -3,24 +3,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/data/services/momo_gateway_sim.dart';
 import 'package:veloce/core/data/services/preferences_service.dart';
 import 'package:veloce/core/data/services/verification_sim.dart';
 import 'package:veloce/core/domain/entities/contact.dart';
 import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
+import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
+import 'package:veloce/core/domain/services/pricing_calculator.dart';
+import 'package:veloce/core/error/result.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
 import 'package:veloce/features/auth/auth.dart';
 import 'package:veloce/features/auth/data/dev_sign_in.dart';
+import 'package:veloce/features/discovery/domain/entities/car_detail_args.dart';
+import 'package:veloce/features/discovery/domain/repositories/search_repository.dart';
+import 'package:veloce/features/discovery/domain/usecases/get_vehicle_detail.dart';
+import 'package:veloce/features/discovery/domain/usecases/search_vehicles.dart';
+import 'package:veloce/features/discovery/presentation/bloc/booking_requested_cubit.dart';
+import 'package:veloce/features/discovery/presentation/bloc/car_detail_bloc.dart';
+import 'package:veloce/features/discovery/presentation/bloc/favourites_bloc.dart';
+import 'package:veloce/features/discovery/presentation/bloc/owner_cars_cubit.dart';
+import 'package:veloce/features/discovery/presentation/bloc/search_cubit.dart';
 import 'package:veloce/features/profile/domain/entities/public_profile.dart';
 import 'package:veloce/features/profile/presentation/bloc/accounts_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/public_profile_cubit.dart';
 import 'package:veloce/features/profile/presentation/bloc/settings_cubit.dart';
 
+import '../features/discovery/support/discovery_fakes.dart';
 import 'builders.dart';
 
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
@@ -52,6 +66,9 @@ class MockAccountsBloc extends MockBloc<AccountsEvent, AccountsState>
 class MockSettingsCubit extends MockCubit<SettingsState>
     implements SettingsCubit {}
 
+class MockFavouritesBloc extends MockBloc<FavouritesEvent, FavouritesState>
+    implements FavouritesBloc {}
+
 class _MockPreferences extends Mock implements PreferencesService {}
 
 class _MockDevSignIn extends Mock implements DevSignIn {}
@@ -59,6 +76,8 @@ class _MockDevSignIn extends Mock implements DevSignIn {}
 class _MockMomo extends Mock implements MomoGatewaySim {}
 
 class _MockVerification extends Mock implements VerificationSim {}
+
+class _MockBookingLookup extends Mock implements BookingLookup {}
 
 class _FixedClock implements Clock {
   @override
@@ -117,6 +136,16 @@ class RouterTestScope {
     when(() => preferences.onboardingSeen).thenReturn(true);
     when(() => preferences.notificationsEnabled).thenReturn(true);
     when(() => preferences.themeMode).thenReturn(ThemeMode.system);
+    when(() => preferences.lastSearchArea).thenReturn(null);
+    when(() => preferences.lastTypeChip).thenReturn(null);
+
+    final discoveryRepository = FakeSearchRepository(
+      searchResult: Result.success([aVehicleCard()]),
+      ownerCarsResult: const Result.success([]),
+    );
+    final bookingLookup = _MockBookingLookup();
+    when(() => bookingLookup.byId(any()))
+        .thenAnswer((_) async => Result.success(aBooking()));
 
     T idle<T extends BlocBase<S>, S>(T bloc, S state) {
       whenListen(bloc, const Stream<Never>.empty(), initialState: state);
@@ -141,6 +170,47 @@ class RouterTestScope {
       ..registerSingleton<DevSignIn>(_MockDevSignIn())
       ..registerSingleton<MomoGatewaySim>(_MockMomo())
       ..registerSingleton<VerificationSim>(_MockVerification())
+      ..registerSingleton<SearchRepository>(discoveryRepository)
+      ..registerLazySingleton<SearchVehicles>(
+        () => SearchVehicles(discoveryRepository),
+      )
+      ..registerLazySingleton<PricingCalculator>(
+        () => const PricingCalculator(),
+      )
+      ..registerLazySingleton<AuthSession>(
+        () => FakeAuthSession(userId: 'user-1', role: role),
+      )
+      ..registerSingleton<BookingLookup>(bookingLookup)
+      ..registerLazySingleton<SearchCubit>(
+        () => SearchCubit(preferences: preferences),
+      )
+      ..registerLazySingleton<FavouritesBloc>(
+        () => idle<MockFavouritesBloc, FavouritesState>(
+          MockFavouritesBloc(),
+          const FavouritesLoaded(),
+        ),
+      )
+      ..registerFactoryParam<CarDetailBloc, String, CarDetailArgs?>(
+        (vehicleId, args) => CarDetailBloc(
+          getDetail: GetVehicleDetail(discoveryRepository),
+          session: _getIt<AuthSession>(),
+          pricing: _getIt<PricingCalculator>(),
+          clock: _getIt<Clock>(),
+          vehicleId: vehicleId,
+          initialStart: args?.start,
+          initialEnd: args?.end,
+        ),
+      )
+      ..registerFactoryParam<OwnerCarsCubit, String, void>(
+        (ownerId, _) =>
+            OwnerCarsCubit(repository: discoveryRepository, ownerId: ownerId),
+      )
+      ..registerFactoryParam<BookingRequestedCubit, String, void>(
+        (bookingId, _) => BookingRequestedCubit(
+          bookings: bookingLookup,
+          bookingId: bookingId,
+        ),
+      )
       ..registerFactory<LoginBloc>(
         () => idle(MockLoginBloc(), const LoginState()),
       )
