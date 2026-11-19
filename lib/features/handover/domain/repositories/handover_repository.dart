@@ -6,6 +6,7 @@ import '../../../../core/domain/entities/checklist_media.dart';
 import '../../../../core/domain/enums/booking_actor.dart';
 import '../../../../core/domain/enums/checklist_kind.dart';
 import '../../../../core/domain/enums/checklist_side.dart';
+import '../../../../core/domain/enums/claim_response.dart';
 
 abstract interface class HandoverRepository {
   Future<Result<void>> saveChecklist({
@@ -32,5 +33,32 @@ abstract interface class HandoverRepository {
     required String bookingId,
     required String userId,
     required BookingActor actor,
+  });
+
+  Future<Result<Booking>> submitClaim({
+    required String bookingId,
+    required String userId,
+    required int amount,
+    required String reason,
+    required List<String> evidenceUrls,
+  });
+
+  Future<Result<Booking>> respondToClaim({
+    required String bookingId,
+    required String userId,
+    required ClaimResponse response,
+  });
+
+  Future<Result<Booking>> reviseClaim({
+    required String bookingId,
+    required String userId,
+    required int amount,
+    required String reason,
+    required List<String> evidenceUrls,
+  });
+
+  Future<Result<Booking>> refundCaution({
+    required String bookingId,
+    required String userId,
   });
 }
