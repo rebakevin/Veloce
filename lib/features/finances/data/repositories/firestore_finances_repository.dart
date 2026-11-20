@@ -20,18 +20,16 @@ import '../../domain/entities/finance_transaction.dart';
 import '../../domain/entities/renter_payment_item.dart';
 import '../../domain/enums/finance_period.dart';
 import '../../domain/repositories/finances_repository.dart';
+import '../../domain/services/repair_loss_allocator.dart';
 
 /// Firestore implementation of [FinancesRepository].
 class FirestoreFinancesRepository implements FinancesRepository {
   const FirestoreFinancesRepository({
-    required FirebaseFirestore firestore,
-    required VehicleLookup vehicleLookup,
-    required BookingLookup bookingLookup,
-    required Clock clock,
-  }) : _firestore = firestore,
-       _vehicleLookup = vehicleLookup,
-       _bookingLookup = bookingLookup,
-       _clock = clock;
+    required this._firestore,
+    required this._vehicleLookup,
+    required this._bookingLookup,
+    required this._clock,
+  });
 
   final FirebaseFirestore _firestore;
   final VehicleLookup _vehicleLookup;
@@ -133,7 +131,13 @@ class FirestoreFinancesRepository implements FinancesRepository {
         }
       }
 
-      // 5. Process Loss entries in selected period
+      // 5. Process Loss entries in selected period. The deduction of a booking
+      // is offset once across all its repairs, so every repair is allocated
+      // first and the period filter comes after.
+      final lossByRepair = RepairLossAllocator.allocate(
+        repairs: allRepairExpenses,
+        deductionByBooking: claimDeductionsByBooking,
+      );
       for (final repair in allRepairExpenses) {
         if (vehicleId != null && repair.vehicleId != vehicleId) {
           continue;
@@ -144,9 +148,7 @@ class FirestoreFinancesRepository implements FinancesRepository {
           continue;
         }
 
-        final deduction = claimDeductionsByBooking[repair.bookingId] ?? 0;
-        final loss = max(0, repair.amount - deduction);
-
+        final loss = lossByRepair[repair.id] ?? 0;
         if (loss > 0) {
           rawTransactions.add(
             FinanceTransaction(
@@ -190,11 +192,11 @@ class FirestoreFinancesRepository implements FinancesRepository {
 
       final totalEarned = enrichedTransactions
           .where((t) => t.type == FinanceEntryType.earned)
-          .fold<int>(0, (sum, t) => sum + t.amount);
+          .fold<int>(0, (total, t) => total + t.amount);
 
       final totalLosses = enrichedTransactions
           .where((t) => t.type == FinanceEntryType.loss)
-          .fold<int>(0, (sum, t) => sum + t.amount);
+          .fold<int>(0, (total, t) => total + t.amount);
 
       // 8. Build per-car share breakdown
       final carShares = <CarFinanceShare>[];
@@ -214,13 +216,13 @@ class FirestoreFinancesRepository implements FinancesRepository {
                 (t) =>
                     t.vehicleId == car.id && t.type == FinanceEntryType.earned,
               )
-              .fold<int>(0, (sum, t) => sum + t.amount);
+              .fold<int>(0, (total, t) => total + t.amount);
 
           final carLosses = enrichedTransactions
               .where(
                 (t) => t.vehicleId == car.id && t.type == FinanceEntryType.loss,
               )
-              .fold<int>(0, (sum, t) => sum + t.amount);
+              .fold<int>(0, (total, t) => total + t.amount);
 
           final share = totalEarned > 0 ? (carEarned / totalEarned) : 0.0;
 
