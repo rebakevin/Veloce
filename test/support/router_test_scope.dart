@@ -113,22 +113,6 @@ class _MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 class _MockRepairExpenseRepository extends Mock
     implements RepairExpenseRepository {}
 
-class _RouterTestSession implements AuthSession {
-  _RouterTestSession(this.role);
-
-  @override
-  final UserRole? role;
-
-  @override
-  String? get currentUserId => role == null ? null : 'user-1';
-
-  @override
-  bool get isEmailVerified => role != null;
-
-  @override
-  Stream<void> get changes => const Stream.empty();
-}
-
 class _FixedClock implements Clock {
   @override
   DateTime now() => testNow;
@@ -235,7 +219,6 @@ class RouterTestScope {
 
     _getIt
       ..registerSingleton<AppMessenger>(messenger)
-      ..registerSingleton<AuthSession>(_RouterTestSession(role))
       ..registerSingleton<Clock>(_FixedClock())
       ..registerSingleton<PreferencesService>(preferences)
       ..registerSingleton<DevSignIn>(_MockDevSignIn())
