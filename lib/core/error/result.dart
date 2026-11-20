@@ -29,3 +29,10 @@ final class Failure<T> extends Result<T> {
 
   final AppFailure failure;
 }
+
+extension ResultValueExt<T> on Result<T> {
+  T? get valueOrNull => switch (this) {
+    Success(:final value) => value,
+    Failure() => null,
+  };
+}

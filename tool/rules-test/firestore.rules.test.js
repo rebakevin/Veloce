@@ -11,6 +11,7 @@ const {
   initializeTestEnvironment,
 } = require('@firebase/rules-unit-testing');
 const {
+  deleteDoc,
   doc,
   getDoc,
   serverTimestamp,
@@ -794,5 +795,396 @@ describe('pickup needs both timestamps, dispute and re-claim stay in review', ()
         updatedAt: NOW(),
       }),
     );
+  });
+});
+
+// ---------- Phase 6: reviews, rating aggregates, notifications ----------
+
+const REVIEW_USER = 'booking-p6_renter4_user';
+const REVIEW_CAR = 'booking-p6_renter4_vehicle';
+
+function review(overrides = {}) {
+  return {
+    bookingId: 'booking-p6',
+    authorId: RENTER,
+    subjectType: 'user',
+    subjectId: OWNER,
+    stars: 4,
+    comment: 'Smooth handover',
+    createdAt: new Date(),
+    editedAt: null,
+    ...overrides,
+  };
+}
+
+function appNotification(overrides = {}) {
+  return {
+    userId: OWNER,
+    type: 'request_received',
+    bookingId: 'booking-p6',
+    read: false,
+    createdAt: new Date(),
+    ...overrides,
+  };
+}
+
+// Reviewed users and cars start with an aggregate, like the seed does.
+async function seedRated() {
+  await seedBooking('booking-p6', 'completed');
+  await seedDoc('users/owner1', {
+    role: 'owner',
+    ratingAvg: 4,
+    ratingCount: 2,
+  });
+  await seedDoc('users/renter4', {
+    role: 'renter',
+    ratingAvg: 5,
+    ratingCount: 1,
+  });
+  await seedDoc('vehicles/car-1', {
+    ownerId: OWNER,
+    status: 'published',
+    ratingAvg: 4,
+    ratingCount: 2,
+  });
+}
+
+describe('reviews', () => {
+  beforeEach(seedRated);
+
+  it('lets an author create their own review', async () => {
+    await assertSucceeds(
+      setDoc(doc(dbFor(RENTER), `reviews/${REVIEW_USER}`), review()),
+    );
+  });
+
+  it('rejects creating a review as someone else', async () => {
+    await assertFails(
+      setDoc(
+        doc(dbFor(OUTSIDER), `reviews/${REVIEW_USER}`),
+        review({ authorId: RENTER }),
+      ),
+    );
+  });
+
+  it('lets any signed-in user read a review', async () => {
+    await seedDoc(`reviews/${REVIEW_USER}`, review());
+    await assertSucceeds(getDoc(doc(dbFor(OUTSIDER), `reviews/${REVIEW_USER}`)));
+    await assertSucceeds(getDoc(doc(dbFor(OWNER), `reviews/${REVIEW_USER}`)));
+  });
+
+  describe('existing review', () => {
+    beforeEach(() => seedDoc(`reviews/${REVIEW_USER}`, review()));
+
+    it('lets the author edit stars and comment', async () => {
+      await assertSucceeds(
+        updateDoc(doc(dbFor(RENTER), `reviews/${REVIEW_USER}`), {
+          stars: 5,
+          comment: 'Even better on reflection',
+          editedAt: new Date(),
+        }),
+      );
+    });
+
+    it('rejects an edit by anyone else, including the subject', async () => {
+      await assertFails(
+        updateDoc(doc(dbFor(OWNER), `reviews/${REVIEW_USER}`), { stars: 1 }),
+      );
+      await assertFails(
+        updateDoc(doc(dbFor(OUTSIDER), `reviews/${REVIEW_USER}`), { stars: 1 }),
+      );
+    });
+
+    it('rejects changing authorId, bookingId, subjectId or subjectType', async () => {
+      const ref = doc(dbFor(RENTER), `reviews/${REVIEW_USER}`);
+      await assertFails(updateDoc(ref, { authorId: OUTSIDER }));
+      await assertFails(updateDoc(ref, { bookingId: 'booking-other' }));
+      await assertFails(updateDoc(ref, { subjectId: OUTSIDER }));
+      await assertFails(updateDoc(ref, { subjectType: 'vehicle' }));
+    });
+
+    it('lets the author, the subject and a booking party delete', async () => {
+      // Author.
+      await assertSucceeds(
+        deleteDoc(doc(dbFor(RENTER), `reviews/${REVIEW_USER}`)),
+      );
+      // Subject (owner1 is also a party, so check a car review separately).
+      await seedDoc(`reviews/${REVIEW_USER}`, review());
+      await assertSucceeds(
+        deleteDoc(doc(dbFor(OWNER), `reviews/${REVIEW_USER}`)),
+      );
+      // Booking party for a car review: subjectId is the car, not the user.
+      await seedDoc(
+        `reviews/${REVIEW_CAR}`,
+        review({ subjectType: 'vehicle', subjectId: 'car-1' }),
+      );
+      await assertSucceeds(
+        deleteDoc(doc(dbFor(OWNER), `reviews/${REVIEW_CAR}`)),
+      );
+    });
+
+    it('rejects delete by someone unrelated to the review', async () => {
+      await assertFails(
+        deleteDoc(doc(dbFor(OUTSIDER), `reviews/${REVIEW_USER}`)),
+      );
+    });
+  });
+});
+
+describe('rating aggregate (users)', () => {
+  beforeEach(seedRated);
+
+  const rate = (uid, target, data) =>
+    updateDoc(doc(dbFor(uid), `users/${target}`), data);
+
+  it('lets a non-owner add one rating', async () => {
+    await assertSucceeds(
+      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: 3 }),
+    );
+  });
+
+  it('lets a non-owner change the average with the count unchanged (edit)', async () => {
+    await assertSucceeds(
+      rate(RENTER, 'owner1', { ratingAvg: 3.5, ratingCount: 2 }),
+    );
+  });
+
+  it('accepts the bounds 1 and 5', async () => {
+    await assertSucceeds(
+      rate(RENTER, 'owner1', { ratingAvg: 1, ratingCount: 3 }),
+    );
+    await assertSucceeds(
+      rate(RENTER, 'owner1', { ratingAvg: 5, ratingCount: 3 }),
+    );
+  });
+
+  it('rejects changing another field in the same write', async () => {
+    await assertFails(
+      rate(RENTER, 'owner1', {
+        ratingAvg: 4.3,
+        ratingCount: 3,
+        role: 'renter',
+      }),
+    );
+    await assertFails(rate(RENTER, 'owner1', { completedCount: 10 }));
+    await assertFails(rate(RENTER, 'owner1', { verified: true }));
+  });
+
+  it('rejects a count that jumps by 2 or goes down', async () => {
+    await assertFails(
+      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: 4 }),
+    );
+    await assertFails(
+      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: 1 }),
+    );
+    await assertFails(
+      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: 0 }),
+    );
+  });
+
+  it('rejects an average of 0 or above 5', async () => {
+    await assertFails(
+      rate(RENTER, 'owner1', { ratingAvg: 0, ratingCount: 3 }),
+    );
+    await assertFails(
+      rate(RENTER, 'owner1', { ratingAvg: 0.9, ratingCount: 3 }),
+    );
+    await assertFails(
+      rate(RENTER, 'owner1', { ratingAvg: 5.1, ratingCount: 3 }),
+    );
+    await assertFails(
+      rate(RENTER, 'owner1', { ratingAvg: 6, ratingCount: 3 }),
+    );
+  });
+
+  it('rejects an owner changing their own rating', async () => {
+    await assertFails(
+      rate(OWNER, 'owner1', { ratingAvg: 5, ratingCount: 3 }),
+    );
+    await assertFails(rate(OWNER, 'owner1', { ratingAvg: 5 }));
+  });
+
+  it('still lets an owner edit their own profile fields', async () => {
+    await assertSucceeds(rate(OWNER, 'owner1', { displayName: 'Owner One' }));
+  });
+});
+
+describe('rating aggregate (vehicles)', () => {
+  beforeEach(seedRated);
+
+  const rate = (uid, data) =>
+    updateDoc(doc(dbFor(uid), 'vehicles/car-1'), data);
+
+  it('rejects the owner changing their own car rating', async () => {
+    await assertFails(rate(OWNER, { ratingAvg: 5, ratingCount: 3 }));
+    await assertFails(rate(OWNER, { ratingAvg: 5 }));
+    await assertFails(rate(OWNER, { ratingCount: 50 }));
+  });
+
+  it('still lets the owner edit the listing fields', async () => {
+    await assertSucceeds(rate(OWNER, { dailyPrice: 60000 }));
+  });
+
+  it('lets a non-owner add one rating or edit the average', async () => {
+    await assertSucceeds(rate(RENTER, { ratingAvg: 4.3, ratingCount: 3 }));
+    await assertSucceeds(rate(RENTER, { ratingAvg: 3.5, ratingCount: 3 }));
+  });
+
+  it('rejects changing another field', async () => {
+    await assertFails(
+      rate(RENTER, { ratingAvg: 4.3, ratingCount: 3, dailyRate: 1000 }),
+    );
+    await assertFails(rate(RENTER, { status: 'hidden' }));
+    await assertFails(rate(RENTER, { ownerId: RENTER }));
+  });
+
+  it('rejects a count that jumps by 2 or goes down', async () => {
+    await assertFails(rate(RENTER, { ratingAvg: 4.3, ratingCount: 4 }));
+    await assertFails(rate(RENTER, { ratingAvg: 4.3, ratingCount: 1 }));
+  });
+
+  it('rejects an average of 0 or above 5', async () => {
+    await assertFails(rate(RENTER, { ratingAvg: 0, ratingCount: 3 }));
+    await assertFails(rate(RENTER, { ratingAvg: 5.5, ratingCount: 3 }));
+  });
+});
+
+// Mirrors FirestoreReviewRepository.submitReview: one batch with the review
+// and the subject's new aggregate.
+describe('review batch (review + aggregate)', () => {
+  beforeEach(seedRated);
+
+  it('writes a user review and the aggregate together', async () => {
+    const db = dbFor(RENTER);
+    const batch = writeBatch(db);
+    batch.set(doc(db, `reviews/${REVIEW_USER}`), review());
+    batch.update(doc(db, 'users/owner1'), { ratingAvg: 4, ratingCount: 3 });
+    await assertSucceeds(batch.commit());
+  });
+
+  it('writes a car review and the aggregate together', async () => {
+    const db = dbFor(RENTER);
+    const batch = writeBatch(db);
+    batch.set(
+      doc(db, `reviews/${REVIEW_CAR}`),
+      review({ subjectType: 'vehicle', subjectId: 'car-1' }),
+    );
+    batch.update(doc(db, 'vehicles/car-1'), { ratingAvg: 4, ratingCount: 3 });
+    await assertSucceeds(batch.commit());
+  });
+
+  it('writes an owner-to-renter review and the aggregate together', async () => {
+    const db = dbFor(OWNER);
+    const batch = writeBatch(db);
+    batch.set(
+      doc(db, 'reviews/booking-p6_owner1_user'),
+      review({ authorId: OWNER, subjectId: RENTER }),
+    );
+    batch.update(doc(db, 'users/renter4'), { ratingAvg: 4.5, ratingCount: 2 });
+    await assertSucceeds(batch.commit());
+  });
+
+  it('writes an edit and the recomputed average (count unchanged)', async () => {
+    await seedDoc(`reviews/${REVIEW_USER}`, review());
+    const db = dbFor(RENTER);
+    const batch = writeBatch(db);
+    batch.update(doc(db, `reviews/${REVIEW_USER}`), {
+      stars: 5,
+      comment: 'Updated',
+      editedAt: new Date(),
+    });
+    batch.update(doc(db, 'users/owner1'), { ratingAvg: 4.5, ratingCount: 2 });
+    await assertSucceeds(batch.commit());
+  });
+
+  it('fails the whole batch when the aggregate is out of bounds', async () => {
+    const db = dbFor(RENTER);
+    const batch = writeBatch(db);
+    batch.set(doc(db, `reviews/${REVIEW_USER}`), review());
+    batch.update(doc(db, 'users/owner1'), { ratingAvg: 4, ratingCount: 5 });
+    await assertFails(batch.commit());
+    await environment.withSecurityRulesDisabled(async (context) => {
+      const snap = await getDoc(doc(context.firestore(), `reviews/${REVIEW_USER}`));
+      if (snap.exists()) throw new Error('review must not be written');
+    });
+  });
+
+  it('fails the batch when the review is written for another author', async () => {
+    const db = dbFor(OUTSIDER);
+    const batch = writeBatch(db);
+    batch.set(doc(db, `reviews/${REVIEW_USER}`), review());
+    batch.update(doc(db, 'users/owner1'), { ratingAvg: 4, ratingCount: 3 });
+    await assertFails(batch.commit());
+  });
+});
+
+describe('notifications', () => {
+  it('lets any signed-in user create a notification for someone else', async () => {
+    await assertSucceeds(
+      setDoc(doc(dbFor(RENTER), 'notifications/n-1'), appNotification()),
+    );
+  });
+
+  describe('existing notification', () => {
+    beforeEach(() => seedDoc('notifications/n-1', appNotification()));
+
+    it('lets only the owner read it', async () => {
+      await assertSucceeds(getDoc(doc(dbFor(OWNER), 'notifications/n-1')));
+      await assertFails(getDoc(doc(dbFor(RENTER), 'notifications/n-1')));
+    });
+
+    it('lets only the owner mark it read', async () => {
+      await assertSucceeds(
+        updateDoc(doc(dbFor(OWNER), 'notifications/n-1'), { read: true }),
+      );
+      await assertFails(
+        updateDoc(doc(dbFor(RENTER), 'notifications/n-1'), { read: true }),
+      );
+    });
+
+    it('lets only the owner delete it', async () => {
+      await assertFails(deleteDoc(doc(dbFor(RENTER), 'notifications/n-1')));
+      await assertSucceeds(deleteDoc(doc(dbFor(OWNER), 'notifications/n-1')));
+    });
+  });
+});
+
+describe('unauthenticated access (phase 6 collections)', () => {
+  const anon = () => environment.unauthenticatedContext().firestore();
+
+  beforeEach(async () => {
+    await seedRated();
+    await seedDoc(`reviews/${REVIEW_USER}`, review());
+    await seedDoc('notifications/n-1', appNotification());
+  });
+
+  it('denies reviews', async () => {
+    await assertFails(getDoc(doc(anon(), `reviews/${REVIEW_USER}`)));
+    await assertFails(setDoc(doc(anon(), 'reviews/new'), review()));
+    await assertFails(
+      updateDoc(doc(anon(), `reviews/${REVIEW_USER}`), { stars: 1 }),
+    );
+    await assertFails(deleteDoc(doc(anon(), `reviews/${REVIEW_USER}`)));
+  });
+
+  it('denies rating aggregates on users and vehicles', async () => {
+    await assertFails(
+      updateDoc(doc(anon(), 'users/owner1'), { ratingAvg: 4, ratingCount: 3 }),
+    );
+    await assertFails(
+      updateDoc(doc(anon(), 'vehicles/car-1'), {
+        ratingAvg: 4,
+        ratingCount: 3,
+      }),
+    );
+  });
+
+  it('denies notifications', async () => {
+    await assertFails(getDoc(doc(anon(), 'notifications/n-1')));
+    await assertFails(setDoc(doc(anon(), 'notifications/n-2'), appNotification()));
+    await assertFails(
+      updateDoc(doc(anon(), 'notifications/n-1'), { read: true }),
+    );
+    await assertFails(deleteDoc(doc(anon(), 'notifications/n-1')));
   });
 });

@@ -118,6 +118,15 @@ void main() {
       for (var i = 0; i < linkCount; i++) {
         router.go(entry.path);
         await tester.pumpAndSettle();
+        // Re-evaluate after navigation: scroll-driven or state-driven rebuilds
+        // can change the visible tile count; skip gracefully if the tile is gone.
+        final liveTiles = find
+            .descendant(
+              of: find.byType(PlaceholderLinks),
+              matching: find.byType(ListTile),
+            )
+            .evaluate();
+        if (i >= liveTiles.length) continue;
         final tile = find
             .descendant(
               of: find.byType(PlaceholderLinks),

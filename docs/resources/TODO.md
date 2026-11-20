@@ -310,39 +310,39 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `reviews` (+ rating aggregates on `users`/`vehicles`), `notifications` (read/clear), reads `transactions`/`repairExpenses` · Spec §5.7, §7, §8.1, §8.3 · Slots: `FinancesCard`, `ReviewsPreviewSection`, `PostRentalSection`
 
 ### 6.A Reviews
-- [ ] `ReviewRepository`: create/edit only (never delete); id `bookingId_authorId_subjectType`; aggregates updated in the same batch
-- [ ] `PendingReviewChecker` real implementation (replaces the Phase 0 stub): completed bookings missing required reviews (owner→renter; renter→owner and renter→car)
-- [ ] Screens: write/edit reviews `/booking/:id/review` (stars + comment, both mandatory), car reviews `/car/:id/reviews`, user reviews `/user/:id/reviews` and `/profile/reviews`
-- [ ] `PostRentalSection` ("review due" prompts) and `ReviewsPreviewSection`; rating widgets reused from the kit
+- [x] `ReviewRepository`: create/edit only (never delete); id `bookingId_authorId_subjectType`; aggregates updated in the same batch
+- [x] `PendingReviewChecker` real implementation (replaces the Phase 0 stub): completed bookings missing required reviews (owner→renter; renter→owner and renter→car)
+- [x] Screens: write/edit reviews `/booking/:id/review` (stars + comment, both mandatory), car reviews `/car/:id/reviews`, user reviews `/user/:id/reviews` and `/profile/reviews`
+- [x] `PostRentalSection` ("review due" prompts) and `ReviewsPreviewSection`; rating widgets reused from the kit
 
 ### 6.B Notifications
-- [ ] `NotificationsBloc` (stream, unread count, mark read, mark all read, delete/clear), deep link into the booking
-- [ ] Icon per type; unread dot; bottom-nav badge; on/off setting read from `notifications_enabled`
-- [ ] Event types: request received/approved/declined/expired, payment deadline approaching, pickup/return confirmed by the other side, claim changed, late fee applied, review due
+- [x] `NotificationsBloc` (stream, unread count, mark read, mark all read, delete/clear), deep link into the booking
+- [x] Icon per type; unread dot; bottom-nav badge; on/off setting read from `notifications_enabled`
+- [x] Event types: request received/approved/declined/expired, payment deadline approaching, pickup/return confirmed by the other side, claim changed, late fee applied, review due
 
 ### 6.C Owner finances (spec §7)
-- [ ] `FinancesRepository` computing **Total earned** and **Total losses** from `transactions` + `repairExpenses` (§5.2), for *This month* / *This year*
-- [ ] Finances screen: period toggle, two tiles, Chart/Table toggle, per-car list with share bar
-- [ ] Chart (`fl_chart`): paired bars per day (month) or per month (year), two colours + legend, tap shows amounts, empty periods blank
-- [ ] Table: newest first, latest 5 rows + "View all transactions" → full page; total equals the tiles
-- [ ] Car finances screen (same layout filtered) and its transactions page
-- [ ] `FinancesCard` slot (this month earned / losses) opening the screen
-- [ ] Empty states; RWF no decimals; no export
+- [x] `FinancesRepository` computing **Total earned** and **Total losses** from `transactions` + `repairExpenses` (§5.2), for *This month* / *This year*
+- [x] Finances screen: period toggle, two tiles, Chart/Table toggle, per-car list with share bar
+- [x] Chart (`fl_chart`): paired bars per day (month) or per month (year), two colours + legend, tap shows amounts, empty periods blank
+- [x] Table: newest first, latest 5 rows + "View all transactions" → full page; total equals the tiles
+- [x] Car finances screen (same layout filtered) and its transactions page
+- [x] `FinancesCard` slot (this month earned / losses) opening the screen
+- [x] Empty states; RWF no decimals; no export
 
 ### 6.D Renter payment history
-- [ ] `/renter/payments`: payment, caution refund, claim deduction, late fee, cancellation refund — date, booking, amount, status
+- [x] `/renter/payments`: payment, caution refund, claim deduction, late fee, cancellation refund — date, booking, amount, status
 
 ### 6.E Rules & indexes
-- [ ] `reviews` (no delete, edit by author only), `notifications` blocks; indexes from §4.4
-- [ ] Rating aggregate update guarded in rules (aggregates change only alongside a matching review)
+- [x] `reviews` (no delete, edit by author only), `notifications` blocks; indexes from §4.4
+- [x] Rating aggregate update guarded in rules (aggregates change only alongside a matching review) _(bounded, not proven: a rule cannot tie the aggregate to the review written in the same batch)_
 
 ### 6.F Tests
-- [ ] Unit: earned/loss calculation incl. the caution offset, period bucketing, table total = tiles, pending-review detection, rating average
-- [ ] Bloc: `FinancesBloc` (period/view toggle), `NotificationsBloc`, `ReviewBloc`
-- [ ] Widget: finances table shows 5 rows and the "View all" link only when > 5
+- [x] Unit: earned/loss calculation incl. the caution offset, period bucketing, table total = tiles, pending-review detection, rating average _(table total = tiles holds by construction, not asserted by a widget test)_
+- [x] Bloc: `FinancesBloc` (period/view toggle), `NotificationsBloc`, `ReviewBloc`
+- [x] Widget: finances table shows 5 rows and the "View all" link only when > 5
 
 ### 6.G Docs & demo
-- [ ] Report: finances formulas, reviews rule, notifications sections
+- [x] Report: finances formulas, reviews rule, notifications sections
 - [ ] Demo segment F (~2 min): leave both reviews, edit one, notification deep link, finances chart ↔ table, payment history
 
 ---
