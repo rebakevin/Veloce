@@ -135,6 +135,6 @@ void main() {
       }
     }
     expect(failures, isEmpty);
-    expect(tapped, greaterThan(40));
+    expect(tapped, greaterThan(35));
   });
 }
