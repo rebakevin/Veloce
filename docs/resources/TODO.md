@@ -153,38 +153,38 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `vehicles`, `vehicles/*/photos`, `vehicles/*/documents` · Spec §6.2–6.4 · Slot: `CarCountCard`
 
 ### 2.A Domain & data
-- [ ] `VehicleRepository` (create/update/delete/watch own cars, photos, documents, availability, pause/resume)
-- [ ] Use cases: `PublishVehicle`, `UpdateVehicle`, `RemoveVehicle` (blocked while open bookings exist), `SetAvailability`, `SetStatus`, `UpsertDocument`
-- [ ] `RecomputeDocsValidUntil` (min of insurance and medical expiry) after any document change
-- [ ] Photo upload/reorder/delete via `MediaStorage`
+- [x] `VehicleRepository` (create/update/delete/watch own cars, photos, documents, availability, pause/resume)
+- [x] Use cases: `PublishVehicle`, `UpdateVehicle`, `RemoveVehicle` (blocked while open bookings exist), `SetAvailability`, `SetStatus`, `UpsertDocument`
+- [x] `RecomputeDocsValidUntil` (min of insurance and medical expiry) after any document change
+- [ ] Photo upload/reorder/delete via `MediaStorage` (upload and delete are done; kept in edit mode; reordering is not built)
 
 ### 2.B Business rules (pure, unit-tested)
-- [ ] Plate `RAB 123 A` validator; year 2005–2026; price ≥ 5,000; caution ≥ 0
-- [ ] Long-rental tier validator (≤ 3; ≥ 2 days; strictly decreasing; ≥ 5,000)
-- [ ] Example text per tier ("5 days: 5 × 75,000 = 375,000") and 3-day preview (renter pays / owner receives = fee − 2,000) using `PricingCalculator`
-- [ ] Documents rule: insurance + medical required, yellow paper optional, plate must match, expiry in future
+- [x] Plate `RAB 123 A` validator; year 2005–2026; price ≥ 5,000; caution ≥ 0
+- [x] Long-rental tier validator (≤ 3; ≥ 2 days; strictly decreasing; ≥ 5,000)
+- [x] Example text per tier ("5 days: 5 × 75,000 = 375,000") and 3-day preview (renter pays / owner receives = fee − 2,000) using `PricingCalculator`
+- [x] Documents rule: insurance + medical required, yellow paper optional, plate must match, expiry in future
 
 ### 2.C Screens (7-step wizard, `/owner/cars/new` and `/owner/cars/:id/edit`)
-- [ ] Wizard shell with progress bar, back/next, per-step validation, draft kept in `CarWizardBloc`
-- [ ] Step 1 media (3–6 photos, primary, optional video)
-- [ ] Step 2 vehicle details · Step 3 specifications
-- [ ] Step 4 pricing + long-rental tiers + live preview
-- [ ] Step 5 rental rules (+ optional PDF)
-- [ ] Step 6 documents (photo, number, expiry, simulated verification; yellow paper skippable)
-- [ ] Step 7 review & publish ("Not added" for skipped yellow paper)
-- [ ] My cars list: photo, plate, price, status, availability line, next rental, edit / availability / pause-resume / remove (confirmation dialog)
-- [ ] Availability screen: one date range only; booked days locked
-- [ ] Documents screen: add yellow paper later, replace expired documents; paused-by-expiry banner
-- [ ] `CarCountCard` slot for owner home
+- [x] Wizard shell with progress bar, back/next, per-step validation, draft kept in `CarWizardBloc`
+- [x] Step 1 media (3–6 photos, primary, optional video)
+- [x] Step 2 vehicle details · Step 3 specifications
+- [x] Step 4 pricing + long-rental tiers + live preview
+- [x] Step 5 rental rules (+ optional PDF)
+- [x] Step 6 documents (photo, number, expiry, simulated verification; yellow paper skippable)
+- [x] Step 7 review & publish ("Not added" for skipped yellow paper)
+- [x] My cars list: photo, plate, price, status, availability line, next rental, edit / availability / pause-resume / remove (confirmation dialog)
+- [x] Availability screen: one date range only; booked days locked
+- [x] Documents screen: add yellow paper later, replace expired documents; paused-by-expiry banner
+- [x] `CarCountCard` slot for owner home
 
 ### 2.D Rules & indexes
-- [ ] `vehicles` block (owner-only writes; documents owner-only); add indexes from §4.4
+- [x] `vehicles` block (owner-only writes; documents owner-only); add indexes from §4.4
 - [ ] Verify another user cannot edit or read vehicle documents
 
 ### 2.E Tests
-- [ ] Unit: plate, tiers, documents rule, `docsValidUntil`, remove-blocked rule
-- [ ] Bloc: `CarWizardBloc` (step validation, publish success/failure), `MyCarsBloc`
-- [ ] Widget: wizard step shows errors and blocks Next
+- [x] Unit: plate, tiers, documents rule, `docsValidUntil`, remove-blocked rule
+- [x] Bloc: `CarWizardBloc` (step validation, publish success/failure), `MyCarsBloc`
+- [x] Widget: wizard step shows errors and blocks Next
 
 ### 2.F Docs & demo
 - [ ] Report: vehicle data model, listing wizard, document rule sections
