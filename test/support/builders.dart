@@ -1,4 +1,5 @@
 import 'package:veloce/core/domain/entities/booking.dart';
+import 'package:veloce/core/domain/entities/calendar_block.dart';
 import 'package:veloce/core/domain/entities/caution_claim.dart';
 import 'package:veloce/core/domain/entities/claim_history_entry.dart';
 import 'package:veloce/core/domain/entities/ledger_entry.dart';
@@ -16,6 +17,7 @@ import 'package:veloce/core/domain/enums/transmission.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
+import 'package:veloce/features/discovery/domain/entities/vehicle_card_data.dart';
 
 final DateTime testNow = DateTime(2026, 11, 9, 10);
 
@@ -31,34 +33,49 @@ UserAccount aUser({UserRole role = UserRole.renter}) => UserAccount(
   createdAt: testNow,
 );
 
-Vehicle aVehicle() => Vehicle(
-  id: 'car-1',
-  ownerId: 'owner-1',
+Vehicle aVehicle({
+  String id = 'car-1',
+  String ownerId = 'owner-1',
+  VehicleStatus status = VehicleStatus.published,
+  VehicleType type = VehicleType.hatchback,
+  Transmission transmission = Transmission.automatic,
+  int seats = 5,
+  int dailyPrice = 80000,
+  List<LongRate>? longRates,
+  String neighbourhood = 'Kacyiru',
+  DateTime? availableFrom,
+  DateTime? availableTo,
+  DateTime? docsValidUntil,
+  double ratingAvg = 0,
+  int ratingCount = 0,
+}) => Vehicle(
+  id: id,
+  ownerId: ownerId,
   plate: 'RAB 123 A',
   make: 'Toyota',
   model: 'Vitz',
   year: 2018,
-  type: VehicleType.hatchback,
-  transmission: Transmission.automatic,
+  type: type,
+  transmission: transmission,
   fuel: FuelType.petrol,
-  seats: 5,
+  seats: seats,
   features: const ['AC', 'Bluetooth'],
   description: 'Clean and economical.',
-  dailyPrice: 80000,
-  longRates: const [LongRate(fromDays: 3, pricePerDay: 70000)],
+  dailyPrice: dailyPrice,
+  longRates: longRates ?? const [LongRate(fromDays: 3, pricePerDay: 70000)],
   cautionFee: 100000,
-  neighbourhood: 'Kacyiru',
+  neighbourhood: neighbourhood,
   fuelRule: 'Return with the same level',
   smoking: 'No smoking',
   extras: const [],
   rulesFileUrl: null,
   videoUrl: null,
-  status: VehicleStatus.published,
-  availableFrom: testNow,
-  availableTo: testNow.add(const Duration(days: 30)),
-  docsValidUntil: testNow.add(const Duration(days: 200)),
-  ratingAvg: 0,
-  ratingCount: 0,
+  status: status,
+  availableFrom: availableFrom ?? testNow,
+  availableTo: availableTo ?? testNow.add(const Duration(days: 30)),
+  docsValidUntil: docsValidUntil ?? testNow.add(const Duration(days: 200)),
+  ratingAvg: ratingAvg,
+  ratingCount: ratingCount,
   createdAt: testNow,
 );
 
@@ -99,6 +116,16 @@ Booking aBooking({
   completedAt: null,
   createdAt: testNow,
   updatedAt: testNow,
+);
+
+VehicleCardData aVehicleCard({Vehicle? vehicle}) =>
+    VehicleCardData(vehicle: vehicle ?? aVehicle(), photoUrl: null);
+
+CalendarBlock aCalendarBlock({DateTime? start, DateTime? end}) => CalendarBlock(
+  bookingId: 'booking-1',
+  vehicleId: 'car-1',
+  startDate: start ?? testNow.add(const Duration(days: 1)),
+  endDate: end ?? testNow.add(const Duration(days: 3)),
 );
 
 LedgerEntry aLedgerEntry(TransactionType type, int amount) => LedgerEntry(

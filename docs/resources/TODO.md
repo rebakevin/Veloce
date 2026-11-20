@@ -77,7 +77,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] `PricingCalculator` (+ long-rental tiers) with unit tests
 - [x] `BookingStateMachine` (transition table + `effectiveStatus`) with unit tests
 - [x] `LedgerWriter` (+ held-balance invariant test), `AuditLogger`, `NotificationWriter` Firestore implementations
-- [x] `MomoGatewaySim` (success/failure toggle), `VerificationSim` (OTP + document check)
+- [x] `MomoGatewaySim` (success/failure toggle), `VerificationSim` (document check)
 - [x] `PreferencesService` (5 keys, §9) + `ThemeCubit`
 - [x] `PendingReviewChecker` stub (returns false) registered inside `reviews_injection.dart` for P6 to replace
 
@@ -116,7 +116,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 ### 1.C Authentication screens
 - [x] Splash → welcome/onboarding (`onboarding_seen` pref)
 - [x] Login (email + password, Google button, "Forgot password?")
-- [x] Register: role → details (name, phone, email, password, DOB 18+, licence or National ID with photo) → OTP + email verification → welcome
+- [x] Register: role → details (name, phone, email, password, DOB 18+, licence or National ID with photo) → email verification → welcome
 - [x] Google first sign-in → role choice → document steps; returning Google user → Home
 - [x] Forgot-password page; verify-email pending page (resend)
 - [x] Inline validation messages on every field; blank submissions blocked
@@ -153,38 +153,38 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `vehicles`, `vehicles/*/photos`, `vehicles/*/documents` · Spec §6.2–6.4 · Slot: `CarCountCard`
 
 ### 2.A Domain & data
-- [ ] `VehicleRepository` (create/update/delete/watch own cars, photos, documents, availability, pause/resume)
-- [ ] Use cases: `PublishVehicle`, `UpdateVehicle`, `RemoveVehicle` (blocked while open bookings exist), `SetAvailability`, `SetStatus`, `UpsertDocument`
-- [ ] `RecomputeDocsValidUntil` (min of insurance and medical expiry) after any document change
-- [ ] Photo upload/reorder/delete via `MediaStorage`
+- [x] `VehicleRepository` (create/update/delete/watch own cars, photos, documents, availability, pause/resume)
+- [x] Use cases: `PublishVehicle`, `UpdateVehicle`, `RemoveVehicle` (blocked while open bookings exist), `SetAvailability`, `SetStatus`, `UpsertDocument`
+- [x] `RecomputeDocsValidUntil` (min of insurance and medical expiry) after any document change
+- [ ] Photo upload/reorder/delete via `MediaStorage` (upload and delete are done; kept in edit mode; reordering is not built)
 
 ### 2.B Business rules (pure, unit-tested)
-- [ ] Plate `RAB 123 A` validator; year 2005–2026; price ≥ 5,000; caution ≥ 0
-- [ ] Long-rental tier validator (≤ 3; ≥ 2 days; strictly decreasing; ≥ 5,000)
-- [ ] Example text per tier ("5 days: 5 × 75,000 = 375,000") and 3-day preview (renter pays / owner receives = fee − 2,000) using `PricingCalculator`
-- [ ] Documents rule: insurance + medical required, yellow paper optional, plate must match, expiry in future
+- [x] Plate `RAB 123 A` validator; year 2005–2026; price ≥ 5,000; caution ≥ 0
+- [x] Long-rental tier validator (≤ 3; ≥ 2 days; strictly decreasing; ≥ 5,000)
+- [x] Example text per tier ("5 days: 5 × 75,000 = 375,000") and 3-day preview (renter pays / owner receives = fee − 2,000) using `PricingCalculator`
+- [x] Documents rule: insurance + medical required, yellow paper optional, plate must match, expiry in future
 
 ### 2.C Screens (7-step wizard, `/owner/cars/new` and `/owner/cars/:id/edit`)
-- [ ] Wizard shell with progress bar, back/next, per-step validation, draft kept in `CarWizardBloc`
-- [ ] Step 1 media (3–6 photos, primary, optional video)
-- [ ] Step 2 vehicle details · Step 3 specifications
-- [ ] Step 4 pricing + long-rental tiers + live preview
-- [ ] Step 5 rental rules (+ optional PDF)
-- [ ] Step 6 documents (photo, number, expiry, simulated verification; yellow paper skippable)
-- [ ] Step 7 review & publish ("Not added" for skipped yellow paper)
-- [ ] My cars list: photo, plate, price, status, availability line, next rental, edit / availability / pause-resume / remove (confirmation dialog)
-- [ ] Availability screen: one date range only; booked days locked
-- [ ] Documents screen: add yellow paper later, replace expired documents; paused-by-expiry banner
-- [ ] `CarCountCard` slot for owner home
+- [x] Wizard shell with progress bar, back/next, per-step validation, draft kept in `CarWizardBloc`
+- [x] Step 1 media (3–6 photos, primary, optional video)
+- [x] Step 2 vehicle details · Step 3 specifications
+- [x] Step 4 pricing + long-rental tiers + live preview
+- [x] Step 5 rental rules (+ optional PDF)
+- [x] Step 6 documents (photo, number, expiry, simulated verification; yellow paper skippable)
+- [x] Step 7 review & publish ("Not added" for skipped yellow paper)
+- [x] My cars list: photo, plate, price, status, availability line, next rental, edit / availability / pause-resume / remove (confirmation dialog)
+- [x] Availability screen: one date range only; booked days locked
+- [x] Documents screen: add yellow paper later, replace expired documents; paused-by-expiry banner
+- [x] `CarCountCard` slot for owner home
 
 ### 2.D Rules & indexes
-- [ ] `vehicles` block (owner-only writes; documents owner-only); add indexes from §4.4
+- [x] `vehicles` block (owner-only writes; documents owner-only); add indexes from §4.4
 - [ ] Verify another user cannot edit or read vehicle documents
 
 ### 2.E Tests
-- [ ] Unit: plate, tiers, documents rule, `docsValidUntil`, remove-blocked rule
-- [ ] Bloc: `CarWizardBloc` (step validation, publish success/failure), `MyCarsBloc`
-- [ ] Widget: wizard step shows errors and blocks Next
+- [x] Unit: plate, tiers, documents rule, `docsValidUntil`, remove-blocked rule
+- [x] Bloc: `CarWizardBloc` (step validation, publish success/failure), `MyCarsBloc`
+- [x] Widget: wizard step shows errors and blocks Next
 
 ### 2.F Docs & demo
 - [ ] Report: vehicle data model, listing wizard, document rule sections
@@ -196,35 +196,35 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `users/*/favourites`, `bookings` (create only) + `bookings/*/private/renter` · Spec §5.2–5.4 · Slot: `OwnerCarsSection`
 
 ### 3.A Domain & data
-- [ ] `SearchRepository`: published vehicles + filters + availability window + `calendarBlocks` check (§4.5)
-- [ ] `FavouritesRepository` (add/remove/watch); `RequestRepository.createBooking`
-- [ ] Use cases: `SearchVehicles`, `GetVehicleDetail`, `ToggleFavourite`, `CreateBookingRequest`
-- [ ] `CreateBookingRequest` rules: dates inside window and free, own car blocked, renter has no lock, `PendingReviewChecker` is clear, email verified; writes booking (rate/totals locked via `PricingCalculator`), reference `VLC-####`, renter contact doc, `expiresAt` = +24 h, audit log, notification to the owner
+- [x] `SearchRepository`: published vehicles + filters + availability window + `calendarBlocks` check (§4.5)
+- [x] `FavouritesRepository` (add/remove/watch); `RequestRepository.createBooking`
+- [x] Use cases: `SearchVehicles`, `GetVehicleDetail`, `ToggleFavourite`, `CreateBookingRequest`
+- [x] `CreateBookingRequest` rules: dates inside window and free, own car blocked, renter has no lock, `PendingReviewChecker` is clear, email verified; writes booking (rate/totals locked via `PricingCalculator`), reference `VLC-####`, renter contact doc, `expiresAt` = +24 h, audit log, notification to the owner
 
 ### 3.B State
-- [ ] `SearchCubit` (area, dates, type chip; saves `last_search_area`, `last_type_chip`), `FiltersCubit`, `ResultsBloc`, `CarDetailBloc`, `FavouritesBloc` (single source for hearts, Saved count), `RequestBloc`
+- [x] `SearchCubit` (area, dates, type chip; saves `last_search_area`, `last_type_chip`), `FiltersCubit`, `ResultsBloc`, `CarDetailBloc`, `FavouritesBloc` (single source for hearts, Saved count), `RequestBloc`
 
 ### 3.C Screens
-- [ ] Renter Home: greeting, search card, type chips, car cards, Explore / Saved tabs, "how it works"
-- [ ] Area + date range picker (past days disabled); filters (price min/max, type, transmission, seats, active count, reset)
-- [ ] Results with count and empty state
-- [ ] Car card (photo, name/year, price, specs, owner rating, area, availability) with heart
-- [ ] Car detail: carousel, media screen, specs, features, rules, rules PDF link, owner block (info only), calendar with blocked days + window limit, live price breakdown, long-rental note ("3+ days: RWF 80,000 per day"), terms checkbox, "Request booking"
-- [ ] Owner viewing own car: read-only preview (no booking UI)
-- [ ] Request review screen (breakdown without platform fee) → confirmation `/booking/:id/requested`
-- [ ] `OwnerCarsSection` slot for the public profile
-- [ ] Hero transition on car photo; loading skeletons; empty states
+- [x] Renter Home: greeting, search card, type chips, car cards, Explore / Saved tabs, "how it works"
+- [x] Area + date range picker (past days disabled); filters (price min/max, type, transmission, seats, active count, reset)
+- [x] Results with count and empty state
+- [x] Car card (photo, name/year, price, specs, owner rating, area, availability) with heart
+- [x] Car detail: carousel, media screen, specs, features, rules, rules PDF link, owner block (info only), calendar with blocked days + window limit, live price breakdown, long-rental note ("3+ days: RWF 80,000 per day"), terms checkbox, "Request booking"
+- [x] Owner viewing own car: read-only preview (no booking UI)
+- [x] Request review screen (breakdown without platform fee) → confirmation `/booking/:id/requested`
+- [x] `OwnerCarsSection` slot for the public profile
+- [x] Hero transition on car photo; loading skeletons; empty states
 
 ### 3.D Rules & indexes
-- [ ] `favourites` and booking-create rule tests; indexes for search
+- [ ] `favourites` and booking-create rule tests; indexes for search _(rules changed and tests written; emulator run still pending)_
 
 ### 3.E Tests
-- [ ] Unit: search filtering/availability logic, request validation (each failure), favourites toggle
-- [ ] Bloc: `FavouritesBloc`, `ResultsBloc`, `RequestBloc`
-- [ ] Widget: car card heart toggles; request button disabled until terms ticked
+- [x] Unit: search filtering/availability logic, request validation (each failure), favourites toggle
+- [x] Bloc: `FavouritesBloc`, `ResultsBloc`, `RequestBloc`
+- [x] Widget: car card heart toggles; request button disabled until terms ticked
 
 ### 3.F Docs & demo
-- [ ] Report: search algorithm, request flow, state-management example sections
+- [x] Report: search algorithm, request flow, state-management example sections
 - [ ] Demo segment C (~2 min): search with filters, heart a car and show **two widgets update** (card heart + Saved count), send a request and show the new `bookings` doc in the console
 
 ---
@@ -233,36 +233,36 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `bookings` (pending→approved/declined/cancelled/expired, approved→confirmed, confirmed→cancelled), `bookings/*/private/owner`, `calendarBlocks`, `renterLocks`, `transactions` (charge, refund), `notifications` · Spec §4.1 steps 3–6, §4.4, §5.5–5.6 · Slots: `PendingRequestsCard`, `UpcomingRentalsCard`
 
 ### 4.A Domain & data
-- [ ] `BookingRepository` (watch my bookings by role, watch one, transitions in transactions/batches)
-- [ ] `ApproveBooking`: owner tick required, `PendingReviewChecker`, creates `renterLocks`, writes `calendarBlocks`, declines the car's overlapping pending requests, writes owner contact doc, notifies renter
-- [ ] `DeclineBooking` (reason required), `CancelBooking` (until pickup confirmed; refund everything via `LedgerWriter`, free block/lock), `ExpiryEngine` (lazy: pending 24 h, payment deadline = earlier of +24 h and pickup date)
-- [ ] `PayBooking`: `MomoGateway.charge`, then `charge` ledger entry, status `confirmed`, contact unlock (rules), notifications; failure keeps `approved` and allows retry
-- [ ] `AcknowledgeAgreement`
-- [ ] `EffectiveStatus` applied to every list so cancelled-by-lock requests show correctly
+- [x] `BookingRepository` (watch my bookings by role, watch one, transitions in transactions/batches)
+- [x] `ApproveBooking`: owner tick required, `PendingReviewChecker`, creates `renterLocks`, writes `calendarBlocks`, declines the car's overlapping pending requests, writes owner contact doc, notifies renter
+- [x] `DeclineBooking` (reason required), `CancelBooking` (until pickup confirmed; refund everything via `LedgerWriter`, free block/lock), `ExpiryEngine` (lazy: pending 24 h, payment deadline = earlier of +24 h and pickup date)
+- [x] `PayBooking`: `MomoGateway.charge`, then `charge` ledger entry, status `confirmed`, contact unlock (rules), notifications; failure keeps `approved` and allows retry
+- [x] `AcknowledgeAgreement`
+- [x] `EffectiveStatus` applied to every list so cancelled-by-lock requests show correctly
 
 ### 4.B State
-- [ ] `ActivityBloc` (Open / Active / Past), `BookingDetailBloc` (stream), `DecisionBloc`, `PaymentBloc`, `ExpirySweeperCubit` (runs at app start/resume and on activity load)
+- [x] `ActivityBloc` (Open / Active / Past), `BookingDetailBloc` (stream), `DecisionBloc`, `PaymentBloc`, `ExpirySweeperCubit` (runs at app start/resume and on activity load)
 
 ### 4.C Screens
-- [ ] My Activity (renter and owner): Open (action required, pending), Active, Past; grouped by car for owners; quick actions
-- [ ] Booking detail: reference, status headline, six-step timeline, car, dates, parties, price rows, payment/caution/agreement status, **locked contact tile** until payment, then phone/email/meeting point; hosts `HandoverSection` (P5) and `PostRentalSection` (P6) slots
-- [ ] Owner request detail `/booking/:id/decision`: renter profile info (no contact), "You earn RWF X", "I reviewed their info" tick, approve / decline with reason
-- [ ] Payment screen: MoMo 9-digit number, total breakdown, processing, success with reference, failure with retry; deadline countdown
-- [ ] Rental agreement (nine sections; late-fee 30%/day text; cancellation text)
-- [ ] Cancel flow with confirmation dialog and refund note
-- [ ] `PendingRequestsCard` and `UpcomingRentalsCard` slots
+- [x] My Activity (renter and owner): Open (action required, pending), Active, Past; grouped by car for owners; quick actions
+- [x] Booking detail: reference, status headline, six-step timeline, car, dates, parties, price rows, payment/caution/agreement status, **locked contact tile** until payment, then phone/email/meeting point; hosts `HandoverSection` (P5) and `PostRentalSection` (P6) slots
+- [x] Owner request detail `/booking/:id/decision`: renter profile info (no contact), "You earn RWF X", "I reviewed their info" tick, approve / decline with reason
+- [x] Payment screen: MoMo 9-digit number, total breakdown, processing, success with reference, failure with retry; deadline countdown
+- [x] Rental agreement (nine sections; late-fee 30%/day text; cancellation text)
+- [x] Cancel flow with confirmation dialog and refund note
+- [x] `PendingRequestsCard` and `UpcomingRentalsCard` slots
 
 ### 4.D Rules
-- [ ] `validTransition` for your rows of the §5.1 table; lock and calendar rules; contact lock; `transactions` create rules for `charge`/`refund` amounts
+- [x] `validTransition` for your rows of the §5.1 table; lock and calendar rules; contact lock; `transactions` create rules for `charge`/`refund` amounts
 - [ ] Demonstrate: contact docs unreadable before payment, readable after
 
 ### 4.E Tests
-- [ ] Unit: approve conflict (renter already locked), overlap declining, deadline calculation, cancel refund amounts, effective status
-- [ ] Bloc: `PaymentBloc` (success/failure/retry), `DecisionBloc`
-- [ ] Widget: locked contact tile switches to revealed data
+- [x] Unit: approve conflict (renter already locked), overlap declining, deadline calculation, cancel refund amounts, effective status
+- [x] Bloc: `PaymentBloc` (success/failure/retry), `DecisionBloc`
+- [x] Widget: locked contact tile switches to revealed data
 
 ### 4.F Docs & demo
-- [ ] Report: booking state machine diagram, lazy expiry and lock design, ledger invariants sections
+- [x] Report: booking state machine diagram, lazy expiry and lock design, ledger invariants sections
 - [ ] Demo segment D (~2.5 min): owner approves, renter pays, console shows `confirmed` + `charge` row, contact unlocks, **rotate the phone once**
 
 ---

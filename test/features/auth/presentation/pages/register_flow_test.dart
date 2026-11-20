@@ -6,10 +6,8 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:veloce/core/data/services/verification_sim.dart';
 import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
 import 'package:veloce/core/domain/services/clock.dart';
-import 'package:veloce/core/domain/services/verification_provider.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
@@ -19,10 +17,8 @@ import 'package:veloce/features/auth/domain/usecases/register_with_email.dart';
 import 'package:veloce/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:veloce/features/auth/presentation/bloc/login_bloc.dart';
 import 'package:veloce/features/auth/presentation/bloc/register_bloc.dart';
-import 'package:veloce/features/auth/presentation/bloc/register_draft.dart';
 import 'package:veloce/features/auth/presentation/pages/register_details_page.dart';
 import 'package:veloce/features/auth/presentation/pages/register_role_page.dart';
-import 'package:veloce/features/auth/presentation/pages/register_verify_page.dart';
 import 'package:veloce/features/auth/presentation/widgets/register_flow_scope.dart';
 
 import '../../domain/auth_fakes.dart';
@@ -32,9 +28,6 @@ class _MockAuthBloc extends MockBloc<AuthEvent, AuthState>
 
 class _MockLoginBloc extends MockBloc<LoginEvent, LoginState>
     implements LoginBloc {}
-
-class _MockRegisterBloc extends MockBloc<RegisterEvent, RegisterState>
-    implements RegisterBloc {}
 
 class _MockRegisterWithEmail extends Mock implements RegisterWithEmail {}
 
@@ -60,7 +53,6 @@ void main() {
           registerWithEmail: _MockRegisterWithEmail(),
           completeGoogle: _MockCompleteGoogle(),
           linkCurrentAccount: MockLinkCurrentAccount(),
-          verification: VerificationSim(),
           clock: const FixedClock(),
           googleUser: googleUser,
         );
@@ -185,35 +177,5 @@ void main() {
     expect(receivedGoogleUser, google);
     expect(find.text('Use a different account'), findsOneWidget);
     expect(find.text('Sign up with Google'), findsNothing);
-  });
-
-  testWidgets('a new OTP code is shown in a SnackBar', (tester) async {
-    final bloc = _MockRegisterBloc();
-    const first = RegisterState(
-      step: RegisterStep.otp,
-      draft: RegisterDraft(phone: '0788123456'),
-    );
-    const second = RegisterState(
-      step: RegisterStep.otp,
-      draft: RegisterDraft(phone: '0788123456'),
-      challenge: OtpChallenge(phone: '0788123456', code: '482913'),
-    );
-    when(() => bloc.state).thenReturn(first);
-    whenListen(bloc, Stream.value(second), initialState: first);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        scaffoldMessengerKey: messenger.key,
-        home: BlocProvider<RegisterBloc>.value(
-          value: bloc,
-          child: const RegisterVerifyPage(),
-        ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.textContaining('482913'), findsOneWidget);
   });
 }

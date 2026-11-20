@@ -1,4 +1,12 @@
 export 'booking_injection.dart';
 export 'booking_routes.dart';
+export 'domain/entities/booking_view.dart';
+export 'domain/repositories/booking_repository.dart';
+export 'presentation/bloc/activity_bloc.dart';
+export 'presentation/bloc/booking_detail_bloc.dart';
+export 'presentation/bloc/decision_bloc.dart';
+export 'presentation/bloc/expiry_sweeper_cubit.dart';
+export 'presentation/bloc/payment_bloc.dart';
+export 'presentation/widgets/booking_expiry_observer.dart';
 export 'presentation/widgets/pending_requests_card.dart';
 export 'presentation/widgets/upcoming_rentals_card.dart';
