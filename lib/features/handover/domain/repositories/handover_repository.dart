@@ -1,6 +1,7 @@
 import 'package:veloce/core/error/result.dart';
 
 import '../../../../core/domain/entities/booking.dart';
+import '../../../../core/domain/entities/caution_claim.dart';
 import '../../../../core/domain/entities/checklist_entry.dart';
 import '../../../../core/domain/entities/checklist_media.dart';
 import '../../../../core/domain/enums/booking_actor.dart';
@@ -9,6 +10,9 @@ import '../../../../core/domain/enums/checklist_side.dart';
 import '../../../../core/domain/enums/claim_response.dart';
 
 abstract interface class HandoverRepository {
+  /// The caution claim of a booking, or null while there is none.
+  Stream<CautionClaim?> watchClaim(String bookingId);
+
   Future<Result<void>> saveChecklist({
     required String bookingId,
     required ChecklistKind kind,

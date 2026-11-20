@@ -6,10 +6,9 @@ import 'package:veloce/features/handover/domain/repositories/repair_expense_repo
 
 class FirestoreRepairExpenseRepository implements RepairExpenseRepository {
   FirestoreRepairExpenseRepository({
-    required FirebaseFirestore firestore,
-    required FirebaseStorage storage,
-  }) : _firestore = firestore,
-       _storage = storage;
+    required this._firestore,
+    required this._storage,
+  });
 
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;

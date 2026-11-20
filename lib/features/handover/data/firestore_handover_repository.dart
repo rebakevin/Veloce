@@ -31,27 +31,22 @@ import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
 
 import '../domain/repositories/handover_repository.dart';
-import '../domain/services/late_fee_calculator.dart';
+import '../domain/services/caution_settlement_calculator.dart';
+import '../domain/services/claim_amount_policy.dart';
+import '../domain/services/pickup_release_calculator.dart';
 
 /// Saves handover checklists and manages pickup, return and caution claims.
 class FirestoreHandoverRepository implements HandoverRepository {
   const FirestoreHandoverRepository({
-    required FirebaseFirestore firestore,
-    required AtomicWriteFactory writes,
-    required AuthSession session,
-    required Clock clock,
-    required BookingStateMachine stateMachine,
-    required LedgerWriter ledger,
-    required AuditLogger audit,
-    required NotificationWriter notifications,
-  }) : _firestore = firestore,
-       _writes = writes,
-       _session = session,
-       _clock = clock,
-       _stateMachine = stateMachine,
-       _ledger = ledger,
-       _audit = audit,
-       _notifications = notifications;
+    required this._firestore,
+    required this._writes,
+    required this._session,
+    required this._clock,
+    required this._stateMachine,
+    required this._ledger,
+    required this._audit,
+    required this._notifications,
+  });
 
   static const Duration _timeout = Duration(seconds: 20);
 
@@ -71,6 +66,15 @@ class FirestoreHandoverRepository implements HandoverRepository {
     return (actor == BookingActor.renter && booking.renterId == userId) ||
         (actor == BookingActor.owner && booking.ownerId == userId);
   }
+
+  @override
+  Stream<CautionClaim?> watchClaim(String bookingId) => _firestore
+      .doc('${FirestorePaths.cautionClaims}/$bookingId')
+      .snapshots()
+      .map(
+        (doc) =>
+            doc.exists ? CautionClaimModel.fromMap(doc.id, doc.data()!) : null,
+      );
 
   @override
   Future<Result<void>> saveChecklist({
@@ -259,22 +263,22 @@ class FirestoreHandoverRepository implements HandoverRepository {
             if (bothConfirmed) {
               updates[FirestoreFields.status] = BookingStatus.active.key;
 
-              const platformFee = 2000;
-              final payout = booking.rentalFee - platformFee;
+              final releaseResult = PickupReleaseCalculator.calculate(
+                rentalFee: booking.rentalFee,
+              );
 
-              if (payout < 0) {
-                return const Result<Booking>.failure(
-                  ValidationFailure(
-                    'The rental fee cannot be less than the platform fee.',
-                  ),
-                );
+              if (releaseResult case Failure<PickupRelease>(:final failure)) {
+                return Result<Booking>.failure(failure);
               }
+
+              final pickupRelease =
+                  (releaseResult as Success<PickupRelease>).value;
 
               _ledger.record(
                 write,
                 booking: updatedBooking,
                 type: TransactionType.release,
-                amount: booking.rentalFee,
+                amount: pickupRelease.release,
                 from: Party.veloce,
                 to: Party.owner,
                 reference: booking.id,
@@ -284,18 +288,18 @@ class FirestoreHandoverRepository implements HandoverRepository {
                 write,
                 booking: updatedBooking,
                 type: TransactionType.platformFee,
-                amount: platformFee,
+                amount: pickupRelease.platformFee,
                 from: Party.owner,
                 to: Party.veloce,
                 reference: booking.id,
               );
 
-              if (payout > 0) {
+              if (pickupRelease.hasPayout) {
                 _ledger.record(
                   write,
                   booking: updatedBooking,
                   type: TransactionType.payout,
-                  amount: payout,
+                  amount: pickupRelease.payout,
                   from: Party.veloce,
                   to: Party.owner,
                   reference: booking.id,
@@ -707,10 +711,13 @@ class FirestoreHandoverRepository implements HandoverRepository {
               );
             }
 
-            if (amount > booking.cautionFee) {
-              return const Result<Booking>.failure(
-                ValidationFailure('The claim cannot exceed the caution fee.'),
-              );
+            final claimFailure = ClaimAmountPolicy.validateNewClaim(
+              amount: amount,
+              cautionFee: booking.cautionFee,
+            );
+
+            if (claimFailure != null) {
+              return Result<Booking>.failure(claimFailure);
             }
 
             if (!_stateMachine.canTransition(
@@ -918,27 +925,26 @@ class FirestoreHandoverRepository implements HandoverRepository {
               );
             }
 
-            final lateDays = LateFeeCalculator.calculateLateDays(
+            final settlementResult = CautionSettlementCalculator.forAgreedClaim(
+              rentalFee: booking.rentalFee,
+              cautionFee: booking.cautionFee,
               dueAt: booking.endDate,
               returnedAt: returnedAt,
-            );
-
-            final lateFee = LateFeeCalculator.calculateLateFee(
-              rentalFee: booking.rentalFee,
-              lateDays: lateDays,
-              cautionFee: booking.cautionFee,
               claimAmount: claim.currentAmount,
-              waived: booking.lateFeeWaived,
+              lateFeeWaived: booking.lateFeeWaived,
             );
 
-            final refundAmount =
-                booking.cautionFee - claim.currentAmount - lateFee;
-
-            if (refundAmount < 0) {
-              return const Result<Booking>.failure(
-                ValidationFailure('Claim and late fee exceed the caution fee.'),
-              );
+            if (settlementResult case Failure<CautionSettlement>(
+              :final failure,
+            )) {
+              return Result<Booking>.failure(failure);
             }
+
+            final settlement =
+                (settlementResult as Success<CautionSettlement>).value;
+            final lateDays = settlement.lateDays;
+            final lateFee = settlement.lateFee;
+            final refundAmount = settlement.refund;
 
             final updatedBooking = booking.copyWith(
               status: BookingStatus.completed,
@@ -1099,14 +1105,15 @@ class FirestoreHandoverRepository implements HandoverRepository {
               );
             }
 
-            if (amount > claim.currentAmount ||
-                amount > claim.originalAmount ||
-                amount > booking.cautionFee) {
-              return const Result<Booking>.failure(
-                ValidationFailure(
-                  'A revised claim cannot exceed the previous claim amount.',
-                ),
-              );
+            final revisionFailure = ClaimAmountPolicy.validateRevision(
+              amount: amount,
+              currentAmount: claim.currentAmount,
+              originalAmount: claim.originalAmount,
+              cautionFee: booking.cautionFee,
+            );
+
+            if (revisionFailure != null) {
+              return Result<Booking>.failure(revisionFailure);
             }
 
             final now = _clock.now();
@@ -1237,19 +1244,25 @@ class FirestoreHandoverRepository implements HandoverRepository {
 
             final now = _clock.now();
 
-            final lateDays = LateFeeCalculator.calculateLateDays(
+            final settlementResult = CautionSettlementCalculator.forRefund(
+              rentalFee: booking.rentalFee,
+              cautionFee: booking.cautionFee,
               dueAt: booking.endDate,
               returnedAt: returnedAt,
+              lateFeeWaived: booking.lateFeeWaived,
             );
 
-            final lateFee = LateFeeCalculator.calculateLateFee(
-              rentalFee: booking.rentalFee,
-              lateDays: lateDays,
-              cautionFee: booking.cautionFee,
-              waived: booking.lateFeeWaived,
-            );
+            if (settlementResult case Failure<CautionSettlement>(
+              :final failure,
+            )) {
+              return Result<Booking>.failure(failure);
+            }
 
-            final refundAmount = booking.cautionFee - lateFee;
+            final settlement =
+                (settlementResult as Success<CautionSettlement>).value;
+            final lateDays = settlement.lateDays;
+            final lateFee = settlement.lateFee;
+            final refundAmount = settlement.refund;
 
             final updatedBooking = booking.copyWith(
               status: BookingStatus.completed,
@@ -1562,25 +1575,25 @@ class FirestoreHandoverRepository implements HandoverRepository {
 
             final now = _clock.now();
 
-            final lateDays = LateFeeCalculator.calculateLateDays(
+            final settlementResult = CautionSettlementCalculator.forRefund(
+              rentalFee: booking.rentalFee,
+              cautionFee: booking.cautionFee,
               dueAt: booking.endDate,
               returnedAt: booking.returnedAt!,
+              lateFeeWaived: booking.lateFeeWaived,
             );
 
-            final lateFee = LateFeeCalculator.calculateLateFee(
-              rentalFee: booking.rentalFee,
-              lateDays: lateDays,
-              cautionFee: booking.cautionFee,
-              waived: booking.lateFeeWaived,
-            );
-
-            final refundAmount = booking.cautionFee - lateFee;
-
-            if (refundAmount < 0) {
-              return const Result<Booking>.failure(
-                ValidationFailure('The late fee exceeds the caution fee.'),
-              );
+            if (settlementResult case Failure<CautionSettlement>(
+              :final failure,
+            )) {
+              return Result<Booking>.failure(failure);
             }
+
+            final settlement =
+                (settlementResult as Success<CautionSettlement>).value;
+            final lateDays = settlement.lateDays;
+            final lateFee = settlement.lateFee;
+            final refundAmount = settlement.refund;
 
             final updatedBooking = booking.copyWith(
               status: BookingStatus.completed,
