@@ -12,10 +12,9 @@ import '../../domain/repositories/notifications_repository.dart';
 /// Firestore implementation of [NotificationsRepository].
 class FirestoreNotificationsRepository implements NotificationsRepository {
   const FirestoreNotificationsRepository({
-    required FirebaseFirestore firestore,
-    required AtomicWriteFactory writes,
-  }) : _firestore = firestore,
-       _writes = writes;
+    required this._firestore,
+    required this._writes,
+  });
 
   final FirebaseFirestore _firestore;
   final AtomicWriteFactory _writes;

@@ -118,13 +118,10 @@ final class NotificationsFailure extends NotificationsState {
 
 class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   NotificationsBloc({
-    required NotificationsRepository repository,
-    required AuthSession session,
-    required PreferencesService preferences,
-  }) : _repository = repository,
-       _session = session,
-       _preferences = preferences,
-       super(const NotificationsInitial()) {
+    required this._repository,
+    required this._session,
+    required this._preferences,
+  }) : super(const NotificationsInitial()) {
     on<NotificationsStarted>(_onStarted);
     on<NotificationsUpdated>(_onUpdated);
     on<NotificationsFailed>(_onFailed);

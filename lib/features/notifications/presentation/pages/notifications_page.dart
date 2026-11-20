@@ -134,7 +134,7 @@ class _NotificationsView extends StatelessWidget {
                       padding: Responsive.pagePadding(context)
                           .copyWith(top: AppSpacing.md, bottom: AppSpacing.xl),
                       itemCount: notifications.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, index) {
                         final item = notifications[index];
