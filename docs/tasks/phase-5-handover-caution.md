@@ -36,7 +36,7 @@ Run the physical rental: pickup and return checklists with photo evidence, the r
 - [ ] After one side confirms pickup the screen shows "waiting for the other side"; the booking stays `confirmed` and money stays held.
 - [ ] The second confirmation moves the booking to `active` and writes `release`, `platform_fee` (2,000) and `payout` (rentalFee − 2,000) in **one batch**; the other side is notified.
 - [ ] Return needs both confirmations; the renter lock is released and `returnedAt` set.
-- [ ] Late fee table holds: 100,000 → 130,000 → 169,000 → 219,700 for 1, 2, 3, 4 days late; it is capped so late fee + claim never exceeds the caution; the owner can waive or reduce; the return screen previews it.
+- [ ] Late fee table holds: on a 100,000 rental the late fee is 30,000, 69,000 and 119,700 for 1, 2 and 3 days late (the rental compounds to 130,000, 169,000 and 219,700; the fee is the increase); it is capped so late fee + claim never exceeds the caution; the owner can waive or reduce; the return screen previews it.
 - [ ] No issue: renter acknowledges and the caution is refunded (minus any late fee).
 - [ ] Claim: owner enters amount (≤ caution), reason and evidence photos; renter sees them and can **agree** (claim deduction to owner, remainder refunded) or **not agree** (money stays held).
 - [ ] After a dispute the owner can re-claim the same or a lower amount (never above `originalAmount`), or refund.

@@ -271,37 +271,37 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `bookings` (confirmed→active, active→return, return→review/completed, review→completed), `bookings/*/checklistEntries`, `bookings/*/checklistMedia`, `cautionClaims`, `repairExpenses`, `transactions` (release, platform_fee, payout, refund, claim_deduction, late_fee), `renterLocks` (release at return) · Spec §4.1 steps 7–9, §6.5, §3 late fee · Slot: `HandoverSection`
 
 ### 5.A Domain & data
-- [ ] `HandoverRepository`, `ClaimRepository`, `RepairExpenseRepository`
-- [ ] `ChecklistCubit`: five items each for pickup and return; **photos required**, video optional; uploads via `MediaStorage`; remove media before confirming
-- [ ] `ConfirmPickup`: each side confirms separately; the **second** confirmation moves to `active` and releases funds in one batch (`release`, `platform_fee`, `payout` for rentalFee − 2,000), notifies the other side; money stays held until both confirm
-- [ ] `StartReturn` / `ConfirmReturn` (both sides); release `renterLocks`; set `returnedAt`
-- [ ] `LateFeeCalculator` (ceil to day, 1.3^days compounding, cap with claim ≤ caution); owner can waive/reduce
-- [ ] `SettleCaution`: no issue → renter acknowledges → `refund` caution (minus late fee if charged); claim → `cautionClaims` with reason + evidence photos
-- [ ] Renter agrees → `claim_deduction` to owner, remainder `refund`; disputes → stays held; owner may re-claim same or lower (never above `originalAmount`) or refund
-- [ ] `LogRepairExpense` (amount, description, receipt photo; edit/delete)
-- [ ] Completion updates `completedCount` and writes notifications
+- [x] `HandoverRepository`, `ClaimRepository`, `RepairExpenseRepository` _(done as `HandoverRepository` with claims included, plus `RepairExpenseRepository`; no separate `ClaimRepository` and no use cases)_
+- [x] `ChecklistCubit`: five items each for pickup and return; **photos required**, video optional; uploads via `MediaStorage`; remove media before confirming
+- [x] `ConfirmPickup`: each side confirms separately; the **second** confirmation moves to `active` and releases funds in one batch (`release`, `platform_fee`, `payout` for rentalFee − 2,000), notifies the other side; money stays held until both confirm _(`confirmPickup` on the repository; amounts from `PickupReleaseCalculator`)_
+- [x] `StartReturn` / `ConfirmReturn` (both sides); release `renterLocks`; set `returnedAt`
+- [x] `LateFeeCalculator` (ceil to day, 1.3^days compounding, cap with claim ≤ caution); owner can waive/reduce
+- [x] `SettleCaution`: no issue → renter acknowledges → `refund` caution (minus late fee if charged); claim → `cautionClaims` with reason + evidence photos
+- [x] Renter agrees → `claim_deduction` to owner, remainder `refund`; disputes → stays held; owner may re-claim same or lower (never above `originalAmount`) or refund
+- [x] `LogRepairExpense` (amount, description, receipt photo; edit/delete)
+- [x] Completion updates `completedCount` and writes notifications
 
 ### 5.B State
-- [ ] `PickupBloc`, `ReturnBloc`, `ClaimBloc` (owner + renter views), `RepairExpenseBloc`
+- [x] `PickupBloc`, `ReturnBloc`, `ClaimBloc` (owner + renter views), `RepairExpenseBloc` _(done as `ChecklistCubit` for pickup and return, `CautionClaimCubit`, `SettlementCubit`, `RepairExpenseCubit`)_
 
 ### 5.C Screens
-- [ ] Pickup checklist `/booking/:id/pickup` with photo/video capture and "waiting for the other side" state
-- [ ] Return checklist `/booking/:id/return` with late-fee preview
-- [ ] Owner settle screen `/booking/:id/settle` (no issue / claim amount, reason, evidence)
-- [ ] Renter claim screen `/booking/:id/claim` (see amount, reason, photos; agree / do not agree)
-- [ ] Owner repair-cost screen `/booking/:id/repair-cost`
-- [ ] `HandoverSection` for each status inside booking detail
+- [x] Pickup checklist `/booking/:id/pickup` with photo/video capture and "waiting for the other side" state
+- [x] Return checklist `/booking/:id/return` with late-fee preview
+- [x] Owner settle screen `/booking/:id/settle` (no issue / claim amount, reason, evidence)
+- [x] Renter claim screen `/booking/:id/claim` (see amount, reason, photos; agree / do not agree)
+- [x] Owner repair-cost screen `/booking/:id/repair-cost`
+- [x] `HandoverSection` for each status inside booking detail
 
 ### 5.D Rules
-- [ ] `confirmed→active` requires both confirmation timestamps; money entries must match `rentalFee`, `2000`, `cautionFee`; claim ≤ caution; `cautionClaims` and `repairExpenses` blocks; ledger append-only verified
+- [x] `confirmed→active` requires both confirmation timestamps; money entries must match `rentalFee`, `2000`, `cautionFee`; claim ≤ caution; `cautionClaims` and `repairExpenses` blocks; ledger append-only verified
 
 ### 5.E Tests
-- [ ] Unit: late fee table (100,000 → 130,000 → 169,000 → 219,700), cap logic, release amounts, claim re-claim ceiling, held-balance invariant after each path
-- [ ] Bloc: `PickupBloc` (one side only vs both), `ClaimBloc` (agree / dispute / re-claim)
-- [ ] Widget: confirm button disabled until ≥ 1 photo attached
+- [x] Unit: late fee table (on 100,000: fees 30,000 / 69,000 / 119,700 for 1 / 2 / 3 days, the increase over the compounded rental), cap logic, release amounts, claim re-claim ceiling, held-balance invariant after each path
+- [x] Bloc: `PickupBloc` (one side only vs both), `ClaimBloc` (agree / dispute / re-claim) _(done as `ChecklistCubit` for pickup and return, `CautionClaimCubit`, `SettlementCubit`, `RepairExpenseCubit`)_ _(on the cubits above)_
+- [x] Widget: confirm button disabled until ≥ 1 photo attached
 
 ### 5.F Docs & demo
-- [ ] Report: escrow/ledger worked example, claim flow, late-fee formula sections
+- [x] Report: escrow/ledger worked example, claim flow, late-fee formula sections
 - [ ] Demo segment E (~2.5 min): both confirm pickup (release in console), return, claim and agree, repair cost logged
 
 ---

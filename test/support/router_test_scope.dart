@@ -1,4 +1,5 @@
 import 'package:bloc_test/bloc_test.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -30,6 +31,8 @@ import 'package:veloce/features/discovery/presentation/bloc/car_detail_bloc.dart
 import 'package:veloce/features/discovery/presentation/bloc/favourites_bloc.dart';
 import 'package:veloce/features/discovery/presentation/bloc/owner_cars_cubit.dart';
 import 'package:veloce/features/discovery/presentation/bloc/search_cubit.dart';
+import 'package:veloce/features/handover/domain/repositories/handover_repository.dart';
+import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
 import 'package:veloce/features/profile/domain/entities/public_profile.dart';
 import 'package:veloce/features/profile/presentation/bloc/accounts_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/profile_bloc.dart';
@@ -64,7 +67,7 @@ class MockProfileBloc extends MockBloc<ProfileEvent, ProfileState>
 
 class MockPublicProfileCubit extends MockCubit<PublicProfileState>
     implements PublicProfileCubit {
-  /// The page calls `load()` on open; the state is already loaded.
+  /// The page calls load() on open; the state is already loaded.
   void stubLoad() => when(load).thenAnswer((_) async {});
 }
 
@@ -103,6 +106,13 @@ class _MockVerification extends Mock implements VerificationSim {}
 
 class _MockBookingLookup extends Mock implements BookingLookup {}
 
+class _MockHandoverRepository extends Mock implements HandoverRepository {}
+
+class _MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+
+class _MockRepairExpenseRepository extends Mock
+    implements RepairExpenseRepository {}
+
 class _FixedClock implements Clock {
   @override
   DateTime now() => testNow;
@@ -132,8 +142,8 @@ RegisterStep _registerStepFor(String path) => switch (path) {
   _ => RegisterStep.role,
 };
 
-/// Everything the Phase 1 pages resolve from GetIt or read from context, held
-/// in a loaded, idle state so any route can open without Firebase.
+/// Everything the Phase 1 pages resolve from GetIt or read from context,
+/// held in a loaded, idle state so any route can open without Firebase.
 class RouterTestScope {
   RouterTestScope._(this.authBloc);
 
@@ -183,6 +193,8 @@ class RouterTestScope {
       ownerCarsResult: const Result.success([]),
     );
     final bookingLookup = _MockBookingLookup();
+    when(() => bookingLookup.watch(any()))
+        .thenAnswer((_) => const Stream.empty());
     when(() => bookingLookup.byId(any()))
         .thenAnswer((_) async => Result.success(aBooking()));
 
@@ -202,6 +214,9 @@ class RouterTestScope {
       ),
     );
 
+    final firestore = _MockFirebaseFirestore();
+    final repairExpenseRepository = _MockRepairExpenseRepository();
+
     _getIt
       ..registerSingleton<AppMessenger>(messenger)
       ..registerSingleton<Clock>(_FixedClock())
@@ -209,6 +224,10 @@ class RouterTestScope {
       ..registerSingleton<DevSignIn>(_MockDevSignIn())
       ..registerSingleton<MomoGatewaySim>(_MockMomo())
       ..registerSingleton<VerificationSim>(_MockVerification())
+      ..registerSingleton<FirebaseFirestore>(firestore)
+      ..registerSingleton<BookingLookup>(bookingLookup)
+      ..registerSingleton<HandoverRepository>(_MockHandoverRepository())
+      ..registerSingleton<RepairExpenseRepository>(repairExpenseRepository)
       ..registerSingleton<SearchRepository>(discoveryRepository)
       ..registerLazySingleton<SearchVehicles>(
         () => SearchVehicles(discoveryRepository),
@@ -219,7 +238,6 @@ class RouterTestScope {
       ..registerLazySingleton<AuthSession>(
         () => FakeAuthSession(userId: 'user-1', role: role),
       )
-      ..registerSingleton<BookingLookup>(bookingLookup)
       ..registerLazySingleton<SearchCubit>(
         () => SearchCubit(preferences: preferences),
       )
@@ -363,7 +381,7 @@ class RouterTestScope {
       );
   }
 
-  /// The app shell the real [VeloceApp] builds, minus Firebase.
+  /// The app shell the real VeloceApp builds, minus Firebase.
   Widget wrap(RouterConfig<Object> config) => BlocProvider<AuthBloc>.value(
     value: authBloc,
     child: MaterialApp.router(

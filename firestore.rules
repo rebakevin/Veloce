@@ -14,8 +14,8 @@ service cloud.firestore {
                                    && request.resource.data.reason.size() > 0; }
     function serverUpdated() { return request.resource.data.updatedAt == request.time; }
 
-    // Phase 4 and Phase 5 each add their rows of the TECHNICAL.md §5.1 table
-    // here, joined with `||`. Until then no booking update is allowed.
+    // Rows of the TECHNICAL.md §5.1 table, joined with `||`: Phase 4 first,
+    // then Phase 5 (pickup, return, settlement).
     function validTransition(before, after) {
       // P4: pending/approved/confirmed transitions, locks, contact unlock.
       // P5: confirmed -> active, active -> return, return/review -> completed.
@@ -67,6 +67,45 @@ service cloud.firestore {
         && after.agreementAckAt == request.time
         && serverUpdated()
         && changed().hasOnly(['agreementAckAt', 'updatedAt'])
+      ) || (
+        // P5: the first pickup confirmation; the booking stays confirmed.
+        before.status == 'confirmed' && after.status == 'confirmed'
+        && isParty(before)
+        && changed().hasOnly(['ownerPickupConfirmedAt',
+                              'renterPickupConfirmedAt', 'updatedAt'])
+      ) || (
+        // P5: the second pickup confirmation activates the booking.
+        before.status == 'confirmed' && after.status == 'active'
+        && isParty(before)
+        && after.ownerPickupConfirmedAt != null
+        && after.renterPickupConfirmedAt != null
+        && changed().hasOnly(['status', 'ownerPickupConfirmedAt',
+                              'renterPickupConfirmedAt', 'updatedAt'])
+      ) || (
+        // P5: start the return inspection.
+        before.status == 'active' && after.status == 'return'
+        && isParty(before)
+        && after.returnedAt != null
+        && changed().hasOnly(['status', 'returnedAt', 'updatedAt'])
+      ) || (
+        // P5: return confirmations, then the claim goes to review.
+        before.status == 'return' && after.status in ['return', 'review']
+        && isParty(before)
+        && changed().hasOnly(['status', 'ownerReturnConfirmedAt',
+                              'renterReturnConfirmedAt', 'cautionDecision',
+                              'lateDays', 'lateFee', 'lateFeeWaived', 'updatedAt'])
+      ) || (
+        // P5: dispute or re-claim keeps the booking in review.
+        before.status == 'review' && after.status == 'review'
+        && isParty(before)
+        && changed().hasOnly(['updatedAt'])
+      ) || (
+        // P5: settle the caution (from the return or review step).
+        before.status in ['return', 'review'] && after.status == 'completed'
+        && isParty(before)
+        && changed().hasOnly(['status', 'cautionDecision', 'renterOutcomeAckAt',
+                              'lateDays', 'lateFee', 'lateFeeWaived',
+                              'completedAt', 'updatedAt'])
       );
     }
 
@@ -125,7 +164,12 @@ service cloud.firestore {
                                     || (isParty(bk(id))
                                         && bk(id).status in ['confirmed', 'active', 'return', 'review']));
       }
-      match /{sub}/{docId} {     // checklistEntries, checklistMedia (P5)
+      // Listed by name: a `{sub}` wildcard would also match `private` and
+      // expose each party's contact document to the other (rules are OR-ed).
+      match /checklistEntries/{docId} {
+        allow read, write: if isParty(bk(id));
+      }
+      match /checklistMedia/{docId} {
         allow read, write: if isParty(bk(id));
       }
     }
@@ -182,6 +226,42 @@ service cloud.firestore {
                         && bkafter(request.resource.data.bookingId).status == 'cancelled'
                         && request.resource.data.amount
                              == bkafter(request.resource.data.bookingId).totalPayable
+                      ) || (
+                        // P5: rental fee released to the owner on pickup.
+                        request.resource.data.type == 'release'
+                        && request.resource.data.fromParty == 'veloce'
+                        && request.resource.data.toParty == 'owner'
+                        && bkafter(request.resource.data.bookingId).status == 'active'
+                        && request.resource.data.amount
+                             == bkafter(request.resource.data.bookingId).rentalFee
+                      ) || (
+                        request.resource.data.type == 'platform_fee'
+                        && request.resource.data.fromParty == 'owner'
+                        && request.resource.data.toParty == 'veloce'
+                        && bkafter(request.resource.data.bookingId).status == 'active'
+                        && request.resource.data.amount == 2000
+                      ) || (
+                        request.resource.data.type == 'payout'
+                        && request.resource.data.fromParty == 'veloce'
+                        && request.resource.data.toParty == 'owner'
+                        && bkafter(request.resource.data.bookingId).status == 'active'
+                        && request.resource.data.amount
+                             == bkafter(request.resource.data.bookingId).rentalFee - 2000
+                      ) || (
+                        // P5: caution settlement.
+                        request.resource.data.type in ['claim_deduction', 'late_fee']
+                        && request.resource.data.fromParty == 'veloce'
+                        && request.resource.data.toParty == 'owner'
+                        && bkafter(request.resource.data.bookingId).status == 'completed'
+                        && request.resource.data.amount
+                             <= bk(request.resource.data.bookingId).cautionFee
+                      ) || (
+                        request.resource.data.type == 'refund'
+                        && request.resource.data.fromParty == 'veloce'
+                        && request.resource.data.toParty == 'renter'
+                        && bkafter(request.resource.data.bookingId).status == 'completed'
+                        && request.resource.data.amount
+                             <= bk(request.resource.data.bookingId).cautionFee
                       )
                     );
       allow update: if false;                               // append-only
@@ -189,11 +269,39 @@ service cloud.firestore {
                     && (resource.data.ownerId == me() || resource.data.renterId == me());
     }
     match /cautionClaims/{bid} {
-      allow read, write: if isParty(bk(bid));
+      allow read: if isParty(bk(bid));
+      allow create: if signedIn()
+                    && bk(bid).ownerId == me()
+                    && request.resource.data.bookingId == bid
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.amount <= bk(bid).cautionFee;
+      allow update: if isParty(bk(bid))
+                    && request.resource.data.bookingId == bid
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.amount <= bk(bid).cautionFee;
+      allow delete: if false;
     }
     match /repairExpenses/{id} {
-      allow read, update, delete: if signedIn() && resource.data.ownerId == me();
-      allow create: if signedIn() && request.resource.data.ownerId == me();
+      allow read, delete: if signedIn() && resource.data.ownerId == me()
+                          && bk(resource.data.bookingId).ownerId == me();
+      allow create: if signedIn() && request.resource.data.ownerId == me()
+                    && request.resource.data.bookingId is string
+                    && bk(request.resource.data.bookingId).ownerId == me()
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() > 0
+                    && request.resource.data.receiptUrl is string;
+      allow update: if signedIn() && resource.data.ownerId == me()
+                    && bk(resource.data.bookingId).ownerId == me()
+                    && request.resource.data.ownerId == resource.data.ownerId
+                    && request.resource.data.bookingId == resource.data.bookingId
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.description is string
+                    && request.resource.data.receiptUrl is string;
     }
 
     // ---------- P6: reviews and notifications ----------
