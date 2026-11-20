@@ -20,8 +20,10 @@ import 'package:veloce/features/profile/presentation/bloc/accounts_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/public_profile_cubit.dart';
 import 'package:veloce/features/profile/presentation/bloc/settings_cubit.dart';
+import 'package:veloce/features/vehicles/presentation/bloc/availability_bloc.dart';
 import 'package:veloce/features/vehicles/presentation/bloc/car_count_cubit.dart';
 import 'package:veloce/features/vehicles/presentation/bloc/car_wizard_bloc.dart';
+import 'package:veloce/features/vehicles/presentation/bloc/documents_bloc.dart';
 import 'package:veloce/features/vehicles/presentation/bloc/my_cars_bloc.dart';
 
 import 'builders.dart';
@@ -76,6 +78,13 @@ class MockCarCountCubit extends MockCubit<CarCountState>
 
 class MockCarWizardBloc extends MockBloc<CarWizardEvent, CarWizardState>
     implements CarWizardBloc {}
+
+class MockAvailabilityBloc
+    extends MockBloc<AvailabilityEvent, AvailabilityState>
+    implements AvailabilityBloc {}
+
+class MockDocumentsBloc extends MockBloc<DocumentsEvent, DocumentsState>
+    implements DocumentsBloc {}
 
 /// The register flow bounces to the page of the bloc's step, so a deep link
 /// only stays put when the bloc is at that step.
@@ -209,6 +218,18 @@ class RouterTestScope {
         () => idle<MockCarCountCubit, CarCountState>(
           MockCarCountCubit(),
           const CarCountLoaded(published: 2, paused: 1),
+        ),
+      )
+      ..registerFactory<AvailabilityBloc>(
+        () => idle<MockAvailabilityBloc, AvailabilityState>(
+          MockAvailabilityBloc(),
+          const AvailabilityFailure('Not loaded in tests.'),
+        ),
+      )
+      ..registerFactory<DocumentsBloc>(
+        () => idle<MockDocumentsBloc, DocumentsState>(
+          MockDocumentsBloc(),
+          const DocumentsFailure('Not loaded in tests.'),
         ),
       )
       ..registerFactory<CarWizardBloc>(

@@ -7,10 +7,14 @@ import 'package:veloce/core/navigation/seed_ids.dart';
 import 'package:veloce/core/widgets/placeholder_link.dart';
 import 'package:veloce/core/widgets/placeholder_page.dart';
 
+import 'presentation/bloc/availability_bloc.dart';
 import 'presentation/bloc/car_wizard_bloc.dart';
+import 'presentation/bloc/documents_bloc.dart';
 import 'presentation/bloc/my_cars_bloc.dart';
+import 'presentation/pages/availability_page.dart';
 import 'presentation/pages/car_published_page.dart';
 import 'presentation/pages/car_wizard_page.dart';
+import 'presentation/pages/documents_page.dart';
 import 'presentation/pages/my_cars_page.dart';
 
 /// Full-screen routes of the vehicles feature, opened above the tab bar.
@@ -82,28 +86,35 @@ List<RouteBase> vehiclesRoutes() => [
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCarEditPattern,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Edit car',
-      route: RouteNames.ownerCarEditPattern,
-      phase: 2,
-    ),
+    builder: (context, state) {
+      final id = state.pathParameters['id']!;
+      return BlocProvider(
+        create: (_) => GetIt.I<CarWizardBloc>()..add(WizardEditStarted(id)),
+        child: CarWizardPage(editVehicleId: id),
+      );
+    },
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCarAvailabilityPattern,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Availability',
-      route: RouteNames.ownerCarAvailabilityPattern,
-      phase: 2,
-    ),
+    builder: (context, state) {
+      final id = state.pathParameters['id']!;
+      return BlocProvider(
+        create: (_) =>
+            GetIt.I<AvailabilityBloc>()..add(AvailabilityStarted(id)),
+        child: AvailabilityPage(vehicleId: id),
+      );
+    },
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCarDocumentsPattern,
-    builder: (context, state) => const PlaceholderPage(
-      title: 'Car documents',
-      route: RouteNames.ownerCarDocumentsPattern,
-      phase: 2,
-    ),
+    builder: (context, state) {
+      final id = state.pathParameters['id']!;
+      return BlocProvider(
+        create: (_) => GetIt.I<DocumentsBloc>()..add(DocumentsStarted(id)),
+        child: DocumentsPage(vehicleId: id),
+      );
+    },
   ),
 ];
