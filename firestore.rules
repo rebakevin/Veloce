@@ -14,6 +14,17 @@ service cloud.firestore {
                                    && request.resource.data.reason.size() > 0; }
     function serverUpdated() { return request.resource.data.updatedAt == request.time; }
 
+    // P6: a reviewer (not the owner of the document) may move only the rating
+    // aggregate: the count stays or grows by one, the average stays in 1..5.
+    // A rule cannot tie this to the review written in the same batch (the
+    // review id is not derivable from the subject document), so this bounds the
+    // change instead of proving it.
+    function ratingChange(before, after) {
+      return changed().hasOnly(['ratingAvg', 'ratingCount'])
+        && after.ratingCount in [before.ratingCount, before.ratingCount + 1]
+        && after.ratingAvg >= 1 && after.ratingAvg <= 5;
+    }
+
     // Rows of the TECHNICAL.md §5.1 table, joined with `||`: Phase 4 first,
     // then Phase 5 (pickup, return, settlement).
     function validTransition(before, after) {
@@ -119,6 +130,8 @@ service cloud.firestore {
                     && request.resource.data.completedCount == 0;
       allow update: if isSelf(uid)
                     && !changed().hasAny(['role', 'verified', 'ratingAvg', 'ratingCount', 'completedCount']);
+      allow update: if signedIn() && me() != uid
+                    && ratingChange(resource.data, request.resource.data);   // P6
       allow delete: if isSelf(uid);                      // account deletion
       match /private/{doc}       { allow read, write: if isSelf(uid); }
       match /favourites/{vid}    { allow read, write: if isSelf(uid); }          // P3
@@ -129,7 +142,10 @@ service cloud.firestore {
       allow read:   if signedIn();
       allow create: if signedIn() && request.resource.data.ownerId == me();
       allow update: if signedIn() && resource.data.ownerId == me()
-                    && request.resource.data.ownerId == resource.data.ownerId;
+                    && request.resource.data.ownerId == resource.data.ownerId
+                    && !changed().hasAny(['ratingAvg', 'ratingCount']);   // P6
+      allow update: if signedIn() && resource.data.ownerId != me()
+                    && ratingChange(resource.data, request.resource.data);   // P6
       allow delete: if signedIn() && resource.data.ownerId == me();
       match /photos/{pid} {
         allow read:  if signedIn();
