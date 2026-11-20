@@ -119,8 +119,6 @@ class _ChecklistContent extends StatefulWidget {
 }
 
 class _ChecklistContentState extends State<_ChecklistContent> {
-  bool _isSaving = false;
-
   Future<void> _pickPhoto() async {
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -145,11 +143,12 @@ class _ChecklistContentState extends State<_ChecklistContent> {
   }
 
   Future<void> _saveAndConfirm(ChecklistState state) async {
-    if (_isSaving || !state.canConfirm) return;
-
-    setState(() => _isSaving = true);
-
     final cubit = context.read<ChecklistCubit>();
+
+    if (state.isSaving || !state.canConfirm) return;
+
+    cubit.setSaving(true);
+
     final repository = GetIt.I<HandoverRepository>();
     final clock = GetIt.I<Clock>();
     final userId = GetIt.I<AuthSession>().currentUserId!;
@@ -185,7 +184,7 @@ class _ChecklistContentState extends State<_ChecklistContent> {
     );
 
     if (!saveSucceeded) {
-      setState(() => _isSaving = false);
+      cubit.setSaving(false);
       return;
     }
 
@@ -214,7 +213,7 @@ class _ChecklistContentState extends State<_ChecklistContent> {
         );
 
         if (!started) {
-          if (mounted) setState(() => _isSaving = false);
+          if (mounted) cubit.setSaving(false);
           return;
         }
       }
@@ -239,7 +238,7 @@ class _ChecklistContentState extends State<_ChecklistContent> {
       },
       failure: (failure) {
         _showMessage(failure.message);
-        setState(() => _isSaving = false);
+        cubit.setSaving(false);
       },
     );
   }
@@ -296,7 +295,9 @@ class _ChecklistContentState extends State<_ChecklistContent> {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: state.isUploading || _isSaving ? null : _pickPhoto,
+                onPressed: state.isUploading || state.isSaving
+                    ? null
+                    : _pickPhoto,
                 icon: const Icon(Icons.add_a_photo),
                 label: const Text('Add photo'),
               ),
@@ -329,7 +330,7 @@ class _ChecklistContentState extends State<_ChecklistContent> {
                   trailing: IconButton(
                     tooltip: 'Remove photo',
                     icon: const Icon(Icons.delete_outline),
-                    onPressed: _isSaving
+                    onPressed: state.isSaving
                         ? null
                         : () => cubit.removeMedia(media.id),
                   ),
@@ -342,10 +343,10 @@ class _ChecklistContentState extends State<_ChecklistContent> {
               ),
               const SizedBox(height: 16),
               FilledButton(
-                onPressed: state.canConfirm && !_isSaving
+                onPressed: state.canConfirm && !state.isSaving
                     ? () => _saveAndConfirm(state)
                     : null,
-                child: _isSaving
+                child: state.isSaving
                     ? const SizedBox(
                         width: 20,
                         height: 20,

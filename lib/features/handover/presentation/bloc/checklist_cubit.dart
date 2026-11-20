@@ -56,6 +56,10 @@ class ChecklistCubit extends Cubit<ChecklistState> {
     ];
   }
 
+  void setSaving(bool isSaving) {
+    emit(state.copyWith(isSaving: isSaving, clearError: isSaving));
+  }
+
   void toggleItem(String item) {
     if (!checklistItems.contains(item)) return;
 

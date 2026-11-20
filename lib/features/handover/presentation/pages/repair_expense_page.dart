@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +5,7 @@ import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
 
 class RepairExpensePage extends StatefulWidget {
   const RepairExpensePage({required this.bookingId, super.key});
@@ -18,9 +17,8 @@ class RepairExpensePage extends StatefulWidget {
 }
 
 class _RepairExpensePageState extends State<RepairExpensePage> {
-  final _firestore = GetIt.I<FirebaseFirestore>();
+  final _repository = GetIt.I<RepairExpenseRepository>();
   final _session = GetIt.I<AuthSession>();
-  final _storage = FirebaseStorage.instance;
   final _picker = ImagePicker();
 
   final _amountController = TextEditingController();
@@ -32,11 +30,10 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
   bool _loading = false;
   String? _errorMessage;
 
-  CollectionReference<Map<String, dynamic>> get _expenses =>
-      _firestore.collection('repairExpenses');
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> get _expenseStream =>
-      _expenses.where('bookingId', isEqualTo: widget.bookingId).snapshots();
+  Stream<List<RepairExpense>> get _expenseStream => _repository.watchExpenses(
+    bookingId: widget.bookingId,
+    ownerId: _session.currentUserId!,
+  );
 
   @override
   void dispose() {
@@ -57,19 +54,6 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
         _errorMessage = null;
       });
     }
-  }
-
-  Future<String?> _uploadReceipt(String expenseId) async {
-    if (_receipt == null) return _editingReceiptUrl;
-
-    final bytes = await _receipt!.readAsBytes();
-    final reference = _storage.ref().child(
-      'repair-expenses/${widget.bookingId}/$expenseId.jpg',
-    );
-
-    await reference.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-
-    return reference.getDownloadURL();
   }
 
   Future<void> _saveExpense() async {
@@ -99,24 +83,19 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
     });
 
     try {
-      final expenseId = _editingId ?? _expenses.doc().id;
-      final receiptUrl = await _uploadReceipt(expenseId);
+      final receiptBytes = _receipt == null
+          ? null
+          : await _receipt!.readAsBytes();
 
-      final data = <String, dynamic>{
-        'bookingId': widget.bookingId,
-        'ownerId': userId,
-        'amount': amount,
-        'description': description,
-        'receiptUrl': receiptUrl,
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
-
-      if (_editingId == null) {
-        data['createdAt'] = FieldValue.serverTimestamp();
-        await _expenses.doc(expenseId).set(data);
-      } else {
-        await _expenses.doc(expenseId).update(data);
-      }
+      await _repository.saveExpense(
+        expenseId: _editingId,
+        bookingId: widget.bookingId,
+        ownerId: userId,
+        amount: amount,
+        description: description,
+        receiptBytes: receiptBytes,
+        existingReceiptUrl: _editingReceiptUrl,
+      );
 
       if (!mounted) return;
 
@@ -141,18 +120,18 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
     }
   }
 
-  void _editExpense(String id, Map<String, dynamic> data) {
+  void _editExpense(RepairExpense expense) {
     setState(() {
-      _editingId = id;
-      _amountController.text = data['amount']?.toString() ?? '';
-      _descriptionController.text = data['description']?.toString() ?? '';
-      _editingReceiptUrl = data['receiptUrl']?.toString();
+      _editingId = expense.id;
+      _amountController.text = expense.amount.toString();
+      _descriptionController.text = expense.description;
+      _editingReceiptUrl = expense.receiptUrl;
       _receipt = null;
       _errorMessage = null;
     });
   }
 
-  Future<void> _deleteExpense(String id, Map<String, dynamic> data) async {
+  Future<void> _deleteExpense(RepairExpense expense) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -176,20 +155,11 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
     if (confirmed != true) return;
 
     try {
-      await _expenses.doc(id).delete();
-
-      final receiptUrl = data['receiptUrl']?.toString();
-      if (receiptUrl != null && receiptUrl.isNotEmpty) {
-        try {
-          await _storage.refFromURL(receiptUrl).delete();
-        } on Object {
-          // The expense is deleted even if its receipt is unavailable.
-        }
-      }
+      await _repository.deleteExpense(expense);
 
       if (!mounted) return;
 
-      if (_editingId == id) {
+      if (_editingId == expense.id) {
         _clearForm();
       }
 
@@ -235,7 +205,7 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
 
           return bookingSnapshot.data!.when(
             success: (booking) {
-              if (booking.ownerId != userId) {
+              if (booking.ownerId != userId || userId == null) {
                 return const Center(
                   child: Text('Only the vehicle owner can manage expenses.'),
                 );
@@ -253,7 +223,7 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
   }
 
   Widget _buildExpenseContent() {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<List<RepairExpense>>(
       stream: _expenseStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -264,11 +234,10 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final expenses = snapshot.data?.docs ?? [];
+        final expenses = snapshot.data ?? [];
         final total = expenses.fold<int>(
           0,
-          (totalAmount, item) =>
-              totalAmount + ((item.data()['amount'] as num?)?.toInt() ?? 0),
+          (totalAmount, expense) => totalAmount + expense.amount,
         );
 
         return ListView(
@@ -355,12 +324,7 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
             if (expenses.isEmpty)
               const Text('No repair expenses have been added.')
             else
-              ...expenses.map((document) {
-                final data = document.data();
-                final amount = (data['amount'] as num?)?.toInt() ?? 0;
-                final description = data['description']?.toString() ?? '';
-                final receiptUrl = data['receiptUrl']?.toString();
-
+              ...expenses.map((expense) {
                 return Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -368,20 +332,20 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$amount RWF',
+                          '${expense.amount} RWF',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 17,
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Text(description),
-                        if (receiptUrl != null && receiptUrl.isNotEmpty) ...[
+                        Text(expense.description),
+                        if (expense.receiptUrl.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.network(
-                              receiptUrl,
+                              expense.receiptUrl,
                               height: 140,
                               width: double.infinity,
                               fit: BoxFit.cover,
@@ -396,16 +360,12 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
                           children: [
                             IconButton(
                               tooltip: 'Edit expense',
-                              onPressed: () {
-                                _editExpense(document.id, data);
-                              },
+                              onPressed: () => _editExpense(expense),
                               icon: const Icon(Icons.edit),
                             ),
                             IconButton(
                               tooltip: 'Delete expense',
-                              onPressed: () {
-                                _deleteExpense(document.id, data);
-                              },
+                              onPressed: () => _deleteExpense(expense),
                               icon: const Icon(Icons.delete_outline),
                             ),
                           ],

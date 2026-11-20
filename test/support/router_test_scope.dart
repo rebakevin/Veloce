@@ -1,20 +1,25 @@
 import 'package:bloc_test/bloc_test.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/data/services/momo_gateway_sim.dart';
 import 'package:veloce/core/data/services/preferences_service.dart';
 import 'package:veloce/core/data/services/verification_sim.dart';
 import 'package:veloce/core/domain/entities/contact.dart';
 import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
+import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
 import 'package:veloce/features/auth/auth.dart';
 import 'package:veloce/features/auth/data/dev_sign_in.dart';
+import 'package:veloce/features/handover/domain/repositories/handover_repository.dart';
+import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
 import 'package:veloce/features/profile/domain/entities/public_profile.dart';
 import 'package:veloce/features/profile/presentation/bloc/accounts_bloc.dart';
 import 'package:veloce/features/profile/presentation/bloc/profile_bloc.dart';
@@ -42,7 +47,7 @@ class MockProfileBloc extends MockBloc<ProfileEvent, ProfileState>
 
 class MockPublicProfileCubit extends MockCubit<PublicProfileState>
     implements PublicProfileCubit {
-  /// The page calls `load()` on open; the state is already loaded.
+  /// The page calls load() on open; the state is already loaded.
   void stubLoad() => when(load).thenAnswer((_) async {});
 }
 
@@ -60,6 +65,31 @@ class _MockMomo extends Mock implements MomoGatewaySim {}
 
 class _MockVerification extends Mock implements VerificationSim {}
 
+class _MockBookingLookup extends Mock implements BookingLookup {}
+
+class _MockHandoverRepository extends Mock implements HandoverRepository {}
+
+class _MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+
+class _MockRepairExpenseRepository extends Mock
+    implements RepairExpenseRepository {}
+
+class _RouterTestSession implements AuthSession {
+  _RouterTestSession(this.role);
+
+  @override
+  final UserRole? role;
+
+  @override
+  String? get currentUserId => role == null ? null : 'user-1';
+
+  @override
+  bool get isEmailVerified => role != null;
+
+  @override
+  Stream<void> get changes => const Stream.empty();
+}
+
 class _FixedClock implements Clock {
   @override
   DateTime now() => testNow;
@@ -74,8 +104,8 @@ RegisterStep _registerStepFor(String path) => switch (path) {
   _ => RegisterStep.role,
 };
 
-/// Everything the Phase 1 pages resolve from GetIt or read from context, held
-/// in a loaded, idle state so any route can open without Firebase.
+/// Everything the Phase 1 pages resolve from GetIt or read from context,
+/// held in a loaded, idle state so any route can open without Firebase.
 class RouterTestScope {
   RouterTestScope._(this.authBloc);
 
@@ -134,13 +164,25 @@ class RouterTestScope {
       ),
     );
 
+    final bookingLookup = _MockBookingLookup();
+    when(() => bookingLookup.watch(any()))
+        .thenAnswer((_) => const Stream.empty());
+
+    final firestore = _MockFirebaseFirestore();
+    final repairExpenseRepository = _MockRepairExpenseRepository();
+
     _getIt
       ..registerSingleton<AppMessenger>(messenger)
+      ..registerSingleton<AuthSession>(_RouterTestSession(role))
       ..registerSingleton<Clock>(_FixedClock())
       ..registerSingleton<PreferencesService>(preferences)
       ..registerSingleton<DevSignIn>(_MockDevSignIn())
       ..registerSingleton<MomoGatewaySim>(_MockMomo())
       ..registerSingleton<VerificationSim>(_MockVerification())
+      ..registerSingleton<FirebaseFirestore>(firestore)
+      ..registerSingleton<BookingLookup>(bookingLookup)
+      ..registerSingleton<HandoverRepository>(_MockHandoverRepository())
+      ..registerSingleton<RepairExpenseRepository>(repairExpenseRepository)
       ..registerFactory<LoginBloc>(
         () => idle(MockLoginBloc(), const LoginState()),
       )
@@ -189,7 +231,7 @@ class RouterTestScope {
       );
   }
 
-  /// The app shell the real [VeloceApp] builds, minus Firebase.
+  /// The app shell the real VeloceApp builds, minus Firebase.
   Widget wrap(RouterConfig<Object> config) => BlocProvider<AuthBloc>.value(
     value: authBloc,
     child: MaterialApp.router(
