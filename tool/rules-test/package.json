@@ -1,12 +1,13 @@
 {
   "name": "veloce-rules-test",
   "private": true,
-  "description": "Firestore rules tests for the Phase 3 favourites and booking-create rules.",
+  "description": "Firestore rules tests for the Phase 3 to 5 rules.",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-veloce \"node firestore.rules.test.js\""
+    "test": "firebase emulators:exec --only firestore --project demo-veloce \"mocha firestore.rules.test.js --timeout 20000\""
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^3.0.4",
-    "firebase": "^12.0.0"
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase": "^12.0.0",
+    "mocha": "^10.8.2"
   }
 }
