@@ -8,6 +8,8 @@ import 'package:veloce/core/data/models/vehicle_photo_model.dart';
 import 'package:veloce/core/data/services/failure_mapper.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
+import 'package:veloce/core/domain/entities/vehicle_document.dart';
+import 'package:veloce/core/domain/entities/vehicle_photo.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/services/atomic_write.dart';
 import 'package:veloce/core/error/result.dart';
@@ -127,6 +129,150 @@ class FirestoreVehicleRepository implements VehicleRepository {
         write.delete(doc.reference.path);
       }
       write.delete(vehiclePath);
+      await write.commit().timeout(_timeout);
+      return const Result.success(null);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Stream<Result<Vehicle>> watchVehicle(String vehicleId) async* {
+    try {
+      final snapshots = _firestore
+          .doc(FirestorePaths.vehicle(vehicleId))
+          .snapshots();
+      await for (final snapshot in snapshots) {
+        final data = snapshot.data();
+        yield data == null
+            ? Result.failure(
+                mapToFailure(
+                  StateError('vehicle not found'),
+                  StackTrace.current,
+                ),
+              )
+            : Result.success(VehicleModel.fromMap(snapshot.id, data));
+      }
+    } on Object catch (error, stackTrace) {
+      yield Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<List<VehiclePhoto>>> photosOf(String vehicleId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(
+            '${FirestorePaths.vehicle(vehicleId)}/${FirestorePaths.photos}',
+          )
+          .get()
+          .timeout(_timeout);
+      return Result.success(
+        snapshot.docs
+            .map((doc) => VehiclePhotoModel.fromMap(doc.id, doc.data()))
+            .toList(),
+      );
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<List<VehicleDocument>>> documentsOf(String vehicleId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(
+            '${FirestorePaths.vehicle(vehicleId)}/${FirestorePaths.documents}',
+          )
+          .get()
+          .timeout(_timeout);
+      return Result.success(
+        snapshot.docs
+            .map((doc) => VehicleDocumentModel.fromMap(doc.id, doc.data()))
+            .toList(),
+      );
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<void>> update(
+    Vehicle vehicle,
+    List<VehiclePhoto> photos,
+  ) async {
+    try {
+      final vehiclePath = FirestorePaths.vehicle(vehicle.id);
+      final photosPath = '$vehiclePath/${FirestorePaths.photos}';
+      final existing = await _firestore
+          .collection(photosPath)
+          .get()
+          .timeout(_timeout);
+
+      final fields = VehicleModel.toMap(vehicle)
+        ..remove(FirestoreFields.ownerId)
+        ..remove(FirestoreFields.createdAt)
+        ..remove(FirestoreFields.ratingAvg)
+        ..remove(FirestoreFields.ratingCount);
+      final write = _writes.begin()..update(vehiclePath, fields);
+      for (final doc in existing.docs) {
+        write.delete(doc.reference.path);
+      }
+      for (final photo in photos) {
+        write.set(
+          '$photosPath/${write.newId(photosPath)}',
+          VehiclePhotoModel.toMap(photo.copyWith(vehicleId: vehicle.id)),
+        );
+      }
+      await write.commit().timeout(_timeout);
+      return const Result.success(null);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<void>> setAvailability(
+    String vehicleId,
+    DateTime? from,
+    DateTime? to,
+  ) async {
+    try {
+      final write = _writes.begin()
+        ..update(FirestorePaths.vehicle(vehicleId), {
+          FirestoreFields.availableFrom: from == null
+              ? null
+              : Timestamp.fromDate(from),
+          FirestoreFields.availableTo: to == null
+              ? null
+              : Timestamp.fromDate(to),
+        });
+      await write.commit().timeout(_timeout);
+      return const Result.success(null);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<void>> upsertDocument(
+    VehicleDocument document, {
+    required DateTime? docsValidUntil,
+    required VehicleStatus status,
+  }) async {
+    try {
+      final vehiclePath = FirestorePaths.vehicle(document.vehicleId);
+      final write = _writes.begin()
+        ..set(
+          '$vehiclePath/${FirestorePaths.documents}/${document.kind.key}',
+          VehicleDocumentModel.toMap(document),
+        )
+        ..update(vehiclePath, {
+          FirestoreFields.docsValidUntil: docsValidUntil == null
+              ? null
+              : Timestamp.fromDate(docsValidUntil),
+          FirestoreFields.status: status.key,
+        });
       await write.commit().timeout(_timeout);
       return const Result.success(null);
     } on Object catch (error, stackTrace) {
