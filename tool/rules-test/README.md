@@ -1,6 +1,6 @@
 # Firestore rules tests
 
-Covers the Phase 3 favourites, booking-create and renter-contact rules.
+Covers the Phase 3 favourites, booking-create and renter-contact rules, the Phase 5 handover, ledger, claim and repair rules, and the Phase 6 reviews, rating aggregate and notifications rules.
 
 Run from this folder:
 
