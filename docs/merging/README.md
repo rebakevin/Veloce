@@ -7,7 +7,7 @@ How the open phase PRs are merged into local `main`, one phase at a time, before
 | Phase | PR | Branch | Status | File |
 |---|---|---|---|---|
 | 2 Owner: cars & availability | #9 | `1-owner-cars-availability` | merged, code gaps closed; E, F, H open | [phase-2.md](phase-2.md) |
-| 3 Renter: discovery & request | #17 | `2-renter-discovery-request` | waiting | |
+| 3 Renter: discovery & request | #17 | `2-renter-discovery-request` | merged with `main`, no code gaps | [phase-3.md](phase-3.md) |
 | 4 Booking decision & payment | #16 | `3-booking-decision-payment` | waiting | |
 | 5 Handover, return & caution | #15 | `4-handover-return-caution-settlement` | waiting (draft) | |
 | 6 Reviews, notifications & finances | #13 | `5-reviews-notifications-finances` | waiting | |

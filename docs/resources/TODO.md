@@ -196,35 +196,35 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `users/*/favourites`, `bookings` (create only) + `bookings/*/private/renter` · Spec §5.2–5.4 · Slot: `OwnerCarsSection`
 
 ### 3.A Domain & data
-- [ ] `SearchRepository`: published vehicles + filters + availability window + `calendarBlocks` check (§4.5)
-- [ ] `FavouritesRepository` (add/remove/watch); `RequestRepository.createBooking`
-- [ ] Use cases: `SearchVehicles`, `GetVehicleDetail`, `ToggleFavourite`, `CreateBookingRequest`
-- [ ] `CreateBookingRequest` rules: dates inside window and free, own car blocked, renter has no lock, `PendingReviewChecker` is clear, email verified; writes booking (rate/totals locked via `PricingCalculator`), reference `VLC-####`, renter contact doc, `expiresAt` = +24 h, audit log, notification to the owner
+- [x] `SearchRepository`: published vehicles + filters + availability window + `calendarBlocks` check (§4.5)
+- [x] `FavouritesRepository` (add/remove/watch); `RequestRepository.createBooking`
+- [x] Use cases: `SearchVehicles`, `GetVehicleDetail`, `ToggleFavourite`, `CreateBookingRequest`
+- [x] `CreateBookingRequest` rules: dates inside window and free, own car blocked, renter has no lock, `PendingReviewChecker` is clear, email verified; writes booking (rate/totals locked via `PricingCalculator`), reference `VLC-####`, renter contact doc, `expiresAt` = +24 h, audit log, notification to the owner
 
 ### 3.B State
-- [ ] `SearchCubit` (area, dates, type chip; saves `last_search_area`, `last_type_chip`), `FiltersCubit`, `ResultsBloc`, `CarDetailBloc`, `FavouritesBloc` (single source for hearts, Saved count), `RequestBloc`
+- [x] `SearchCubit` (area, dates, type chip; saves `last_search_area`, `last_type_chip`), `FiltersCubit`, `ResultsBloc`, `CarDetailBloc`, `FavouritesBloc` (single source for hearts, Saved count), `RequestBloc`
 
 ### 3.C Screens
-- [ ] Renter Home: greeting, search card, type chips, car cards, Explore / Saved tabs, "how it works"
-- [ ] Area + date range picker (past days disabled); filters (price min/max, type, transmission, seats, active count, reset)
-- [ ] Results with count and empty state
-- [ ] Car card (photo, name/year, price, specs, owner rating, area, availability) with heart
-- [ ] Car detail: carousel, media screen, specs, features, rules, rules PDF link, owner block (info only), calendar with blocked days + window limit, live price breakdown, long-rental note ("3+ days: RWF 80,000 per day"), terms checkbox, "Request booking"
-- [ ] Owner viewing own car: read-only preview (no booking UI)
-- [ ] Request review screen (breakdown without platform fee) → confirmation `/booking/:id/requested`
-- [ ] `OwnerCarsSection` slot for the public profile
-- [ ] Hero transition on car photo; loading skeletons; empty states
+- [x] Renter Home: greeting, search card, type chips, car cards, Explore / Saved tabs, "how it works"
+- [x] Area + date range picker (past days disabled); filters (price min/max, type, transmission, seats, active count, reset)
+- [x] Results with count and empty state
+- [x] Car card (photo, name/year, price, specs, owner rating, area, availability) with heart
+- [x] Car detail: carousel, media screen, specs, features, rules, rules PDF link, owner block (info only), calendar with blocked days + window limit, live price breakdown, long-rental note ("3+ days: RWF 80,000 per day"), terms checkbox, "Request booking"
+- [x] Owner viewing own car: read-only preview (no booking UI)
+- [x] Request review screen (breakdown without platform fee) → confirmation `/booking/:id/requested`
+- [x] `OwnerCarsSection` slot for the public profile
+- [x] Hero transition on car photo; loading skeletons; empty states
 
 ### 3.D Rules & indexes
-- [ ] `favourites` and booking-create rule tests; indexes for search
+- [ ] `favourites` and booking-create rule tests; indexes for search _(rules changed and tests written; emulator run still pending)_
 
 ### 3.E Tests
-- [ ] Unit: search filtering/availability logic, request validation (each failure), favourites toggle
-- [ ] Bloc: `FavouritesBloc`, `ResultsBloc`, `RequestBloc`
-- [ ] Widget: car card heart toggles; request button disabled until terms ticked
+- [x] Unit: search filtering/availability logic, request validation (each failure), favourites toggle
+- [x] Bloc: `FavouritesBloc`, `ResultsBloc`, `RequestBloc`
+- [x] Widget: car card heart toggles; request button disabled until terms ticked
 
 ### 3.F Docs & demo
-- [ ] Report: search algorithm, request flow, state-management example sections
+- [x] Report: search algorithm, request flow, state-management example sections
 - [ ] Demo segment C (~2 min): search with filters, heart a car and show **two widgets update** (card heart + Saved count), send a request and show the new `bookings` doc in the console
 
 ---

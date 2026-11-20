@@ -8,6 +8,7 @@ service cloud.firestore {
     function isSelf(id)   { return signedIn() && me() == id; }
     function changed()    { return request.resource.data.diff(resource.data).affectedKeys(); }
     function bk(id)       { return get(/databases/$(db)/documents/bookings/$(id)).data; }
+    function bkafter(id)  { return getAfter(/databases/$(db)/documents/bookings/$(id)).data; }
     function isParty(b)   { return signedIn() && (b.renterId == me() || b.ownerId == me()); }
 
     // Phase 4 and Phase 5 each add their rows of the TECHNICAL.md §5.1 table
@@ -66,8 +67,8 @@ service cloud.firestore {
       allow delete: if isParty(resource.data);              // account deletion
 
       match /private/{side} {
-        allow write: if signedIn() && ((side == 'renter' && bk(id).renterId == me())
-                                    || (side == 'owner'  && bk(id).ownerId  == me()));
+        allow write: if signedIn() && ((side == 'renter' && bkafter(id).renterId == me())
+                                    || (side == 'owner'  && bkafter(id).ownerId  == me()));
         allow read:  if signedIn() && ((side == 'renter' && bk(id).renterId == me())
                                     || (side == 'owner'  && bk(id).ownerId  == me())
                                     || (isParty(bk(id))
