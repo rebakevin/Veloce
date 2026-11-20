@@ -565,12 +565,12 @@ Each transition is **one** Firestore transaction/batch containing: booking updat
 ## 6. Authentication (P1)
 
 ### 6.1 Methods and flows
-1. **Email + password**: register (role → details → verification → welcome), login, logout, **password reset** page (`sendPasswordResetEmail`), **email verification** (`sendEmailVerification`; unverified users can browse; requesting, publishing a car and paying require a verified email).
+1. **Email + password**: register (role → details → account creation → welcome), login, logout, **password reset** page (`sendPasswordResetEmail`), **email verification** (`sendEmailVerification`; unverified users can browse; requesting, publishing a car and paying require a verified email).
 2. **Google Sign-In**: first sign-in continues to role choice and the document steps (spec §11); returning users go straight to their Home. Google users are email-verified by default.
-3. **Simulated OTP / identity verification** (via `VerificationProvider`): after details, a 6-digit code screen (code is generated and shown in a SnackBar for the demo; wrong code shows an error, with a "fail" mode for the retry state in spec §5.1).
+3. **Simulated identity-document verification** (via `VerificationProvider`): the licence or National ID photo is checked once during registration. There is no phone/SMS verification step; the phone number is profile data only.
 
 ### 6.2 Security practices (rubric: "security best practices")
-Client-side validation on every field (§12.3), password ≥ 8 chars with a letter and a digit, specific error messages mapped from `FirebaseAuthException` codes (`wrong-password`, `user-not-found`, `email-already-in-use`, `too-many-requests`, …), no blank submits, email verification, OTP step, rules-enforced roles (role is immutable after creation), session persisted by Firebase Auth (restart keeps the user) and re-validated at splash.
+Client-side validation on every field (§12.3), password ≥ 8 chars with a letter and a digit, specific error messages mapped from `FirebaseAuthException` codes (`wrong-password`, `user-not-found`, `email-already-in-use`, `too-many-requests`, …), no blank submits, email verification, rules-enforced roles (role is immutable after creation), session persisted by Firebase Auth (restart keeps the user) and re-validated at splash.
 
 ### 6.3 Routing guard
 `AuthBloc` states: `Unknown → Unauthenticated | Authenticated(user, role)`. `GoRouter.redirect` sends unauthenticated users to `/welcome`, authenticated users away from auth pages, and each role only into its own shell.
@@ -742,7 +742,6 @@ Phase 0 registers **every** route below with a placeholder page; the owning phas
 | `/forgot-password` | Password reset | P1 |
 | `/register/role` | Choose role | P1 |
 | `/register/details` | Details + documents (licence or National ID) | P1 |
-| `/register/verify` | OTP + email verification | P1 |
 | `/register/welcome` | Registration success | P1 |
 | `/verify-email` | Email verification pending | P1 |
 | `/dev-login` | Debug-only quick login (kDebugMode) | P0 |
@@ -919,6 +918,7 @@ Copy the template in week 1 (Phase 0), share it with all members, and update it 
 
 ## 17. Known limitations (draft for the report)
 - Payments, identity and licence verification are simulated (`MomoGateway`, `VerificationProvider`).
+- Phone numbers are collected but not verified: the project has no SMS provider, so registration has no phone-code step.
 - No server: time-based expiry runs lazily when a user opens the app; cross-user effects use locks and rules (D-1). A real deployment would use Cloud Functions.
 - Sensitive images rely on unguessable URLs rather than authenticated storage (D-3).
 - Supabase anon key is embedded in the app; abuse is limited by bucket size/MIME limits only.
@@ -939,7 +939,7 @@ Copy the template in week 1 (Phase 0), share it with all members, and update it 
 | State management (10) | §3.3 | BLoC/Cubit only; stream-driven UI; `setState` grep in CI |
 | Database design / ERD (10) | §4, §8 | ERD ⇄ Firestore table, indexes, owner-scoped rules, denormalisation register |
 | CRUD (5) | §4.6 | Matrix + demo with console visible; SnackBar errors |
-| Authentication (5) | §6 | Email + Google, reset page, email verification, OTP, validation, persistence |
+| Authentication (5) | §6 | Email + Google, reset page, email verification, validation, persistence |
 | Widget & unit testing (5) | §13 | ≥ 35 tests, ≥ 70% coverage, screenshots |
 | SharedPrefs (5) | §9 | 5 prefs restored on relaunch |
 | Code quality & docs (5) | §14 | `flutter analyze` 0 issues, README with setup + screenshots |

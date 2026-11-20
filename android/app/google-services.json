@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "765515995845-1omj006kjukc1aurof2an8ei9tnp2fl4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "rw.veloce.veloce",
+            "certificate_hash": "ce9327522f280cf259a3df5e26599eb697b173ee"
+          }
+        },
+        {
           "client_id": "765515995845-5t9g1ic10t4vtkavkf1rsg6pe9ksnauv.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -27,6 +35,22 @@
           "android_info": {
             "package_name": "rw.veloce.veloce",
             "certificate_hash": "2e149a9ebf74a7a0bfa9e4c96431cf904d270f41"
+          }
+        },
+        {
+          "client_id": "765515995845-80hm743bnsig5v9qddg3buaftoe1k7sv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "rw.veloce.veloce",
+            "certificate_hash": "261a4312bdee1e6558a009927daa9181dc35f665"
+          }
+        },
+        {
+          "client_id": "765515995845-cb3jmo0shb4npkmmtqqqkklte31klmu4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "rw.veloce.veloce",
+            "certificate_hash": "5b04a6a695452b3085e0d64c5c5d02d3eabf98e8"
           }
         },
         {

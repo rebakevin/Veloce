@@ -1,6 +1,6 @@
 part of 'register_bloc.dart';
 
-enum RegisterStep { role, details, otp, submitting, done }
+enum RegisterStep { role, details, submitting, done }
 
 enum RegisterStatus {
   idle,
@@ -8,10 +8,8 @@ enum RegisterStatus {
   /// A request is running; disable the buttons.
   busy,
 
-  /// The last request failed. [RegisterState.message] says why. On the OTP
-  /// step this is the wrong-code or simulated verification failure (retry with
-  /// [RegisterOtpSubmitted] or [RegisterOtpResent]); on the submitting step
-  /// use [RegisterSubmitRetried] or go back.
+  /// The last request failed. [RegisterState.message] says why. On the
+  /// submitting step use [RegisterSubmitRetried] or go back.
   failure,
 }
 
@@ -32,7 +30,6 @@ class RegisterState extends Equatable {
     this.status = RegisterStatus.idle,
     this.draft = const RegisterDraft(),
     this.fieldErrors = const {},
-    this.challenge,
     this.message,
     this.googleUser,
     this.verificationEmailSent = false,
@@ -45,15 +42,11 @@ class RegisterState extends Equatable {
   /// Inline message per field of the details step.
   final Map<RegisterField, String> fieldErrors;
 
-  /// The pending OTP. `challenge.code` is what the screen shows in a SnackBar
-  /// (simulation only). Set on the OTP step.
-  final OtpChallenge? challenge;
-
   /// Failure text for the current step, or `null`.
   final String? message;
 
-  /// Set when the flow follows a first Google sign-in: no email, password or
-  /// OTP steps.
+  /// Set when the flow follows a first Google sign-in: no email or password
+  /// steps.
   final AuthUser? googleUser;
 
   /// Set on [RegisterStep.done]: whether a verification email went out.
@@ -69,8 +62,6 @@ class RegisterState extends Equatable {
     RegisterStatus? status,
     RegisterDraft? draft,
     Map<RegisterField, String>? fieldErrors,
-    OtpChallenge? challenge,
-    bool clearChallenge = false,
     String? message,
     bool? verificationEmailSent,
   }) => RegisterState(
@@ -78,7 +69,6 @@ class RegisterState extends Equatable {
     status: status ?? this.status,
     draft: draft ?? this.draft,
     fieldErrors: fieldErrors ?? this.fieldErrors,
-    challenge: clearChallenge ? null : (challenge ?? this.challenge),
     message: message,
     googleUser: googleUser,
     verificationEmailSent: verificationEmailSent ?? this.verificationEmailSent,
@@ -90,8 +80,6 @@ class RegisterState extends Equatable {
     status,
     draft,
     fieldErrors,
-    challenge?.phone,
-    challenge?.code,
     message,
     googleUser,
     verificationEmailSent,

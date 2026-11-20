@@ -53,7 +53,7 @@ class RegisterRolePage extends StatelessWidget {
             ],
             StepHeader(
               step: 1,
-              total: isGoogle ? 2 : 4,
+              total: isGoogle ? 2 : 3,
               title: 'How will you use Veloce?',
               subtitle: 'Pick one. You cannot change it later.',
             ),

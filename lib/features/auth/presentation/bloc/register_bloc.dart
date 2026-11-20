@@ -6,7 +6,6 @@ import 'package:equatable/equatable.dart';
 
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/domain/services/clock.dart';
-import 'package:veloce/core/domain/services/verification_provider.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/core/validation/validators.dart';
 
@@ -22,12 +21,12 @@ import 'register_draft.dart';
 part 'register_event.dart';
 part 'register_state.dart';
 
-/// The multi-step sign-up: role, details, phone OTP, then the final write.
+/// The multi-step sign-up: role, details, then the final write.
 ///
-/// Email users go role -> details -> otp -> submitting -> done. Pass
-/// [googleUser] (the user from [AuthNeedsProfile]) for the Google path: the
-/// email and password fields are skipped, there is no OTP, and the final step
-/// calls `CompleteGoogleRegistration`.
+/// Email users go role -> details -> submitting -> done. Pass [googleUser]
+/// (the user from [AuthNeedsProfile]) for the Google path: the email and
+/// password fields are skipped and the final step calls
+/// `CompleteGoogleRegistration`.
 ///
 /// A finished sign-up also links the new account to this device (best effort,
 /// after the result is emitted) so the account switcher can return to it.
@@ -39,7 +38,6 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
     required this._registerWithEmail,
     required this._completeGoogle,
     required this._linkCurrentAccount,
-    required this._verification,
     required this._clock,
     AuthUser? googleUser,
   }) : super(
@@ -54,9 +52,6 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
     on<RegisterRoleSelected>(_onRoleSelected);
     on<RegisterDraftEdited>(_onDraftEdited);
     on<RegisterDetailsSubmitted>(_onDetailsSubmitted);
-    on<RegisterOtpSubmitted>(_onOtpSubmitted);
-    on<RegisterOtpEdited>(_onOtpEdited);
-    on<RegisterOtpResent>(_onOtpResent);
     on<RegisterSubmitRetried>(_onSubmitRetried);
     on<RegisterBackPressed>(_onBackPressed);
   }
@@ -64,7 +59,6 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
   final RegisterWithEmail _registerWithEmail;
   final CompleteGoogleRegistration _completeGoogle;
   final LinkCurrentAccount _linkCurrentAccount;
-  final VerificationProvider _verification;
   final Clock _clock;
 
   void _onRoleSelected(
@@ -132,11 +126,7 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
       emit(state.copyWith(fieldErrors: errors, status: RegisterStatus.idle));
       return;
     }
-    if (state.isGoogle) {
-      await _submit(emit);
-    } else {
-      await _sendOtp(emit);
-    }
+    await _submit(emit);
   }
 
   Map<RegisterField, String> _validateDetails() {
@@ -171,82 +161,6 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
       for (final entry in errors.entries)
         if (entry.value != null) entry.key: entry.value!,
     };
-  }
-
-  Future<void> _sendOtp(Emitter<RegisterState> emit) async {
-    emit(state.copyWith(status: RegisterStatus.busy));
-    final result = await _verification.sendOtp(state.draft.phone.trim());
-    if (isClosed) return;
-    switch (result) {
-      case Success(:final value):
-        emit(
-          state.copyWith(
-            step: RegisterStep.otp,
-            status: RegisterStatus.idle,
-            challenge: value,
-          ),
-        );
-      case Failure(:final failure):
-        emit(
-          state.copyWith(
-            status: RegisterStatus.failure,
-            message: failure.message,
-          ),
-        );
-    }
-  }
-
-  void _onOtpEdited(RegisterOtpEdited event, Emitter<RegisterState> emit) {
-    if (state.step != RegisterStep.otp ||
-        state.status != RegisterStatus.failure) {
-      return;
-    }
-    emit(state.copyWith(status: RegisterStatus.idle));
-  }
-
-  Future<void> _onOtpResent(
-    RegisterOtpResent event,
-    Emitter<RegisterState> emit,
-  ) async {
-    if (state.step != RegisterStep.otp || state.isBusy) return;
-    await _sendOtp(emit);
-  }
-
-  Future<void> _onOtpSubmitted(
-    RegisterOtpSubmitted event,
-    Emitter<RegisterState> emit,
-  ) async {
-    final challenge = state.challenge;
-    if (state.step != RegisterStep.otp || state.isBusy || challenge == null) {
-      return;
-    }
-    final code = event.code.trim();
-    if (code.length != 6 || int.tryParse(code) == null) {
-      emit(
-        state.copyWith(
-          status: RegisterStatus.failure,
-          message: 'Enter the 6-digit code.',
-        ),
-      );
-      return;
-    }
-    emit(state.copyWith(status: RegisterStatus.busy));
-    final result = await _verification.confirmOtp(
-      challenge: challenge,
-      code: code,
-    );
-    if (isClosed) return;
-    switch (result) {
-      case Success():
-        await _submit(emit);
-      case Failure(:final failure):
-        emit(
-          state.copyWith(
-            status: RegisterStatus.failure,
-            message: failure.message,
-          ),
-        );
-    }
   }
 
   Future<void> _onSubmitRetried(
@@ -347,12 +261,11 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
             fieldErrors: const {},
           ),
         );
-      case RegisterStep.otp || RegisterStep.submitting:
+      case RegisterStep.submitting:
         emit(
           state.copyWith(
             step: RegisterStep.details,
             status: RegisterStatus.idle,
-            clearChallenge: true,
           ),
         );
     }

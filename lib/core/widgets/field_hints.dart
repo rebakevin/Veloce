@@ -13,5 +13,4 @@ abstract final class FieldHints {
   static const String plate = '3 letters starting with R, 3 digits, 1 letter';
   static const String nationalId = '${AppConstants.nationalIdLength} digits';
   static const String licenceNumber = 'As printed on your licence';
-  static const String verificationCode = '6-digit code';
 }

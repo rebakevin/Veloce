@@ -2,12 +2,16 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/theme/app_theme.dart';
+import 'package:veloce/features/discovery/presentation/bloc/owner_cars_cubit.dart';
 import 'package:veloce/features/profile/domain/entities/public_profile.dart';
 import 'package:veloce/features/profile/presentation/bloc/public_profile_cubit.dart';
 import 'package:veloce/features/profile/presentation/pages/public_profile_page.dart';
+
+import '../../../discovery/support/discovery_fakes.dart';
 
 class _MockCubit extends MockCubit<PublicProfileState>
     implements PublicProfileCubit {}
@@ -15,7 +19,16 @@ class _MockCubit extends MockCubit<PublicProfileState>
 void main() {
   late _MockCubit cubit;
 
-  setUp(() => cubit = _MockCubit());
+  setUp(() async {
+    cubit = _MockCubit();
+    await GetIt.instance.reset();
+    GetIt.instance.registerFactoryParam<OwnerCarsCubit, String, void>(
+      (ownerId, _) =>
+          OwnerCarsCubit(repository: FakeSearchRepository(), ownerId: ownerId),
+    );
+  });
+
+  tearDown(() => GetIt.instance.reset());
 
   Future<void> pumpView(WidgetTester tester, PublicProfileState state) async {
     when(() => cubit.state).thenReturn(state);
