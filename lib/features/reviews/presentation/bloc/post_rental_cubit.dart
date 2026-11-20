@@ -74,19 +74,13 @@ final class PostRentalLoaded extends PostRentalState {
 
 class PostRentalCubit extends Cubit<PostRentalState> {
   PostRentalCubit({
-    required ReviewRepository repository,
-    required BookingLookup bookingLookup,
-    required UserLookup userLookup,
-    required VehicleLookup vehicleLookup,
-    required AuthSession session,
-    required String bookingId,
-  }) : _repository = repository,
-       _bookingLookup = bookingLookup,
-       _userLookup = userLookup,
-       _vehicleLookup = vehicleLookup,
-       _session = session,
-       _bookingId = bookingId,
-       super(const PostRentalInitial());
+    required this._repository,
+    required this._bookingLookup,
+    required this._userLookup,
+    required this._vehicleLookup,
+    required this._session,
+    required this._bookingId,
+  }) : super(const PostRentalInitial());
 
   final ReviewRepository _repository;
   final BookingLookup _bookingLookup;

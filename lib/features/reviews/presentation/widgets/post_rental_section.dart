@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -73,7 +75,9 @@ class PostRentalView extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: colors.cautionWash,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colors.cautionInk.withOpacity(0.3)),
+                  border: Border.all(
+                    color: colors.cautionInk.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +123,7 @@ class PostRentalView extends StatelessWidget {
                       onPressed: () async {
                         await context.push(RouteNames.bookingReview(bookingId));
                         if (context.mounted) {
-                          context.read<PostRentalCubit>().load();
+                          unawaited(context.read<PostRentalCubit>().load());
                         }
                       },
                     ),
@@ -137,7 +141,7 @@ class PostRentalView extends StatelessWidget {
                   onEdit: () async {
                     await context.push(RouteNames.bookingReview(bookingId));
                     if (context.mounted) {
-                      context.read<PostRentalCubit>().load();
+                      unawaited(context.read<PostRentalCubit>().load());
                     }
                   },
                 ),
@@ -151,7 +155,7 @@ class PostRentalView extends StatelessWidget {
                   onEdit: () async {
                     await context.push(RouteNames.bookingReview(bookingId));
                     if (context.mounted) {
-                      context.read<PostRentalCubit>().load();
+                      unawaited(context.read<PostRentalCubit>().load());
                     }
                   },
                 ),
@@ -165,7 +169,7 @@ class PostRentalView extends StatelessWidget {
                   onEdit: () async {
                     await context.push(RouteNames.bookingReview(bookingId));
                     if (context.mounted) {
-                      context.read<PostRentalCubit>().load();
+                      unawaited(context.read<PostRentalCubit>().load());
                     }
                   },
                 ),

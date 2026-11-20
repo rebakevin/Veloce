@@ -66,13 +66,10 @@ final class ReviewsPreviewFailure extends ReviewsPreviewState {
 
 class ReviewsPreviewCubit extends Cubit<ReviewsPreviewState> {
   ReviewsPreviewCubit({
-    required ReviewRepository repository,
-    required UserLookup userLookup,
-    required String userId,
-  }) : _repository = repository,
-       _userLookup = userLookup,
-       _userId = userId,
-       super(const ReviewsPreviewLoading());
+    required this._repository,
+    required this._userLookup,
+    required this._userId,
+  }) : super(const ReviewsPreviewLoading());
 
   final ReviewRepository _repository;
   final UserLookup _userLookup;

@@ -45,15 +45,11 @@ final class MyReviewsFailure extends MyReviewsState {
 
 class MyReviewsCubit extends Cubit<MyReviewsState> {
   MyReviewsCubit({
-    required ReviewRepository repository,
-    required UserLookup userLookup,
-    required VehicleLookup vehicleLookup,
-    required AuthSession session,
-  }) : _repository = repository,
-       _userLookup = userLookup,
-       _vehicleLookup = vehicleLookup,
-       _session = session,
-       super(const MyReviewsLoading());
+    required this._repository,
+    required this._userLookup,
+    required this._vehicleLookup,
+    required this._session,
+  }) : super(const MyReviewsLoading());
 
   final ReviewRepository _repository;
   final UserLookup _userLookup;

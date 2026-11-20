@@ -235,17 +235,12 @@ class ReviewState extends Equatable {
 
 class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
   ReviewBloc({
-    required ReviewRepository repository,
-    required BookingLookup bookingLookup,
-    required VehicleLookup vehicleLookup,
-    required UserLookup userLookup,
-    required AuthSession session,
-  }) : _repository = repository,
-       _bookingLookup = bookingLookup,
-       _vehicleLookup = vehicleLookup,
-       _userLookup = userLookup,
-       _session = session,
-       super(const ReviewState()) {
+    required this._repository,
+    required this._bookingLookup,
+    required this._vehicleLookup,
+    required this._userLookup,
+    required this._session,
+  }) : super(const ReviewState()) {
     on<ReviewStarted>(_onStarted);
     on<ReviewSubjectChanged>(_onSubjectChanged);
     on<ReviewStarsChanged>(_onStarsChanged);

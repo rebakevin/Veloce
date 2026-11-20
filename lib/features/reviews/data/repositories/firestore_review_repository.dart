@@ -15,12 +15,10 @@ import '../../domain/repositories/review_repository.dart';
 /// Firestore implementation of [ReviewRepository].
 class FirestoreReviewRepository implements ReviewRepository {
   const FirestoreReviewRepository({
-    required FirebaseFirestore firestore,
-    required AtomicWriteFactory writes,
-    required Clock clock,
-  }) : _firestore = firestore,
-       _writes = writes,
-       _clock = clock;
+    required this._firestore,
+    required this._writes,
+    required this._clock,
+  });
 
   final FirebaseFirestore _firestore;
   final AtomicWriteFactory _writes;

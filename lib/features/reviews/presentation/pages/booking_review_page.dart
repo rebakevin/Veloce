@@ -283,7 +283,7 @@ class _BookingReviewViewState extends State<BookingReviewView> {
           style: AppTextStyles.body.copyWith(color: colors.inkSoft),
         ),
         const SizedBox(height: AppSpacing.lg),
-        Text('Rating *', style: AppTextStyles.caption),
+        const Text('Rating *', style: AppTextStyles.caption),
         const SizedBox(height: AppSpacing.xs),
         RatingStars(rating: stars.toDouble(), onChanged: onStarsChanged),
         if (starsError != null) ...[

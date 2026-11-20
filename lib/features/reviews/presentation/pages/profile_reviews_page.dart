@@ -67,7 +67,7 @@ class ProfileReviewsView extends StatelessWidget {
             padding: Responsive.pagePadding(context)
                 .copyWith(top: AppSpacing.md, bottom: AppSpacing.xl),
             itemCount: reviews.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {
               final item = reviews[index];
               return ReviewCard(

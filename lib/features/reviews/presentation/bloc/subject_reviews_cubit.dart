@@ -71,17 +71,12 @@ final class SubjectReviewsFailure extends SubjectReviewsState {
 
 class SubjectReviewsCubit extends Cubit<SubjectReviewsState> {
   SubjectReviewsCubit({
-    required ReviewRepository repository,
-    required VehicleLookup vehicleLookup,
-    required UserLookup userLookup,
-    required SubjectType subjectType,
-    required String subjectId,
-  }) : _repository = repository,
-       _vehicleLookup = vehicleLookup,
-       _userLookup = userLookup,
-       _subjectType = subjectType,
-       _subjectId = subjectId,
-       super(const SubjectReviewsLoading());
+    required this._repository,
+    required this._vehicleLookup,
+    required this._userLookup,
+    required this._subjectType,
+    required this._subjectId,
+  }) : super(const SubjectReviewsLoading());
 
   final ReviewRepository _repository;
   final VehicleLookup _vehicleLookup;
