@@ -162,7 +162,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [ ] Plate `RAB 123 A` validator; year 2005–2026; price ≥ 5,000; caution ≥ 0
 - [ ] Long-rental tier validator (≤ 3; ≥ 2 days; strictly decreasing; ≥ 5,000)
 - [ ] Example text per tier ("5 days: 5 × 75,000 = 375,000") and 3-day preview (renter pays / owner receives = fee − 2,000) using `PricingCalculator`
-- [ ] Documents rule: insurance + medical required, yellow paper optional, plate must match, expiry in future
+- [x] Documents rule: insurance + medical required, yellow paper optional, plate must match, expiry in future
 
 ### 2.C Screens (7-step wizard, `/owner/cars/new` and `/owner/cars/:id/edit`)
 - [ ] Wizard shell with progress bar, back/next, per-step validation, draft kept in `CarWizardBloc`
@@ -175,7 +175,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [ ] My cars list: photo, plate, price, status, availability line, next rental, edit / availability / pause-resume / remove (confirmation dialog)
 - [ ] Availability screen: one date range only; booked days locked
 - [ ] Documents screen: add yellow paper later, replace expired documents; paused-by-expiry banner
-- [ ] `CarCountCard` slot for owner home
+- [x] `CarCountCard` slot for owner home
 
 ### 2.D Rules & indexes
 - [ ] `vehicles` block (owner-only writes; documents owner-only); add indexes from §4.4

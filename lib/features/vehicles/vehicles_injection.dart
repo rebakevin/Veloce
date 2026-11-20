@@ -1,6 +1,41 @@
 import 'package:get_it/get_it.dart';
 
-/// Registers the vehicles feature's dependencies. Owned by its phase.
+import 'data/firestore_vehicle_repository.dart';
+import 'domain/repositories/vehicle_repository.dart';
+import 'domain/usecases/publish_vehicle.dart';
+import 'domain/usecases/remove_vehicle.dart';
+import 'domain/usecases/set_status.dart';
+import 'domain/usecases/verify_document.dart';
+import 'domain/usecases/watch_owner_vehicles.dart';
+import 'presentation/bloc/car_count_cubit.dart';
+import 'presentation/bloc/car_wizard_bloc.dart';
+import 'presentation/bloc/my_cars_bloc.dart';
+
 void registerVehicles(GetIt getIt) {
-  // Nothing to register yet.
+  getIt
+    ..registerLazySingleton<VehicleRepository>(
+      () => FirestoreVehicleRepository(firestore: getIt(), writes: getIt()),
+    )
+    ..registerFactory<SetStatus>(() => SetStatus(getIt(), getIt()))
+    ..registerFactory<RemoveVehicle>(() => RemoveVehicle(getIt(), getIt()))
+    ..registerFactory<WatchOwnerVehicles>(
+      () => WatchOwnerVehicles(getIt(), getIt()),
+    )
+    ..registerFactory<MyCarsBloc>(
+      () => MyCarsBloc(
+        watchVehicles: getIt(),
+        setStatus: getIt(),
+        removeVehicle: getIt(),
+      ),
+    )
+    ..registerFactory<CarCountCubit>(
+      () => CarCountCubit(watchVehicles: getIt()),
+    )
+    ..registerFactory<VerifyDocument>(() => VerifyDocument(getIt()))
+    ..registerFactory<PublishVehicle>(
+      () => PublishVehicle(getIt(), getIt(), getIt(), getIt()),
+    )
+    ..registerFactory<CarWizardBloc>(
+      () => CarWizardBloc(verifyDocument: getIt(), publishVehicle: getIt()),
+    );
 }
