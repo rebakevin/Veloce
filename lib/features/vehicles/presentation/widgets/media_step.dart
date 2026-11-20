@@ -30,20 +30,34 @@ class MediaStep extends StatelessWidget {
   }
 
   void _remove(int index) {
-    final photos = [...draft.photos]..removeAt(index);
+    final kept = draft.keptPhotos.length;
+    final keptPhotos = [...draft.keptPhotos];
+    final photos = [...draft.photos];
+    if (index < kept) {
+      keptPhotos.removeAt(index);
+    } else {
+      photos.removeAt(index - kept);
+    }
     var primary = draft.primaryIndex;
     if (index == primary) {
       primary = 0;
     } else if (index < primary) {
       primary -= 1;
     }
-    onChanged(draft.copyWith(photos: photos, primaryIndex: primary));
+    onChanged(
+      draft.copyWith(
+        keptPhotos: keptPhotos,
+        photos: photos,
+        primaryIndex: primary,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final error = errors[WizardField.photos];
-    final count = draft.photos.length;
+    final count = draft.photoCount;
+    final kept = draft.keptPhotos.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -66,7 +80,10 @@ class MediaStep extends StatelessWidget {
                   Positioned.fill(
                     child: ImagePickerTile(
                       label: 'Photo ${i + 1}',
-                      imageBytes: draft.photos[i].bytes,
+                      imageUrl: i < kept ? draft.keptPhotos[i].url : null,
+                      imageBytes: i < kept
+                          ? null
+                          : draft.photos[i - kept].bytes,
                       onTap: () => onChanged(draft.copyWith(primaryIndex: i)),
                       onRemove: () => _remove(i),
                     ),

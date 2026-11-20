@@ -7,7 +7,9 @@ import 'package:veloce/core/error/result.dart';
 import '../../domain/entities/wizard_draft.dart';
 import '../../domain/entities/wizard_step.dart';
 import '../../domain/rules/wizard_step_rules.dart';
+import '../../domain/usecases/load_vehicle_draft.dart';
 import '../../domain/usecases/publish_vehicle.dart';
+import '../../domain/usecases/update_vehicle.dart';
 import '../../domain/usecases/verify_document.dart';
 
 part 'car_wizard_event.dart';
@@ -17,6 +19,8 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
   CarWizardBloc({
     required this._verifyDocument,
     required this._publishVehicle,
+    required this._updateVehicle,
+    required this._loadVehicleDraft,
     this._calculator = const PricingCalculator(),
   }) : super(const CarWizardState()) {
     on<WizardDraftChanged>(_onDraftChanged);
@@ -24,10 +28,13 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
     on<WizardBackPressed>(_onBackPressed);
     on<WizardDocumentVerifyRequested>(_onVerifyRequested);
     on<WizardPublishPressed>(_onPublishPressed);
+    on<WizardEditStarted>(_onEditStarted);
   }
 
   final VerifyDocument _verifyDocument;
   final PublishVehicle _publishVehicle;
+  final UpdateVehicle _updateVehicle;
+  final LoadVehicleDraft _loadVehicleDraft;
   final PricingCalculator _calculator;
 
   void _onDraftChanged(WizardDraftChanged event, Emitter<CarWizardState> emit) {
@@ -56,7 +63,7 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
     if (state.isLastStep) return;
     emit(
       CarWizardState(
-        step: WizardStep.values[state.step.index + 1],
+        step: state.steps[state.steps.indexOf(state.step) + 1],
         draft: state.draft,
       ),
     );
@@ -66,7 +73,7 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
     if (state.isFirstStep) return;
     emit(
       CarWizardState(
-        step: WizardStep.values[state.step.index - 1],
+        step: state.steps[state.steps.indexOf(state.step) - 1],
         draft: state.draft,
       ),
     );
@@ -120,7 +127,13 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
         submission: WizardSubmission.publishing,
       ),
     );
-    final result = await _publishVehicle(state.draft);
+    final draft = state.draft;
+    final Result<String> result = draft.isEditing
+        ? (await _updateVehicle(draft)).when(
+            success: (_) => Result.success(draft.vehicleId!),
+            failure: Result.failure,
+          )
+        : await _publishVehicle(draft);
     if (isClosed) return;
     switch (result) {
       case Success(:final value):
@@ -138,6 +151,27 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
             step: state.step,
             draft: state.draft,
             submission: WizardSubmission.failure,
+            message: failure.message,
+          ),
+        );
+    }
+  }
+
+  Future<void> _onEditStarted(
+    WizardEditStarted event,
+    Emitter<CarWizardState> emit,
+  ) async {
+    if (state.isBusy) return;
+    emit(const CarWizardState(submission: WizardSubmission.loading));
+    final result = await _loadVehicleDraft(event.vehicleId);
+    if (isClosed) return;
+    switch (result) {
+      case Success(:final value):
+        emit(CarWizardState(draft: value));
+      case Failure(:final failure):
+        emit(
+          CarWizardState(
+            submission: WizardSubmission.loadFailure,
             message: failure.message,
           ),
         );

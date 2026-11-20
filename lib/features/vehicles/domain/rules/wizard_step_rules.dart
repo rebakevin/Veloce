@@ -77,7 +77,7 @@ abstract final class WizardStepRules {
   }
 
   static Map<WizardField, String> _media(WizardDraft draft) {
-    final count = draft.photos.length;
+    final count = draft.photoCount;
     return _collect({
       WizardField.photos: count < minPhotos || count > maxPhotos
           ? 'Add $minPhotos to $maxPhotos photos.'

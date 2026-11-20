@@ -36,3 +36,13 @@ final class WizardDocumentVerifyRequested extends CarWizardEvent {
 final class WizardPublishPressed extends CarWizardEvent {
   const WizardPublishPressed();
 }
+
+/// Loads an existing car into the draft and switches the wizard to edit mode.
+final class WizardEditStarted extends CarWizardEvent {
+  const WizardEditStarted(this.vehicleId);
+
+  final String vehicleId;
+
+  @override
+  List<Object?> get props => [vehicleId];
+}

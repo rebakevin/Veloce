@@ -6,6 +6,8 @@ import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
+import 'package:veloce/core/widgets/error_view.dart';
+import 'package:veloce/core/widgets/loading_view.dart';
 
 import '../../domain/entities/wizard_draft.dart';
 import '../../domain/entities/wizard_step.dart';
@@ -19,7 +21,10 @@ import '../widgets/rules_step.dart';
 import '../widgets/specs_step.dart';
 
 class CarWizardPage extends StatelessWidget {
-  const CarWizardPage({super.key});
+  /// Set to edit that car; the route also sends `WizardEditStarted` to the bloc.
+  const CarWizardPage({super.key, this.editVehicleId});
+
+  final String? editVehicleId;
 
   static const Map<WizardStep, String> _titles = {
     WizardStep.media: 'Photos',
@@ -38,19 +43,38 @@ class CarWizardPage extends StatelessWidget {
           previous.submission != current.submission,
       listener: (context, state) {
         if (state.submission == WizardSubmission.published) {
-          context.pushReplacement(
-            RouteNames.ownerCarPublished(state.publishedId!),
-          );
+          if (state.draft.isEditing) {
+            GetIt.I<AppMessenger>().success('Changes saved.');
+            context.canPop() ? context.pop() : context.go(RouteNames.ownerCars);
+          } else {
+            context.pushReplacement(
+              RouteNames.ownerCarPublished(state.publishedId!),
+            );
+          }
         } else if (state.submission == WizardSubmission.failure) {
           GetIt.I<AppMessenger>().error(
-            state.message ?? 'We could not publish the car. Try again.',
+            state.message ?? 'We could not save the car. Try again.',
           );
         }
       },
       builder: (context, state) {
         final bloc = context.read<CarWizardBloc>();
         void change(WizardDraft draft) => bloc.add(WizardDraftChanged(draft));
-        final total = WizardStep.values.length;
+        final total = state.steps.length;
+        final stepNumber = state.steps.indexOf(state.step) + 1;
+        final editing = editVehicleId != null;
+        if (state.submission == WizardSubmission.loading ||
+            state.submission == WizardSubmission.loadFailure) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Edit car')),
+            body: state.submission == WizardSubmission.loading
+                ? const LoadingView()
+                : ErrorView(
+                    message: state.message ?? 'We could not load this car.',
+                    onRetry: () => bloc.add(WizardEditStarted(editVehicleId!)),
+                  ),
+          );
+        }
         return Scaffold(
           appBar: AppBar(
             leading: IconButton(
@@ -60,12 +84,10 @@ class CarWizardPage extends StatelessWidget {
                   ? () => context.pop()
                   : () => bloc.add(const WizardBackPressed()),
             ),
-            title: const Text('List a car'),
+            title: Text(editing ? 'Edit car' : 'List a car'),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(4),
-              child: LinearProgressIndicator(
-                value: (state.step.index + 1) / total,
-              ),
+              child: LinearProgressIndicator(value: stepNumber / total),
             ),
           ),
           body: Column(
@@ -77,12 +99,14 @@ class CarWizardPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Step ${state.step.index + 1} of $total',
+                        'Step $stepNumber of $total',
                         style: AppTextStyles.label,
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        _titles[state.step]!,
+                        editing && state.step == WizardStep.review
+                            ? 'Review and save'
+                            : _titles[state.step]!,
                         style: AppTextStyles.cardTitle,
                       ),
                       const SizedBox(height: AppSpacing.lg),
@@ -160,7 +184,11 @@ class CarWizardPage extends StatelessWidget {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : Text(state.isLastStep ? 'Publish' : 'Next'),
+                              : Text(
+                                  state.isLastStep
+                                      ? (editing ? 'Save changes' : 'Publish')
+                                      : 'Next',
+                                ),
                         ),
                       ),
                     ],

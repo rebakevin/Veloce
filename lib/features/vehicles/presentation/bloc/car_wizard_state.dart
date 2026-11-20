@@ -1,6 +1,13 @@
 part of 'car_wizard_bloc.dart';
 
-enum WizardSubmission { idle, publishing, published, failure }
+enum WizardSubmission {
+  idle,
+  loading,
+  loadFailure,
+  publishing,
+  published,
+  failure,
+}
 
 class CarWizardState extends Equatable {
   const CarWizardState({
@@ -21,12 +28,20 @@ class CarWizardState extends Equatable {
   final String? message;
   final String? publishedId;
 
-  bool get isFirstStep => step == WizardStep.values.first;
+  /// Edit mode skips the documents step: documents have their own screen.
+  List<WizardStep> get steps => [
+    for (final s in WizardStep.values)
+      if (!(draft.isEditing && s == WizardStep.documents)) s,
+  ];
 
-  bool get isLastStep => step == WizardStep.values.last;
+  bool get isFirstStep => step == steps.first;
+
+  bool get isLastStep => step == steps.last;
 
   bool get isBusy =>
-      verifying != null || submission == WizardSubmission.publishing;
+      verifying != null ||
+      submission == WizardSubmission.loading ||
+      submission == WizardSubmission.publishing;
 
   @override
   List<Object?> get props => [

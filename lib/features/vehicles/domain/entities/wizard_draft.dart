@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:veloce/core/domain/entities/document_photo.dart';
 import 'package:veloce/core/domain/entities/long_rate.dart';
+import 'package:veloce/core/domain/entities/vehicle_photo.dart';
 import 'package:veloce/core/domain/enums/document_kind.dart';
 import 'package:veloce/core/domain/enums/fuel_type.dart';
 import 'package:veloce/core/domain/enums/transmission.dart';
@@ -44,6 +45,8 @@ class DraftDocument extends Equatable {
 
 class WizardDraft extends Equatable {
   const WizardDraft({
+    this.vehicleId,
+    this.keptPhotos = const [],
     this.photos = const [],
     this.primaryIndex = 0,
     this.video,
@@ -68,7 +71,14 @@ class WizardDraft extends Equatable {
     this.documents = const {},
   });
 
+  /// Set when an existing car is being edited; null when listing a new one.
+  final String? vehicleId;
+
+  /// Photos the car already has, shown before the newly picked [photos].
+  final List<VehiclePhoto> keptPhotos;
   final List<DocumentPhoto> photos;
+
+  /// Index of the main photo across [keptPhotos] followed by [photos].
   final int primaryIndex;
   final DocumentPhoto? video;
   final String plate;
@@ -91,7 +101,13 @@ class WizardDraft extends Equatable {
   final DocumentPhoto? rulesPdf;
   final Map<DocumentKind, DraftDocument> documents;
 
+  bool get isEditing => vehicleId != null;
+
+  int get photoCount => keptPhotos.length + photos.length;
+
   WizardDraft copyWith({
+    String? vehicleId,
+    List<VehiclePhoto>? keptPhotos,
     List<DocumentPhoto>? photos,
     int? primaryIndex,
     DocumentPhoto? video,
@@ -118,6 +134,8 @@ class WizardDraft extends Equatable {
     Map<DocumentKind, DraftDocument>? documents,
   }) {
     return WizardDraft(
+      vehicleId: vehicleId ?? this.vehicleId,
+      keptPhotos: keptPhotos ?? this.keptPhotos,
       photos: photos ?? this.photos,
       primaryIndex: primaryIndex ?? this.primaryIndex,
       video: clearVideo ? null : video ?? this.video,
@@ -145,6 +163,8 @@ class WizardDraft extends Equatable {
 
   @override
   List<Object?> get props => [
+    vehicleId,
+    keptPhotos,
     photos,
     primaryIndex,
     video,

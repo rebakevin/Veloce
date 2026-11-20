@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:veloce/core/domain/enums/document_kind.dart';
 import 'package:veloce/features/vehicles/domain/entities/wizard_step.dart';
 import 'package:veloce/features/vehicles/domain/rules/wizard_step_rules.dart';
+import 'package:veloce/features/vehicles/domain/usecases/load_vehicle_draft.dart';
 import 'package:veloce/features/vehicles/domain/usecases/publish_vehicle.dart';
+import 'package:veloce/features/vehicles/domain/usecases/update_vehicle.dart';
 import 'package:veloce/features/vehicles/domain/usecases/verify_document.dart';
 import 'package:veloce/features/vehicles/presentation/bloc/car_wizard_bloc.dart';
 
@@ -13,14 +15,19 @@ CarWizardBloc buildBloc({
   FakeVehicleRepository? repository,
   FakeVerificationProvider? verification,
 }) {
+  final vehicles = repository ?? FakeVehicleRepository();
+  const session = FakeAuthSession('owner-1');
+  final storage = FakeMediaStorage();
   return CarWizardBloc(
     verifyDocument: VerifyDocument(verification ?? FakeVerificationProvider()),
     publishVehicle: PublishVehicle(
-      repository ?? FakeVehicleRepository(),
-      FakeMediaStorage(),
-      const FakeAuthSession('owner-1'),
+      vehicles,
+      storage,
+      session,
       FixedClock(DateTime(2026, 11, 14)),
     ),
+    updateVehicle: UpdateVehicle(vehicles, storage, session),
+    loadVehicleDraft: LoadVehicleDraft(vehicles, session),
   );
 }
 

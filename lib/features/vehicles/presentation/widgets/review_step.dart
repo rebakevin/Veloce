@@ -44,11 +44,12 @@ class ReviewStep extends StatelessWidget {
             'Caution: ${Formatters.rwf(draft.cautionFee ?? 0)}',
           ],
         ),
-        _Section(title: 'Photos', lines: ['${draft.photos.length} photos']),
-        _Section(
-          title: 'Documents',
-          lines: [for (final kind in DocumentKind.values) _document(kind)],
-        ),
+        _Section(title: 'Photos', lines: ['${draft.photoCount} photos']),
+        if (!draft.isEditing)
+          _Section(
+            title: 'Documents',
+            lines: [for (final kind in DocumentKind.values) _document(kind)],
+          ),
       ],
     );
   }
