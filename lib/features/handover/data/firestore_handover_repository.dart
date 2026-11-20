@@ -34,17 +34,24 @@ import '../domain/repositories/handover_repository.dart';
 import '../domain/services/late_fee_calculator.dart';
 
 /// Saves handover checklists and manages pickup, return and caution claims.
-abstract class FirestoreHandoverRepository implements HandoverRepository {
+class FirestoreHandoverRepository implements HandoverRepository {
   const FirestoreHandoverRepository({
-    required this._firestore,
-    required this._writes,
-    required this._session,
-    required this._clock,
-    required this._stateMachine,
-    required this._ledger,
-    required this._audit,
-    required this._notifications,
-  });
+    required FirebaseFirestore firestore,
+    required AtomicWriteFactory writes,
+    required AuthSession session,
+    required Clock clock,
+    required BookingStateMachine stateMachine,
+    required LedgerWriter ledger,
+    required AuditLogger audit,
+    required NotificationWriter notifications,
+  }) : _firestore = firestore,
+       _writes = writes,
+       _session = session,
+       _clock = clock,
+       _stateMachine = stateMachine,
+       _ledger = ledger,
+       _audit = audit,
+       _notifications = notifications;
 
   static const Duration _timeout = Duration(seconds: 20);
 
@@ -252,6 +259,17 @@ abstract class FirestoreHandoverRepository implements HandoverRepository {
             if (bothConfirmed) {
               updates[FirestoreFields.status] = BookingStatus.active.key;
 
+              const platformFee = 2000;
+              final payout = booking.rentalFee - platformFee;
+
+              if (payout < 0) {
+                return const Result<Booking>.failure(
+                  ValidationFailure(
+                    'The rental fee cannot be less than the platform fee.',
+                  ),
+                );
+              }
+
               _ledger.record(
                 write,
                 booking: updatedBooking,
@@ -262,19 +280,15 @@ abstract class FirestoreHandoverRepository implements HandoverRepository {
                 reference: booking.id,
               );
 
-              if (booking.platformFee > 0) {
-                _ledger.record(
-                  write,
-                  booking: updatedBooking,
-                  type: TransactionType.platformFee,
-                  amount: booking.platformFee,
-                  from: Party.owner,
-                  to: Party.veloce,
-                  reference: booking.id,
-                );
-              }
-
-              final payout = booking.rentalFee - booking.platformFee;
+              _ledger.record(
+                write,
+                booking: updatedBooking,
+                type: TransactionType.platformFee,
+                amount: platformFee,
+                from: Party.owner,
+                to: Party.veloce,
+                reference: booking.id,
+              );
 
               if (payout > 0) {
                 _ledger.record(
@@ -421,10 +435,6 @@ abstract class FirestoreHandoverRepository implements HandoverRepository {
 
             final write = FirestoreTransactionWrite(_firestore, transaction);
 
-            if (lockSnapshot.exists) {
-              write.delete(lockRef.path);
-            }
-
             transaction.update(bookingRef, {
               FirestoreFields.status: BookingStatus.returning.key,
               FirestoreFields.returnedAt: Timestamp.fromDate(now),
@@ -528,21 +538,25 @@ abstract class FirestoreHandoverRepository implements HandoverRepository {
 
             final bothConfirmed = renterConfirmed && ownerConfirmed;
 
-            final shouldComplete =
-                bothConfirmed &&
-                booking.cautionDecision == CautionDecision.noIssue;
+            final lockRef = _firestore.doc(
+              '${FirestorePaths.renterLocks}/${booking.renterId}',
+            );
 
-            if (shouldComplete &&
-                !_stateMachine.canTransition(
-                  booking.status,
-                  BookingStatus.completed,
-                  actor,
-                )) {
-              return const Result<Booking>.failure(
-                ValidationFailure(
-                  'This booking cannot move to completed status.',
-                ),
-              );
+            final lockSnapshot = bothConfirmed
+                ? await transaction.get(lockRef)
+                : null;
+
+            if (lockSnapshot != null && lockSnapshot.exists) {
+              final lockData = lockSnapshot.data();
+
+              if (lockData == null ||
+                  lockData[FirestoreFields.bookingId] != booking.id) {
+                return const Result<Booking>.failure(
+                  ValidationFailure(
+                    'The renter lock belongs to another booking.',
+                  ),
+                );
+              }
             }
 
             final updates = <String, dynamic>{
@@ -557,7 +571,7 @@ abstract class FirestoreHandoverRepository implements HandoverRepository {
                   Timestamp.fromDate(now);
             }
 
-            var updatedBooking = booking.copyWith(
+            final updatedBooking = booking.copyWith(
               renterReturnConfirmedAt: actor == BookingActor.renter
                   ? now
                   : booking.renterReturnConfirmedAt,
@@ -569,72 +583,13 @@ abstract class FirestoreHandoverRepository implements HandoverRepository {
 
             final write = FirestoreTransactionWrite(_firestore, transaction);
 
-            if (shouldComplete) {
-              final returnedAt = booking.returnedAt;
-
-              if (returnedAt == null) {
-                return const Result<Booking>.failure(
-                  ValidationFailure('The return start time is missing.'),
-                );
-              }
-
-              final lateDays = LateFeeCalculator.calculateLateDays(
-                dueAt: booking.endDate,
-                returnedAt: returnedAt,
-              );
-
-              final lateFee = LateFeeCalculator.calculateLateFee(
-                rentalFee: booking.rentalFee,
-                lateDays: lateDays,
-                cautionFee: booking.cautionFee,
-                waived: booking.lateFeeWaived,
-              );
-
-              final refundAmount = booking.cautionFee - lateFee;
-
-              updatedBooking = updatedBooking.copyWith(
-                status: BookingStatus.completed,
-                lateDays: lateDays,
-                lateFee: lateFee,
-                completedAt: now,
-                updatedAt: now,
-              );
-
-              updates[FirestoreFields.status] = BookingStatus.completed.key;
-              updates[FirestoreFields.lateDays] = lateDays;
-              updates[FirestoreFields.lateFee] = lateFee;
-              updates[FirestoreFields.completedAt] = Timestamp.fromDate(now);
-
-              if (refundAmount > 0) {
-                _ledger.record(
-                  write,
-                  booking: updatedBooking,
-                  type: TransactionType.refund,
-                  amount: refundAmount,
-                  from: Party.veloce,
-                  to: Party.renter,
-                  reference: booking.id,
-                );
-              }
-
-              if (lateFee > 0) {
-                _ledger.record(
-                  write,
-                  booking: updatedBooking,
-                  type: TransactionType.lateFee,
-                  amount: lateFee,
-                  from: Party.veloce,
-                  to: Party.owner,
-                  reference: booking.id,
-                );
-              }
-
+            if (bothConfirmed) {
               _notifications.send(
                 write,
                 userId: booking.renterId,
                 type: NotificationType.returnConfirmed,
-                title: 'Return completed',
-                text: 'Both parties confirmed the return. Your booking is complete.',
+                title: 'Return inspection complete',
+                text: 'Both parties confirmed the return. Waiting for the owner to settle the caution fee.',
                 bookingId: booking.id,
               );
 
@@ -642,8 +597,8 @@ abstract class FirestoreHandoverRepository implements HandoverRepository {
                 write,
                 userId: booking.ownerId,
                 type: NotificationType.returnConfirmed,
-                title: 'Return completed',
-                text: 'Both parties confirmed the return. The booking is complete.',
+                title: 'Return inspection complete',
+                text: 'Both parties confirmed the return. You can now settle the caution fee.',
                 bookingId: booking.id,
               );
             } else {
@@ -1360,6 +1315,340 @@ abstract class FirestoreHandoverRepository implements HandoverRepository {
               type: NotificationType.returnConfirmed,
               title: 'Caution fee settlement complete',
               text: 'The caution fee refund has been recorded.',
+              bookingId: booking.id,
+            );
+
+            _audit.record(
+              write,
+              actorId: userId,
+              entityType: 'booking',
+              entityId: booking.id,
+              oldState: BookingStatus.review.key,
+              newState: BookingStatus.completed.key,
+            );
+
+            return Result.success(updatedBooking);
+          })
+          .timeout(_timeout);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<Booking>> markNoIssue({
+    required String bookingId,
+    required String userId,
+  }) async {
+    if (_session.currentUserId != userId) {
+      return const Result<Booking>.failure(
+        PermissionFailure('Sign in to settle the caution fee.'),
+      );
+    }
+
+    try {
+      final bookingRef = _firestore.doc(FirestorePaths.booking(bookingId));
+      final claimRef = _firestore.doc(_claimPath(bookingId));
+
+      return await _firestore
+          .runTransaction<Result<Booking>>((transaction) async {
+            final bookingSnapshot = await transaction.get(bookingRef);
+            final claimSnapshot = await transaction.get(claimRef);
+
+            if (!bookingSnapshot.exists || bookingSnapshot.data() == null) {
+              return const Result<Booking>.failure(
+                NotFoundFailure('Booking not found.'),
+              );
+            }
+
+            final booking = BookingModel.fromMap(
+              bookingSnapshot.id,
+              bookingSnapshot.data()!,
+            );
+
+            if (booking.ownerId != userId) {
+              return const Result<Booking>.failure(
+                PermissionFailure('Only the owner can settle the caution.'),
+              );
+            }
+
+            if (booking.status != BookingStatus.returning) {
+              return const Result<Booking>.failure(
+                ValidationFailure('This booking is not awaiting settlement.'),
+              );
+            }
+
+            if (booking.renterReturnConfirmedAt == null ||
+                booking.ownerReturnConfirmedAt == null) {
+              return const Result<Booking>.failure(
+                ValidationFailure(
+                  'Both parties must confirm the return first.',
+                ),
+              );
+            }
+
+            if (booking.returnedAt == null) {
+              return const Result<Booking>.failure(
+                ValidationFailure('The return time is missing.'),
+              );
+            }
+
+            if (claimSnapshot.exists) {
+              return const Result<Booking>.failure(
+                ValidationFailure(
+                  'A caution claim already exists for this booking.',
+                ),
+              );
+            }
+
+            if (!_stateMachine.canTransition(
+              booking.status,
+              BookingStatus.review,
+              BookingActor.owner,
+            )) {
+              return const Result<Booking>.failure(
+                ValidationFailure('This booking cannot move to review.'),
+              );
+            }
+
+            final now = _clock.now();
+
+            final updatedBooking = booking.copyWith(
+              status: BookingStatus.review,
+              cautionDecision: CautionDecision.noIssue,
+              updatedAt: now,
+            );
+
+            final write = FirestoreTransactionWrite(_firestore, transaction);
+
+            transaction.update(bookingRef, {
+              FirestoreFields.status: BookingStatus.review.key,
+              FirestoreFields.cautionDecision: CautionDecision.noIssue.key,
+              FirestoreFields.updatedAt: Timestamp.fromDate(now),
+            });
+
+            _notifications.send(
+              write,
+              userId: booking.renterId,
+              type: NotificationType.returnConfirmed,
+              title: 'No damage reported',
+              text: 'The owner found no issues with the vehicle. Please acknowledge the caution settlement.',
+              bookingId: booking.id,
+            );
+
+            _audit.record(
+              write,
+              actorId: userId,
+              entityType: 'booking',
+              entityId: booking.id,
+              oldState: BookingStatus.returning.key,
+              newState: BookingStatus.review.key,
+            );
+
+            return Result.success(updatedBooking);
+          })
+          .timeout(_timeout);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<Booking>> acknowledgeNoIssue({
+    required String bookingId,
+    required String userId,
+  }) async {
+    if (_session.currentUserId != userId) {
+      return const Result<Booking>.failure(
+        PermissionFailure('Sign in to acknowledge the settlement.'),
+      );
+    }
+
+    try {
+      final bookingRef = _firestore.doc(FirestorePaths.booking(bookingId));
+
+      return await _firestore
+          .runTransaction<Result<Booking>>((transaction) async {
+            final bookingSnapshot = await transaction.get(bookingRef);
+
+            if (!bookingSnapshot.exists || bookingSnapshot.data() == null) {
+              return const Result<Booking>.failure(
+                NotFoundFailure('Booking not found.'),
+              );
+            }
+
+            final booking = BookingModel.fromMap(
+              bookingSnapshot.id,
+              bookingSnapshot.data()!,
+            );
+
+            if (booking.renterId != userId) {
+              return const Result<Booking>.failure(
+                PermissionFailure(
+                  'Only the renter can acknowledge settlement.',
+                ),
+              );
+            }
+
+            if (booking.status != BookingStatus.review ||
+                booking.cautionDecision != CautionDecision.noIssue) {
+              return const Result<Booking>.failure(
+                ValidationFailure(
+                  'This booking is not awaiting no-issue acknowledgement.',
+                ),
+              );
+            }
+
+            if (booking.renterOutcomeAckAt != null) {
+              return const Result<Booking>.failure(
+                ValidationFailure('You have already acknowledged settlement.'),
+              );
+            }
+
+            if (booking.returnedAt == null) {
+              return const Result<Booking>.failure(
+                ValidationFailure('The return time is missing.'),
+              );
+            }
+
+            if (booking.renterReturnConfirmedAt == null ||
+                booking.ownerReturnConfirmedAt == null) {
+              return const Result<Booking>.failure(
+                ValidationFailure(
+                  'Both parties must confirm the return first.',
+                ),
+              );
+            }
+
+            if (!_stateMachine.canTransition(
+              booking.status,
+              BookingStatus.completed,
+              BookingActor.renter,
+            )) {
+              return const Result<Booking>.failure(
+                ValidationFailure('This booking cannot be completed.'),
+              );
+            }
+
+            final lockRef = _firestore.doc(
+              '${FirestorePaths.renterLocks}/${booking.renterId}',
+            );
+
+            final vehicleRef = _firestore.doc(
+              FirestorePaths.vehicle(booking.vehicleId),
+            );
+
+            final lockSnapshot = await transaction.get(lockRef);
+            final vehicleSnapshot = await transaction.get(vehicleRef);
+
+            if (lockSnapshot.exists) {
+              final lockData = lockSnapshot.data();
+
+              if (lockData == null ||
+                  lockData[FirestoreFields.bookingId] != booking.id) {
+                return const Result<Booking>.failure(
+                  ValidationFailure(
+                    'The renter lock belongs to another booking.',
+                  ),
+                );
+              }
+            }
+
+            if (!vehicleSnapshot.exists) {
+              return const Result<Booking>.failure(
+                NotFoundFailure('Vehicle not found.'),
+              );
+            }
+
+            final now = _clock.now();
+
+            final lateDays = LateFeeCalculator.calculateLateDays(
+              dueAt: booking.endDate,
+              returnedAt: booking.returnedAt!,
+            );
+
+            final lateFee = LateFeeCalculator.calculateLateFee(
+              rentalFee: booking.rentalFee,
+              lateDays: lateDays,
+              cautionFee: booking.cautionFee,
+              waived: booking.lateFeeWaived,
+            );
+
+            final refundAmount = booking.cautionFee - lateFee;
+
+            if (refundAmount < 0) {
+              return const Result<Booking>.failure(
+                ValidationFailure('The late fee exceeds the caution fee.'),
+              );
+            }
+
+            final updatedBooking = booking.copyWith(
+              status: BookingStatus.completed,
+              lateDays: lateDays,
+              lateFee: lateFee,
+              renterOutcomeAckAt: now,
+              completedAt: now,
+              updatedAt: now,
+            );
+
+            final write = FirestoreTransactionWrite(_firestore, transaction);
+
+            if (lateFee > 0) {
+              _ledger.record(
+                write,
+                booking: updatedBooking,
+                type: TransactionType.lateFee,
+                amount: lateFee,
+                from: Party.veloce,
+                to: Party.owner,
+                reference: booking.id,
+              );
+            }
+
+            if (refundAmount > 0) {
+              _ledger.record(
+                write,
+                booking: updatedBooking,
+                type: TransactionType.refund,
+                amount: refundAmount,
+                from: Party.veloce,
+                to: Party.renter,
+                reference: booking.id,
+              );
+            }
+
+            transaction.update(bookingRef, {
+              FirestoreFields.status: BookingStatus.completed.key,
+              FirestoreFields.lateDays: lateDays,
+              FirestoreFields.lateFee: lateFee,
+              FirestoreFields.renterOutcomeAckAt: Timestamp.fromDate(now),
+              FirestoreFields.completedAt: Timestamp.fromDate(now),
+              FirestoreFields.updatedAt: Timestamp.fromDate(now),
+            });
+
+            if (lockSnapshot.exists) {
+              transaction.delete(lockRef);
+            }
+
+            transaction.update(vehicleRef, {
+              FirestoreFields.completedCount: FieldValue.increment(1),
+            });
+
+            _notifications.send(
+              write,
+              userId: booking.renterId,
+              type: NotificationType.returnConfirmed,
+              title: 'Caution fee refunded',
+              text: 'You acknowledged the settlement. Your booking is now complete.',
+              bookingId: booking.id,
+            );
+
+            _notifications.send(
+              write,
+              userId: booking.ownerId,
+              type: NotificationType.returnConfirmed,
+              title: 'Rental completed',
+              text: 'The renter acknowledged the settlement. The booking is complete.',
               bookingId: booking.id,
             );
 

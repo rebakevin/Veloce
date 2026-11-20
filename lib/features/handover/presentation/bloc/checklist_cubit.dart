@@ -20,15 +20,12 @@ class ChecklistCubit extends Cubit<ChecklistState> {
     required ChecklistSide side,
     required MediaStorage mediaStorage,
     required Clock clock,
-  }) : this._(bookingId, kind, side, mediaStorage, clock);
-
-  ChecklistCubit._(
-    this._bookingId,
-    this._kind,
-    this._side,
-    this._mediaStorage,
-    this._clock,
-  ) : super(const ChecklistState());
+  }) : _bookingId = bookingId,
+       _kind = kind,
+       _side = side,
+       _mediaStorage = mediaStorage,
+       _clock = clock,
+       super(const ChecklistState());
 
   final String _bookingId;
   final ChecklistKind _kind;
@@ -38,6 +35,40 @@ class ChecklistCubit extends Cubit<ChecklistState> {
   final Uuid _uuid = const Uuid();
 
   _PendingUpload? _pendingUpload;
+
+  List<String> get checklistItems {
+    if (_kind == ChecklistKind.pickup) {
+      return const [
+        'Exterior body condition',
+        'Tires and wheels',
+        'Lights, mirrors and windows',
+        'Interior and seats',
+        'Fuel level and odometer reading',
+      ];
+    }
+
+    return const [
+      'Exterior condition and new damage',
+      'Tires and wheels',
+      'Lights, mirrors and windows',
+      'Interior cleanliness and condition',
+      'Fuel level and odometer reading',
+    ];
+  }
+
+  void toggleItem(String item) {
+    if (!checklistItems.contains(item)) return;
+
+    final updatedItems = Set<String>.from(state.checkedItems);
+
+    if (updatedItems.contains(item)) {
+      updatedItems.remove(item);
+    } else {
+      updatedItems.add(item);
+    }
+
+    emit(state.copyWith(checkedItems: updatedItems));
+  }
 
   Future<void> uploadMedia({
     required Uint8List bytes,

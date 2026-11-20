@@ -35,6 +35,16 @@ abstract interface class HandoverRepository {
     required BookingActor actor,
   });
 
+  Future<Result<Booking>> markNoIssue({
+    required String bookingId,
+    required String userId,
+  });
+
+  Future<Result<Booking>> acknowledgeNoIssue({
+    required String bookingId,
+    required String userId,
+  });
+
   Future<Result<Booking>> submitClaim({
     required String bookingId,
     required String userId,
