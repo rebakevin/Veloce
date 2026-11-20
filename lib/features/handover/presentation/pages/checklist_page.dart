@@ -3,11 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/data/services/booking_lookup.dart';
 import '../../../../core/domain/entities/booking.dart';
-import '../../../../core/domain/entities/checklist_entry.dart';
 import '../../../../core/domain/enums/booking_actor.dart';
 import '../../../../core/domain/enums/booking_status.dart';
 import '../../../../core/domain/enums/checklist_kind.dart';
@@ -83,180 +81,75 @@ class ChecklistPage extends StatelessWidget {
     return BlocProvider(
       create: (_) => ChecklistCubit(
         bookingId: bookingId,
-        kind: kind,
-        side: side,
-        mediaStorage: GetIt.I<MediaStorage>(),
-        clock: GetIt.I<Clock>(),
-      ),
-      child: _ChecklistContent(
-        booking: booking,
-        bookingId: bookingId,
+        userId: userId,
         kind: kind,
         actor: actor,
         side: side,
+        startReturnFirst:
+            kind == ChecklistKind.returning &&
+            booking.status == BookingStatus.active,
+        mediaStorage: GetIt.I<MediaStorage>(),
+        repository: GetIt.I<HandoverRepository>(),
+        clock: GetIt.I<Clock>(),
       ),
+      child: _ChecklistContent(kind: kind),
     );
   }
 }
 
-class _ChecklistContent extends StatefulWidget {
-  const _ChecklistContent({
-    required this.booking,
-    required this.bookingId,
-    required this.kind,
-    required this.actor,
-    required this.side,
-  });
+class _ChecklistContent extends StatelessWidget {
+  const _ChecklistContent({required this.kind});
 
-  final Booking booking;
-  final String bookingId;
   final ChecklistKind kind;
-  final BookingActor actor;
-  final ChecklistSide side;
 
-  @override
-  State<_ChecklistContent> createState() => _ChecklistContentState();
-}
+  Future<void> _pickPhoto(BuildContext context) async {
+    final cubit = context.read<ChecklistCubit>();
 
-class _ChecklistContentState extends State<_ChecklistContent> {
-  Future<void> _pickPhoto() async {
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 80,
       maxWidth: 1600,
     );
 
-    if (file == null || !mounted) return;
+    if (file == null || cubit.isClosed) return;
 
     final bytes = await file.readAsBytes();
-    if (!mounted) return;
+    if (cubit.isClosed) return;
 
     final extension = file.name.contains('.')
         ? file.name.split('.').last.toLowerCase()
         : 'jpg';
 
-    await context.read<ChecklistCubit>().uploadMedia(
+    await cubit.uploadMedia(
       bytes: bytes,
       extension: extension,
       mediaType: MediaType.photo,
     );
   }
 
-  Future<void> _saveAndConfirm(ChecklistState state) async {
-    final cubit = context.read<ChecklistCubit>();
-
-    if (state.isSaving || !state.canConfirm) return;
-
-    cubit.setSaving(true);
-
-    final repository = GetIt.I<HandoverRepository>();
-    final clock = GetIt.I<Clock>();
-    final userId = GetIt.I<AuthSession>().currentUserId!;
-
-    final entries = cubit.checklistItems.map((item) {
-      return ChecklistEntry(
-        id: const Uuid().v4(),
-        bookingId: widget.bookingId,
-        kind: widget.kind,
-        side: widget.side,
-        item: item,
-        ticked: state.checkedItems.contains(item),
-        at: clock.now(),
-      );
-    }).toList();
-
-    final saveResult = await repository.saveChecklist(
-      bookingId: widget.bookingId,
-      kind: widget.kind,
-      side: widget.side,
-      entries: entries,
-      media: state.media,
-    );
-
-    if (!mounted) return;
-
-    final saveSucceeded = saveResult.when(
-      success: (_) => true,
-      failure: (failure) {
-        _showMessage(failure.message);
-        return false;
-      },
-    );
-
-    if (!saveSucceeded) {
-      cubit.setSaving(false);
-      return;
-    }
-
-    Result<Booking> confirmation;
-
-    if (widget.kind == ChecklistKind.pickup) {
-      confirmation = await repository.confirmPickup(
-        bookingId: widget.bookingId,
-        userId: userId,
-        actor: widget.actor,
-      );
-    } else {
-      if (widget.booking.status == BookingStatus.active) {
-        final startResult = await repository.startReturn(
-          bookingId: widget.bookingId,
-          userId: userId,
-          actor: widget.actor,
-        );
-
-        final started = startResult.when(
-          success: (_) => true,
-          failure: (failure) {
-            _showMessage(failure.message);
-            return false;
-          },
-        );
-
-        if (!started) {
-          if (mounted) cubit.setSaving(false);
-          return;
-        }
-      }
-
-      confirmation = await repository.confirmReturn(
-        bookingId: widget.bookingId,
-        userId: userId,
-        actor: widget.actor,
-      );
-    }
-
-    if (!mounted) return;
-
-    confirmation.when(
-      success: (_) {
-        _showMessage(
-          widget.kind == ChecklistKind.pickup
-              ? 'Pickup checklist submitted.'
-              : 'Return checklist submitted.',
-        );
-        context.pop();
-      },
-      failure: (failure) {
-        _showMessage(failure.message);
-        cubit.setSaving(false);
-      },
-    );
-  }
-
-  void _showMessage(String message) {
+  void _onSubmitStatus(BuildContext context, ChecklistState state) {
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+        .showSnackBar(SnackBar(content: Text(state.submitMessage ?? '')));
+
+    if (state.submitStatus == ChecklistSubmitStatus.submitted) {
+      context.pop();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isPickup = widget.kind == ChecklistKind.pickup;
+    final isPickup = kind == ChecklistKind.pickup;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(isPickup ? 'Pickup checklist' : 'Return checklist'),
       ),
-      body: BlocBuilder<ChecklistCubit, ChecklistState>(
+      body: BlocConsumer<ChecklistCubit, ChecklistState>(
+        listenWhen: (previous, current) =>
+            previous.submitStatus != current.submitStatus &&
+            (current.submitStatus == ChecklistSubmitStatus.submitted ||
+                current.submitStatus == ChecklistSubmitStatus.failed),
+        listener: _onSubmitStatus,
         builder: (context, state) {
           final cubit = context.read<ChecklistCubit>();
 
@@ -297,7 +190,7 @@ class _ChecklistContentState extends State<_ChecklistContent> {
               OutlinedButton.icon(
                 onPressed: state.isUploading || state.isSaving
                     ? null
-                    : _pickPhoto,
+                    : () => _pickPhoto(context),
                 icon: const Icon(Icons.add_a_photo),
                 label: const Text('Add photo'),
               ),
@@ -343,9 +236,7 @@ class _ChecklistContentState extends State<_ChecklistContent> {
               ),
               const SizedBox(height: 16),
               FilledButton(
-                onPressed: state.canConfirm && !state.isSaving
-                    ? () => _saveAndConfirm(state)
-                    : null,
+                onPressed: state.canConfirm ? cubit.submit : null,
                 child: state.isSaving
                     ? const SizedBox(
                         width: 20,

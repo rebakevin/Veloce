@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/domain/entities/checklist_entry.dart';
 import '../../../../core/domain/entities/checklist_media.dart';
+import '../../../../core/domain/enums/booking_actor.dart';
 import '../../../../core/domain/enums/checklist_kind.dart';
 import '../../../../core/domain/enums/checklist_side.dart';
 import '../../../../core/domain/enums/media_type.dart';
@@ -11,33 +13,42 @@ import '../../../../core/domain/enums/storage_bucket.dart';
 import '../../../../core/domain/services/clock.dart';
 import '../../../../core/domain/services/media_storage.dart';
 import '../../../../core/error/app_failure.dart';
+import '../../../../core/error/result.dart';
+import '../../domain/repositories/handover_repository.dart';
 import 'checklist_state.dart';
 
 class ChecklistCubit extends Cubit<ChecklistState> {
   ChecklistCubit({
-    required String bookingId,
-    required ChecklistKind kind,
-    required ChecklistSide side,
-    required MediaStorage mediaStorage,
-    required Clock clock,
-  }) : _bookingId = bookingId,
-       _kind = kind,
-       _side = side,
-       _mediaStorage = mediaStorage,
-       _clock = clock,
-       super(const ChecklistState());
+    required this.bookingId,
+    required this.userId,
+    required this.kind,
+    required this.actor,
+    required this.side,
+    required this.startReturnFirst,
+    required this._mediaStorage,
+    required this._repository,
+    required this._clock,
+  }) : super(const ChecklistState());
 
-  final String _bookingId;
-  final ChecklistKind _kind;
-  final ChecklistSide _side;
+  final String bookingId;
+  final String userId;
+  final ChecklistKind kind;
+  final BookingActor actor;
+  final ChecklistSide side;
+
+  /// True when a return checklist is submitted while the booking is still
+  /// `active`: the return is started first, then confirmed.
+  final bool startReturnFirst;
+
   final MediaStorage _mediaStorage;
+  final HandoverRepository _repository;
   final Clock _clock;
   final Uuid _uuid = const Uuid();
 
   _PendingUpload? _pendingUpload;
 
   List<String> get checklistItems {
-    if (_kind == ChecklistKind.pickup) {
+    if (kind == ChecklistKind.pickup) {
       return const [
         'Exterior body condition',
         'Tires and wheels',
@@ -56,8 +67,104 @@ class ChecklistCubit extends Cubit<ChecklistState> {
     ];
   }
 
-  void setSaving(bool isSaving) {
-    emit(state.copyWith(isSaving: isSaving, clearError: isSaving));
+  /// Saves the checklist, then confirms this side's pickup or return. The
+  /// repository decides whether the other side has confirmed too.
+  Future<void> submit() async {
+    if (state.isSaving || !state.canConfirm) return;
+
+    emit(
+      state.copyWith(
+        submitStatus: ChecklistSubmitStatus.saving,
+        clearError: true,
+      ),
+    );
+
+    try {
+      final entries = checklistItems
+          .map(
+            (item) => ChecklistEntry(
+              id: _uuid.v4(),
+              bookingId: bookingId,
+              kind: kind,
+              side: side,
+              item: item,
+              ticked: state.checkedItems.contains(item),
+              at: _clock.now(),
+            ),
+          )
+          .toList();
+
+      final saved = await _repository.saveChecklist(
+        bookingId: bookingId,
+        kind: kind,
+        side: side,
+        entries: entries,
+        media: state.media,
+      );
+      if (isClosed) return;
+
+      final saveFailure = saved.when(success: (_) => null, failure: (f) => f);
+      if (saveFailure != null) {
+        _emitFailed(saveFailure.message);
+        return;
+      }
+
+      final confirmed = await _confirm();
+      if (isClosed) return;
+
+      confirmed.when(
+        success: (_) => emit(
+          state.copyWith(
+            submitStatus: ChecklistSubmitStatus.submitted,
+            submitMessage: kind == ChecklistKind.pickup
+                ? 'Pickup checklist submitted.'
+                : 'Return checklist submitted.',
+          ),
+        ),
+        failure: (failure) => _emitFailed(failure.message),
+      );
+    } catch (_) {
+      if (isClosed) return;
+      _emitFailed(const UnknownFailure().message);
+    }
+  }
+
+  Future<Result<Object?>> _confirm() async {
+    if (kind == ChecklistKind.pickup) {
+      return _repository.confirmPickup(
+        bookingId: bookingId,
+        userId: userId,
+        actor: actor,
+      );
+    }
+
+    if (startReturnFirst) {
+      final started = await _repository.startReturn(
+        bookingId: bookingId,
+        userId: userId,
+        actor: actor,
+      );
+      final startFailure = started.when(
+        success: (_) => null,
+        failure: (f) => f,
+      );
+      if (startFailure != null) return Result.failure(startFailure);
+    }
+
+    return _repository.confirmReturn(
+      bookingId: bookingId,
+      userId: userId,
+      actor: actor,
+    );
+  }
+
+  void _emitFailed(String message) {
+    emit(
+      state.copyWith(
+        submitStatus: ChecklistSubmitStatus.failed,
+        submitMessage: message,
+      ),
+    );
   }
 
   void toggleItem(String item) {
@@ -115,9 +222,9 @@ class ChecklistCubit extends Cubit<ChecklistState> {
         success: (url) {
           final item = ChecklistMedia(
             id: _uuid.v4(),
-            bookingId: _bookingId,
-            kind: _kind,
-            side: _side,
+            bookingId: bookingId,
+            kind: kind,
+            side: side,
             mediaType: upload.mediaType,
             url: url,
             at: _clock.now(),

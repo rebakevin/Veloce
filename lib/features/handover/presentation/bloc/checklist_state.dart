@@ -2,20 +2,28 @@ import 'package:equatable/equatable.dart';
 
 import '../../../../core/domain/entities/checklist_media.dart';
 
+enum ChecklistSubmitStatus { idle, saving, submitted, failed }
+
 class ChecklistState extends Equatable {
   const ChecklistState({
     this.media = const [],
     this.checkedItems = const {},
     this.isUploading = false,
-    this.isSaving = false,
+    this.submitStatus = ChecklistSubmitStatus.idle,
+    this.submitMessage,
     this.errorMessage,
   });
 
   final List<ChecklistMedia> media;
   final Set<String> checkedItems;
   final bool isUploading;
-  final bool isSaving;
+  final ChecklistSubmitStatus submitStatus;
+
+  /// Text for the snackbar once a submit has finished or failed.
+  final String? submitMessage;
   final String? errorMessage;
+
+  bool get isSaving => submitStatus == ChecklistSubmitStatus.saving;
 
   bool get hasPhoto => media.any((item) => item.mediaType.key == 'photo');
 
@@ -28,7 +36,8 @@ class ChecklistState extends Equatable {
     List<ChecklistMedia>? media,
     Set<String>? checkedItems,
     bool? isUploading,
-    bool? isSaving,
+    ChecklistSubmitStatus? submitStatus,
+    String? submitMessage,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -36,7 +45,8 @@ class ChecklistState extends Equatable {
       media: media ?? this.media,
       checkedItems: checkedItems ?? this.checkedItems,
       isUploading: isUploading ?? this.isUploading,
-      isSaving: isSaving ?? this.isSaving,
+      submitStatus: submitStatus ?? this.submitStatus,
+      submitMessage: submitMessage ?? this.submitMessage,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
   }
@@ -46,7 +56,8 @@ class ChecklistState extends Equatable {
     media,
     checkedItems,
     isUploading,
-    isSaving,
+    submitStatus,
+    submitMessage,
     errorMessage,
   ];
 }

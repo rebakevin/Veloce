@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:veloce/core/domain/enums/booking_actor.dart';
 import 'package:veloce/core/domain/enums/checklist_kind.dart';
 import 'package:veloce/core/domain/enums/checklist_side.dart';
 import 'package:veloce/core/domain/enums/media_type.dart';
@@ -13,6 +14,8 @@ import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/handover/presentation/bloc/checklist_cubit.dart';
 import 'package:veloce/features/handover/presentation/bloc/checklist_state.dart';
 
+import 'handover_fakes.dart';
+
 void main() {
   late _FakeMediaStorage storage;
 
@@ -23,9 +26,13 @@ void main() {
   ChecklistCubit createCubit() {
     return ChecklistCubit(
       bookingId: 'booking-1',
+      userId: 'owner-1',
       kind: ChecklistKind.pickup,
+      actor: BookingActor.owner,
       side: ChecklistSide.owner,
+      startReturnFirst: false,
       mediaStorage: storage,
+      repository: MockHandoverRepository(),
       clock: _FakeClock(),
     );
   }

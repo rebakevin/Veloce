@@ -1,12 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
-import 'package:veloce/core/constants/firestore_paths.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/claim_response.dart';
+import 'package:veloce/core/domain/enums/claim_status.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/handover/domain/repositories/handover_repository.dart';
@@ -22,122 +21,28 @@ class CautionClaimPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          CautionClaimCubit(repository: GetIt.I<HandoverRepository>()),
+      create: (_) => CautionClaimCubit(
+        bookingId: bookingId,
+        repository: GetIt.I<HandoverRepository>(),
+      ),
       child: _CautionClaimView(bookingId: bookingId),
     );
   }
 }
 
-class _CautionClaimView extends StatefulWidget {
+class _CautionClaimView extends StatelessWidget {
   const _CautionClaimView({required this.bookingId});
 
   final String bookingId;
 
   @override
-  State<_CautionClaimView> createState() => _CautionClaimViewState();
-}
-
-class _CautionClaimViewState extends State<_CautionClaimView> {
-  final _session = GetIt.I<AuthSession>();
-  final _firestore = GetIt.I<FirebaseFirestore>();
-
-  final _amountController = TextEditingController();
-  final _reasonController = TextEditingController();
-  final _evidenceController = TextEditingController();
-
-  DocumentReference<Map<String, dynamic>> get _claimDocument =>
-      _firestore.collection(FirestorePaths.cautionClaims).doc(widget.bookingId);
-
-  List<String> get _evidenceUrls => _evidenceController.text
-      .split(',')
-      .map((url) => url.trim())
-      .where((url) => url.isNotEmpty)
-      .toList();
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _reasonController.dispose();
-    _evidenceController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submitClaim() async {
-    final userId = _session.currentUserId;
-    final amount = int.tryParse(_amountController.text.trim());
-    final reason = _reasonController.text.trim();
-
-    if (userId == null) return;
-
-    if (amount == null || amount <= 0 || reason.isEmpty) {
-      context.read<CautionClaimCubit>().showError(
-        'Enter a valid amount and reason.',
-      );
-      return;
-    }
-
-    await context.read<CautionClaimCubit>().submitClaim(
-      bookingId: widget.bookingId,
-      userId: userId,
-      amount: amount,
-      reason: reason,
-      evidenceUrls: _evidenceUrls,
-    );
-  }
-
-  Future<void> _respondToClaim(ClaimResponse response) async {
-    final userId = _session.currentUserId;
-    if (userId == null) return;
-
-    await context.read<CautionClaimCubit>().respondToClaim(
-      bookingId: widget.bookingId,
-      userId: userId,
-      response: response,
-    );
-  }
-
-  Future<void> _reviseClaim() async {
-    final userId = _session.currentUserId;
-    final amount = int.tryParse(_amountController.text.trim());
-    final reason = _reasonController.text.trim();
-
-    if (userId == null) return;
-
-    if (amount == null || amount <= 0 || reason.isEmpty) {
-      context.read<CautionClaimCubit>().showError(
-        'Enter a valid amount and reason.',
-      );
-      return;
-    }
-
-    await context.read<CautionClaimCubit>().reviseClaim(
-      bookingId: widget.bookingId,
-      userId: userId,
-      amount: amount,
-      reason: reason,
-      evidenceUrls: _evidenceUrls,
-    );
-  }
-
-  Future<void> _refundCaution() async {
-    final userId = _session.currentUserId;
-    if (userId == null) return;
-
-    await context.read<CautionClaimCubit>().refundCaution(
-      bookingId: widget.bookingId,
-      userId: userId,
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final userId = _session.currentUserId;
+    final userId = GetIt.I<AuthSession>().currentUserId;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Caution claim')),
       body: StreamBuilder<Result<Booking>>(
-        stream: GetIt.I<BookingLookup>().watch(widget.bookingId),
+        stream: GetIt.I<BookingLookup>().watch(bookingId),
         builder: (context, bookingSnapshot) {
           if (bookingSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -149,23 +54,22 @@ class _CautionClaimViewState extends State<_CautionClaimView> {
 
           return bookingSnapshot.data!.when(
             success: (booking) {
-              return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                stream: _claimDocument.snapshots(),
-                builder: (context, claimSnapshot) {
-                  if (claimSnapshot.hasError) {
-                    return const Center(
+              return BlocBuilder<CautionClaimCubit, CautionClaimState>(
+                builder: (context, state) {
+                  return switch (state.loadStatus) {
+                    CautionClaimLoad.failed => const Center(
                       child: Text('Unable to load claim details.'),
-                    );
-                  }
-
-                  if (claimSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final claim = claimSnapshot.data?.data();
-
-                  return _buildContent(booking, claim, userId);
+                    ),
+                    CautionClaimLoad.loading => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                    CautionClaimLoad.loaded => _buildContent(
+                      context,
+                      booking,
+                      state,
+                      userId,
+                    ),
+                  };
                 },
               );
             },
@@ -179,10 +83,12 @@ class _CautionClaimViewState extends State<_CautionClaimView> {
   }
 
   Widget _buildContent(
+    BuildContext context,
     Booking booking,
-    Map<String, dynamic>? claim,
+    CautionClaimState state,
     String? userId,
   ) {
+    final cubit = context.read<CautionClaimCubit>();
     final isOwner = booking.ownerId == userId;
     final isRenter = booking.renterId == userId;
 
@@ -190,182 +96,144 @@ class _CautionClaimViewState extends State<_CautionClaimView> {
         booking.ownerReturnConfirmedAt != null &&
         booking.renterReturnConfirmedAt != null;
 
+    final claim = state.claim;
     final claimExists = claim != null;
-    final response = claim?['renterResponse']?.toString() ?? 'none';
-    final claimStatus = claim?['status']?.toString() ?? 'open';
+    final response = claim?.renterResponse ?? ClaimResponse.none;
+    final claimStatus = claim?.status ?? ClaimStatus.open;
 
-    final amount = claim?['currentAmount'] ?? 0;
-    final reason = claim?['reason']?.toString() ?? '';
-    final evidence =
-        (claim?['evidenceUrls'] as List<dynamic>?)
-            ?.map((item) => item.toString())
-            .toList() ??
-        [];
-
-    return BlocBuilder<CautionClaimCubit, CautionClaimState>(
-      builder: (context, state) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Vehicle damage or issue claim',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Vehicle damage or issue claim',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          if (claim != null) ...[
+            _detailRow('Claim amount', '${claim.currentAmount} RWF'),
+            _detailRow('Reason', claim.reason),
+            _detailRow('Claim status', claimStatus.key),
+            _detailRow('Renter response', response.key),
+            if (claim.evidenceUrls.isNotEmpty) ...[
               const SizedBox(height: 12),
-              if (claimExists) ...[
-                _detailRow('Claim amount', '$amount RWF'),
-                _detailRow('Reason', reason),
-                _detailRow('Claim status', claimStatus),
-                _detailRow('Renter response', response),
-                if (evidence.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Evidence references',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  ...evidence.map(
-                    (url) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: SelectableText(url),
-                    ),
-                  ),
-                ],
-                const Divider(height: 32),
-              ],
-              if (isOwner &&
-                  booking.status == BookingStatus.returning &&
-                  bothReturned &&
-                  !claimExists) ...[
-                _claimForm(
-                  title: 'Submit a caution claim',
-                  buttonLabel: 'Submit claim',
-                  onPressed: _submitClaim,
-                  isLoading: state.isLoading,
+              const Text(
+                'Evidence references',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              ...claim.evidenceUrls.map(
+                (url) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: SelectableText(url),
                 ),
-              ] else if (isRenter &&
-                  booking.status == BookingStatus.review &&
-                  claimExists &&
-                  claimStatus == 'open' &&
-                  response == 'none') ...[
-                const Text(
-                  'Review the owner claim and choose whether you agree or dispute it.',
-                ),
-                const SizedBox(height: 16),
-                _actionButton(
-                  label: 'Agree to claim',
-                  onPressed: () => _respondToClaim(ClaimResponse.agreed),
-                  isLoading: state.isLoading,
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton(
-                  onPressed: state.isLoading
-                      ? null
-                      : () => _respondToClaim(ClaimResponse.disputed),
-                  child: const Text('Dispute claim'),
-                ),
-              ] else if (isOwner &&
-                  booking.status == BookingStatus.review &&
-                  claimExists &&
-                  response == 'disputed' &&
-                  claimStatus == 'open') ...[
-                const Text(
-                  'The renter disputed the claim. You can revise the claim to the same or a lower amount, or refund the caution.',
-                ),
-                const SizedBox(height: 16),
-                _claimForm(
-                  title: 'Revise claim',
-                  buttonLabel: 'Submit revised claim',
-                  onPressed: _reviseClaim,
-                  isLoading: state.isLoading,
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: state.isLoading ? null : _refundCaution,
-                  child: const Text('Refund caution'),
-                ),
-              ] else if (claimExists && claimStatus == 'settled') ...[
-                const Text('The claim has been settled.'),
-              ] else if (claimExists && claimStatus == 'refunded') ...[
-                const Text('The caution has been refunded.'),
-              ] else if (booking.status == BookingStatus.completed) ...[
-                const Text('This booking has been completed.'),
-              ] else if (claimExists && response == 'disputed') ...[
-                const Text(
-                  'The claim is disputed and awaiting the owner’s next action.',
-                ),
-              ] else if (claimExists) ...[
-                const Text('The claim is awaiting a response or settlement.'),
-              ] else ...[
-                const Text('The booking is not ready for a caution claim.'),
-              ],
-              if (state.isLoading) ...[
-                const SizedBox(height: 16),
-                const Center(child: CircularProgressIndicator()),
-              ],
-              if (state.errorMessage != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  state.errorMessage!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
+              ),
             ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _claimForm({
-    required String title,
-    required String buttonLabel,
-    required VoidCallback onPressed,
-    required bool isLoading,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _amountController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Claim amount (RWF)',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _reasonController,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Reason for claim',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _evidenceController,
-          maxLines: 2,
-          decoration: const InputDecoration(
-            labelText: 'Evidence photo URLs (comma separated)',
-            hintText: 'Paste uploaded photo URLs',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _actionButton(
-          label: buttonLabel,
-          onPressed: onPressed,
-          isLoading: isLoading,
-        ),
-      ],
+            const Divider(height: 32),
+          ],
+          if (isOwner &&
+              booking.status == BookingStatus.returning &&
+              bothReturned &&
+              !claimExists) ...[
+            _ClaimForm(
+              title: 'Submit a caution claim',
+              buttonLabel: 'Submit claim',
+              isLoading: state.isLoading,
+              onSubmit: (amount, reason, evidence) => userId == null
+                  ? null
+                  : cubit.submitClaim(
+                      userId: userId,
+                      amountText: amount,
+                      reason: reason,
+                      evidenceText: evidence,
+                    ),
+            ),
+          ] else if (isRenter &&
+              booking.status == BookingStatus.review &&
+              claimExists &&
+              claimStatus == ClaimStatus.open &&
+              response == ClaimResponse.none) ...[
+            const Text(
+              'Review the owner claim and choose whether you agree or dispute it.',
+            ),
+            const SizedBox(height: 16),
+            _actionButton(
+              label: 'Agree to claim',
+              onPressed: userId == null
+                  ? null
+                  : () => cubit.respondToClaim(
+                      userId: userId,
+                      response: ClaimResponse.agreed,
+                    ),
+              isLoading: state.isLoading,
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: state.isLoading || userId == null
+                  ? null
+                  : () => cubit.respondToClaim(
+                      userId: userId,
+                      response: ClaimResponse.disputed,
+                    ),
+              child: const Text('Dispute claim'),
+            ),
+          ] else if (isOwner &&
+              booking.status == BookingStatus.review &&
+              claimExists &&
+              response == ClaimResponse.disputed &&
+              claimStatus == ClaimStatus.open) ...[
+            const Text(
+              'The renter disputed the claim. You can revise the claim to the same or a lower amount, or refund the caution.',
+            ),
+            const SizedBox(height: 16),
+            _ClaimForm(
+              title: 'Revise claim',
+              buttonLabel: 'Submit revised claim',
+              isLoading: state.isLoading,
+              onSubmit: (amount, reason, evidence) => userId == null
+                  ? null
+                  : cubit.reviseClaim(
+                      userId: userId,
+                      amountText: amount,
+                      reason: reason,
+                      evidenceText: evidence,
+                    ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: state.isLoading || userId == null
+                  ? null
+                  : () => cubit.refundCaution(userId: userId),
+              child: const Text('Refund caution'),
+            ),
+          ] else if (claimExists && claimStatus == ClaimStatus.settled) ...[
+            const Text('The claim has been settled.'),
+          ] else if (claimExists && claimStatus == ClaimStatus.refunded) ...[
+            const Text('The caution has been refunded.'),
+          ] else if (booking.status == BookingStatus.completed) ...[
+            const Text('This booking has been completed.'),
+          ] else if (claimExists && response == ClaimResponse.disputed) ...[
+            const Text(
+              'The claim is disputed and awaiting the owner’s next action.',
+            ),
+          ] else if (claimExists) ...[
+            const Text('The claim is awaiting a response or settlement.'),
+          ] else ...[
+            const Text('The booking is not ready for a caution claim.'),
+          ],
+          if (state.isLoading) ...[
+            const SizedBox(height: 16),
+            const Center(child: CircularProgressIndicator()),
+          ],
+          if (state.errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              state.errorMessage!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -387,18 +255,99 @@ class _CautionClaimViewState extends State<_CautionClaimView> {
       ),
     );
   }
+}
 
-  Widget _actionButton({
-    required String label,
-    required VoidCallback onPressed,
-    required bool isLoading,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        child: Text(label),
-      ),
+Widget _actionButton({
+  required String label,
+  required VoidCallback? onPressed,
+  required bool isLoading,
+}) {
+  return SizedBox(
+    width: double.infinity,
+    child: ElevatedButton(
+      onPressed: isLoading ? null : onPressed,
+      child: Text(label),
+    ),
+  );
+}
+
+/// Owns the text controllers only; validation and submission live in the
+/// cubit, which the owner reaches through [onSubmit].
+class _ClaimForm extends StatefulWidget {
+  const _ClaimForm({
+    required this.title,
+    required this.buttonLabel,
+    required this.isLoading,
+    required this.onSubmit,
+  });
+
+  final String title;
+  final String buttonLabel;
+  final bool isLoading;
+  final void Function(String amount, String reason, String evidence) onSubmit;
+
+  @override
+  State<_ClaimForm> createState() => _ClaimFormState();
+}
+
+class _ClaimFormState extends State<_ClaimForm> {
+  final _amount = TextEditingController();
+  final _reason = TextEditingController();
+  final _evidence = TextEditingController();
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _reason.dispose();
+    _evidence.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _amount,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Claim amount (RWF)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _reason,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Reason for claim',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _evidence,
+          maxLines: 2,
+          decoration: const InputDecoration(
+            labelText: 'Evidence photo URLs (comma separated)',
+            hintText: 'Paste uploaded photo URLs',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _actionButton(
+          label: widget.buttonLabel,
+          onPressed: () =>
+              widget.onSubmit(_amount.text, _reason.text, _evidence.text),
+          isLoading: widget.isLoading,
+        ),
+      ],
     );
   }
 }
