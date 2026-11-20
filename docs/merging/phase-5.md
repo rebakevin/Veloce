@@ -9,28 +9,29 @@ PR #15 `4-handover-return-caution-settlement` (draft, 6 commits ahead of the Pha
   - `firestore.rules`: Phase 5 had rewritten the whole file with looser Phase 4 rules. Kept main's Phase 4 rules and added Phase 5's rows: pickup, return, review and settlement transitions, the ledger types `release`, `platform_fee`, `payout`, `claim_deduction`, `late_fee` and the caution `refund`, plus Phase 5's stricter `cautionClaims` and `repairExpenses` blocks. The Phase 5 rows do not require `serverUpdated()`, because its repository writes `updatedAt` with client time
   - `test/support/router_test_scope.dart`: kept both phases' mocks and registrations, merged the two `bookingLookup` mocks and kept one `AuthSession` registration
 - [x] `flutter analyze` on the merged branch: 17 infos, all in Phase 5's own files
-- [ ] `flutter test`: the architecture tests fail on Phase 5's code (see gaps A)
+- [x] `flutter test`: 613 passed after the gaps below were fixed; `flutter analyze` clean; rules tests 51 passed on the emulator
 - [ ] Push the branch after the gaps are closed, then merge PR #15 on GitHub
 
 ## What exists
 
 All five screens and routes (pickup, return, settle, claim, repair cost), `HandoverSection`, `ChecklistCubit`, `CautionClaimCubit`, `LateFeeCalculator`, and one `FirestoreHandoverRepository` (confirm pickup with the release batch, start and confirm return, no-issue, claim, respond, revise, refund, completion with `completedCount`) and `FirestoreRepairExpenseRepository`. Tests exist for the late-fee table, the claim calculation, the claim model and `ChecklistCubit`. No `TODO.md` box is ticked yet.
 
-## Gaps
+## Gaps (closed in this session)
 
-- [ ] **A. Architecture and lint (fails the build)**
-  - `setState` in `caution_settlement_page.dart` and `repair_expense_page.dart` (move to cubits)
-  - `caution_claim_page.dart` imports `cloud_firestore` from presentation
-  - 17 analyzer infos (`prefer_initializing_formals`, directive order) in `firestore_handover_repository.dart`, `firestore_repair_expense_repository.dart`, `checklist_cubit.dart`, `caution_claim_cubit.dart`
-- [ ] **B. Pure domain logic and its tests.** Release amounts, the held-balance invariant, and the re-claim ceiling live inside the 1,671-line repository. Extract them as pure services and unit-test them (late-fee table and cap already tested)
-- [ ] **C. Bloc and widget tests.** Pickup with one side only versus both, claim agree / dispute / re-claim, and the widget test that confirm stays disabled until one photo is attached. Settlement and repair-cost cubits (from A) need tests too
-- [ ] **D. Rules tests** in `tool/rules-test` for the Phase 5 rows I merged (both-confirmation pickup, ledger amounts, claim ≤ caution, append-only ledger). They cannot be run without the emulator
-- [ ] **E. Docs.** Report sections (escrow and ledger worked example, claim flow, late-fee formula), tick `TODO.md`, demo segment E
-- [ ] **Decision, not a gap yet:** the task wording asks for `HandoverRepository`, `ClaimRepository`, `RepairExpenseRepository`, use cases `ConfirmPickup`, `SettleCaution` and so on, and `PickupBloc`, `ReturnBloc`, `ClaimBloc`. The branch uses one repository and two cubits. Extracting use cases is a large refactor, so it is left open until you decide
+- [x] **A. Architecture and lint:** `setState` removed from the settlement and repair-cost pages (new `SettlementCubit`, `RepairExpenseCubit`, and the checklist and claim pages are stateless), the `cloud_firestore` import left `caution_claim_page.dart` (new `HandoverRepository.watchClaim`), all analyzer infos fixed
+- [x] **B. Pure domain logic:** `PickupReleaseCalculator`, `CautionSettlementCalculator`, `ClaimAmountPolicy`, `HeldBalanceGuard` with 30 unit tests, and the repository calls them. `HeldBalanceGuard` is tested but not called at runtime, because the repository never reads the ledger; the held balance stays non-negative because the settlement total equals the caution and a dispute or re-claim writes no ledger entries
+- [x] **C. Tests:** checklist submit (one side and both, failures, no photo), claim cubit (load, validation, agree, dispute, re-claim, refund), settlement and repair-expense cubits, and the widget test that confirm stays disabled until a photo is attached
+- [x] **D. Rules tests:** 43 new cases in `tool/rules-test`, run on the local emulator: 51 passing. The first run found three bugs in `firestore.rules`, all fixed:
+  - the `bookings/{id}/{sub}` wildcard also matched `private/{side}`, so a party could read and write the other side's contact document (a Phase 4 hole already on `main`); it is now two matches by name
+  - `confirmed` to `active` needed only one pickup timestamp; it now needs both
+  - dispute and re-claim (`review` to `review`, `updatedAt` only) had no rule
+- [x] **E. Docs:** `docs/report/phase-5-draft.md`, `TODO.md` ticked. Late-fee wording decided: the fee is the increase (30,000 / 69,000 / 119,700 on a 100,000 rental for 1 / 2 / 3 days), as the code charges
 
-## Parallel plan (ask before launching)
+**Left out on purpose:** use-case extraction and the separate `ClaimRepository`, `PickupBloc`, `ReturnBloc`, `ClaimBloc` (the branch uses one repository and cubits).
 
-- **Agent 1, presentation (A, C):** the two pages with `setState`, the `cloud_firestore` import, new cubits, the lints in `checklist_cubit.dart` and `caution_claim_cubit.dart`, bloc and widget tests
-- **Agent 2, domain (B):** new pure services under `domain/services/` with unit tests, and the lint cleanup in the two data files while it wires the repository to use them
-- **Agent 3, rules and docs (D, E):** rules tests, the Phase 5 report draft. `TODO.md` stays with the main session
-- Shared files stay with the main session: injection, routes, `firestore.rules`, `TODO.md`
+**Still open (none is code)**
+- [ ] Demo segment E
+- [ ] Figma-versus-app screenshots
+- [ ] Manual check of the Phase 5 seed scenarios (`booking-confirmed`, `booking-p5-active-late`, disputed and agreed claims)
+- [ ] `npm test` in `tool/rules-test` needs port 8080 free (it was held by an unrelated process on this machine)
+- [ ] The Phase 4 contact-exposure bug existed on `main` until this PR merges, so merge #15 before relying on contact privacy
