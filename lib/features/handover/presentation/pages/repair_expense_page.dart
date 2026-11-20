@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
@@ -7,131 +8,67 @@ import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
 
-class RepairExpensePage extends StatefulWidget {
+import '../bloc/repair_expense_cubit.dart';
+import '../bloc/repair_expense_state.dart';
+
+class RepairExpensePage extends StatelessWidget {
   const RepairExpensePage({required this.bookingId, super.key});
 
   final String bookingId;
 
   @override
-  State<RepairExpensePage> createState() => _RepairExpensePageState();
+  Widget build(BuildContext context) {
+    final userId = GetIt.I<AuthSession>().currentUserId;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Repair expenses')),
+      body: StreamBuilder<Result<Booking>>(
+        stream: GetIt.I<BookingLookup>().watch(bookingId),
+        builder: (context, bookingSnapshot) {
+          if (bookingSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!bookingSnapshot.hasData) {
+            return const Center(child: Text('Unable to load booking.'));
+          }
+
+          return bookingSnapshot.data!.when(
+            success: (booking) {
+              if (booking.ownerId != userId || userId == null) {
+                return const Center(
+                  child: Text('Only the vehicle owner can manage expenses.'),
+                );
+              }
+
+              return BlocProvider(
+                create: (_) => RepairExpenseCubit(
+                  bookingId: bookingId,
+                  ownerId: userId,
+                  repository: GetIt.I<RepairExpenseRepository>(),
+                ),
+                child: const _ExpenseContent(),
+              );
+            },
+            failure: (failure) {
+              return Center(child: Text(failure.message));
+            },
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _RepairExpensePageState extends State<RepairExpensePage> {
-  final _repository = GetIt.I<RepairExpenseRepository>();
-  final _session = GetIt.I<AuthSession>();
-  final _picker = ImagePicker();
+class _ExpenseContent extends StatelessWidget {
+  const _ExpenseContent();
 
-  final _amountController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  Future<void> _confirmDelete(
+    BuildContext context,
+    RepairExpense expense,
+  ) async {
+    final cubit = context.read<RepairExpenseCubit>();
 
-  XFile? _receipt;
-  String? _editingId;
-  String? _editingReceiptUrl;
-  bool _loading = false;
-  String? _errorMessage;
-
-  Stream<List<RepairExpense>> get _expenseStream => _repository.watchExpenses(
-    bookingId: widget.bookingId,
-    ownerId: _session.currentUserId!,
-  );
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickReceipt() async {
-    final image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-
-    if (image != null && mounted) {
-      setState(() {
-        _receipt = image;
-        _errorMessage = null;
-      });
-    }
-  }
-
-  Future<void> _saveExpense() async {
-    final userId = _session.currentUserId;
-    final amount = int.tryParse(_amountController.text.trim());
-    final description = _descriptionController.text.trim();
-
-    if (userId == null) return;
-
-    if (amount == null || amount <= 0 || description.isEmpty) {
-      setState(() {
-        _errorMessage = 'Enter a valid amount and description.';
-      });
-      return;
-    }
-
-    if (_receipt == null && _editingReceiptUrl == null) {
-      setState(() {
-        _errorMessage = 'Please attach a receipt photo.';
-      });
-      return;
-    }
-
-    setState(() {
-      _loading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final receiptBytes = _receipt == null
-          ? null
-          : await _receipt!.readAsBytes();
-
-      await _repository.saveExpense(
-        expenseId: _editingId,
-        bookingId: widget.bookingId,
-        ownerId: userId,
-        amount: amount,
-        description: description,
-        receiptBytes: receiptBytes,
-        existingReceiptUrl: _editingReceiptUrl,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _loading = false;
-        _editingId = null;
-        _editingReceiptUrl = null;
-        _receipt = null;
-        _amountController.clear();
-        _descriptionController.clear();
-      });
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Repair expense saved.')));
-    } on Object catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _loading = false;
-        _errorMessage = 'Could not save expense: $error';
-      });
-    }
-  }
-
-  void _editExpense(RepairExpense expense) {
-    setState(() {
-      _editingId = expense.id;
-      _amountController.text = expense.amount.toString();
-      _descriptionController.text = expense.description;
-      _editingReceiptUrl = expense.receiptUrl;
-      _receipt = null;
-      _errorMessage = null;
-    });
-  }
-
-  Future<void> _deleteExpense(RepairExpense expense) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -152,93 +89,28 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
       ),
     );
 
-    if (confirmed != true) return;
-
-    try {
-      await _repository.deleteExpense(expense);
-
-      if (!mounted) return;
-
-      if (_editingId == expense.id) {
-        _clearForm();
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Repair expense deleted.')));
-    } on Object catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not delete expense: $error')),
-      );
-    }
-  }
-
-  void _clearForm() {
-    setState(() {
-      _editingId = null;
-      _editingReceiptUrl = null;
-      _receipt = null;
-      _amountController.clear();
-      _descriptionController.clear();
-      _errorMessage = null;
-    });
+    if (confirmed == true) await cubit.delete(expense);
   }
 
   @override
   Widget build(BuildContext context) {
-    final userId = _session.currentUserId;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Repair expenses')),
-      body: StreamBuilder<Result<Booking>>(
-        stream: GetIt.I<BookingLookup>().watch(widget.bookingId),
-        builder: (context, bookingSnapshot) {
-          if (bookingSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!bookingSnapshot.hasData) {
-            return const Center(child: Text('Unable to load booking.'));
-          }
-
-          return bookingSnapshot.data!.when(
-            success: (booking) {
-              if (booking.ownerId != userId || userId == null) {
-                return const Center(
-                  child: Text('Only the vehicle owner can manage expenses.'),
-                );
-              }
-
-              return _buildExpenseContent();
-            },
-            failure: (failure) {
-              return Center(child: Text(failure.message));
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildExpenseContent() {
-    return StreamBuilder<List<RepairExpense>>(
-      stream: _expenseStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
+    return BlocConsumer<RepairExpenseCubit, RepairExpenseState>(
+      listenWhen: (previous, current) =>
+          current.notice != null && previous.notice != current.notice,
+      listener: (context, state) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(state.notice!)));
+      },
+      builder: (context, state) {
+        if (state.loadStatus == RepairExpenseLoad.failed) {
           return const Center(child: Text('Unable to load repair expenses.'));
         }
 
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (state.loadStatus == RepairExpenseLoad.loading) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final expenses = snapshot.data ?? [];
-        final total = expenses.fold<int>(
-          0,
-          (totalAmount, expense) => totalAmount + expense.amount,
-        );
+        final expenses = state.expenses;
 
         return ListView(
           padding: const EdgeInsets.all(20),
@@ -248,73 +120,9 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text('Total repair expenses: $total RWF'),
+            Text('Total repair expenses: ${state.total} RWF'),
             const SizedBox(height: 24),
-            Text(
-              _editingId == null ? 'Add repair expense' : 'Edit repair expense',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Amount (RWF)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _loading ? null : _pickReceipt,
-              icon: const Icon(Icons.photo_camera),
-              label: Text(
-                _receipt != null
-                    ? 'Receipt selected'
-                    : _editingReceiptUrl != null
-                    ? 'Replace receipt photo'
-                    : 'Add receipt photo',
-              ),
-            ),
-            if (_receipt != null) ...[
-              const SizedBox(height: 8),
-              Text(_receipt!.name),
-            ] else if (_editingReceiptUrl != null) ...[
-              const SizedBox(height: 8),
-              const Text('Existing receipt photo is attached.'),
-            ],
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _errorMessage!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _saveExpense,
-                child: _loading
-                    ? const CircularProgressIndicator()
-                    : Text(
-                        _editingId == null ? 'Save expense' : 'Update expense',
-                      ),
-              ),
-            ),
-            if (_editingId != null)
-              TextButton(
-                onPressed: _loading ? null : _clearForm,
-                child: const Text('Cancel editing'),
-              ),
+            const _ExpenseForm(),
             const Divider(height: 36),
             const Text(
               'Saved expenses',
@@ -360,12 +168,14 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
                           children: [
                             IconButton(
                               tooltip: 'Edit expense',
-                              onPressed: () => _editExpense(expense),
+                              onPressed: () => context
+                                  .read<RepairExpenseCubit>()
+                                  .startEditing(expense),
                               icon: const Icon(Icons.edit),
                             ),
                             IconButton(
                               tooltip: 'Delete expense',
-                              onPressed: () => _deleteExpense(expense),
+                              onPressed: () => _confirmDelete(context, expense),
                               icon: const Icon(Icons.delete_outline),
                             ),
                           ],
@@ -375,6 +185,138 @@ class _RepairExpensePageState extends State<RepairExpensePage> {
                   ),
                 );
               }),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Owns the text controllers only. All other form state lives in the cubit,
+/// and a [BlocListener] copies the edited expense into the controllers.
+class _ExpenseForm extends StatefulWidget {
+  const _ExpenseForm();
+
+  @override
+  State<_ExpenseForm> createState() => _ExpenseFormState();
+}
+
+class _ExpenseFormState extends State<_ExpenseForm> {
+  final _amount = TextEditingController();
+  final _description = TextEditingController();
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickReceipt(RepairExpenseCubit cubit) async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (image == null) return;
+
+    final bytes = await image.readAsBytes();
+    if (cubit.isClosed) return;
+
+    cubit.receiptPicked(name: image.name, bytes: bytes);
+  }
+
+  void _syncControllers(RepairExpenseState state) {
+    final editing = state.editing;
+    _amount.text = editing?.amount.toString() ?? '';
+    _description.text = editing?.description ?? '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<RepairExpenseCubit>();
+
+    return BlocConsumer<RepairExpenseCubit, RepairExpenseState>(
+      listenWhen: (previous, current) =>
+          previous.editing != current.editing ||
+          (previous.isSaving &&
+              !current.isSaving &&
+              current.errorMessage == null),
+      listener: (context, state) => _syncControllers(state),
+      builder: (context, state) {
+        final isEditing = state.editing != null;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isEditing ? 'Edit repair expense' : 'Add repair expense',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amount,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Amount (RWF)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _description,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: state.isSaving ? null : () => _pickReceipt(cubit),
+              icon: const Icon(Icons.photo_camera),
+              label: Text(
+                state.hasNewReceipt
+                    ? 'Receipt selected'
+                    : state.existingReceiptUrl != null
+                    ? 'Replace receipt photo'
+                    : 'Add receipt photo',
+              ),
+            ),
+            if (state.hasNewReceipt) ...[
+              const SizedBox(height: 8),
+              Text(state.receiptName ?? ''),
+            ] else if (state.existingReceiptUrl != null) ...[
+              const SizedBox(height: 8),
+              const Text('Existing receipt photo is attached.'),
+            ],
+            if (state.errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                state.errorMessage!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: state.isSaving
+                    ? null
+                    : () => cubit.save(
+                        amountText: _amount.text,
+                        description: _description.text,
+                      ),
+                child: state.isSaving
+                    ? const CircularProgressIndicator()
+                    : Text(isEditing ? 'Update expense' : 'Save expense'),
+              ),
+            ),
+            if (isEditing)
+              TextButton(
+                onPressed: state.isSaving ? null : cubit.clearForm,
+                child: const Text('Cancel editing'),
+              ),
           ],
         );
       },

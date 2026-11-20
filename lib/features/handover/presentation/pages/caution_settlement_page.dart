@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
@@ -9,106 +10,48 @@ import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/handover/domain/repositories/handover_repository.dart';
 import 'package:veloce/features/handover/domain/services/late_fee_calculator.dart';
 
-class CautionSettlementPage extends StatefulWidget {
+import '../bloc/settlement_cubit.dart';
+import '../bloc/settlement_state.dart';
+
+class CautionSettlementPage extends StatelessWidget {
   const CautionSettlementPage({required this.bookingId, super.key});
 
   final String bookingId;
 
   @override
-  State<CautionSettlementPage> createState() => _CautionSettlementPageState();
-}
-
-class _CautionSettlementPageState extends State<CautionSettlementPage> {
-  bool _isLoading = false;
-  String? _errorMessage;
-
-  final _repository = GetIt.I<HandoverRepository>();
-  final _session = GetIt.I<AuthSession>();
-
-  Future<void> _markNoIssue() async {
-    final userId = _session.currentUserId;
-    if (userId == null) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final result = await _repository.markNoIssue(
-      bookingId: widget.bookingId,
-      userId: userId,
-    );
-
-    if (!mounted) return;
-
-    result.when(
-      success: (_) {
-        setState(() => _isLoading = false);
-      },
-      failure: (failure) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = failure.message;
-        });
-      },
-    );
-  }
-
-  Future<void> _acknowledgeNoIssue() async {
-    final userId = _session.currentUserId;
-    if (userId == null) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final result = await _repository.acknowledgeNoIssue(
-      bookingId: widget.bookingId,
-      userId: userId,
-    );
-
-    if (!mounted) return;
-
-    result.when(
-      success: (_) {
-        setState(() => _isLoading = false);
-      },
-      failure: (failure) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = failure.message;
-        });
-      },
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final userId = _session.currentUserId;
+    final userId = GetIt.I<AuthSession>().currentUserId;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Caution settlement')),
-      body: StreamBuilder<Result<Booking>>(
-        stream: GetIt.I<BookingLookup>().watch(widget.bookingId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return BlocProvider(
+      create: (_) => SettlementCubit(
+        bookingId: bookingId,
+        repository: GetIt.I<HandoverRepository>(),
+      ),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Caution settlement')),
+        body: StreamBuilder<Result<Booking>>(
+          stream: GetIt.I<BookingLookup>().watch(bookingId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (!snapshot.hasData) {
-            return const Center(child: Text('Unable to load booking details.'));
-          }
+            if (!snapshot.hasData) {
+              return const Center(
+                child: Text('Unable to load booking details.'),
+              );
+            }
 
-          return snapshot.data!.when(
-            success: (booking) {
-              return _buildSettlement(context, booking, userId);
-            },
-            failure: (failure) {
-              return Center(child: Text(failure.message));
-            },
-          );
-        },
+            return snapshot.data!.when(
+              success: (booking) {
+                return _buildSettlement(context, booking, userId);
+              },
+              failure: (failure) {
+                return Center(child: Text(failure.message));
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -118,6 +61,7 @@ class _CautionSettlementPageState extends State<CautionSettlementPage> {
     Booking booking,
     String? userId,
   ) {
+    final cubit = context.read<SettlementCubit>();
     final isOwner = booking.ownerId == userId;
     final isRenter = booking.renterId == userId;
 
@@ -173,7 +117,12 @@ class _CautionSettlementPageState extends State<CautionSettlementPage> {
               'Confirm that the vehicle was returned without damage or other issues.',
             ),
             const SizedBox(height: 16),
-            _actionButton(label: 'Confirm no issues', onPressed: _markNoIssue),
+            _actionButton(
+              label: 'Confirm no issues',
+              onPressed: userId == null
+                  ? null
+                  : () => cubit.markNoIssue(userId: userId),
+            ),
           ] else if (isRenter &&
               booking.status == BookingStatus.review &&
               isNoIssue) ...[
@@ -183,7 +132,9 @@ class _CautionSettlementPageState extends State<CautionSettlementPage> {
             const SizedBox(height: 16),
             _actionButton(
               label: 'Acknowledge and receive refund',
-              onPressed: _acknowledgeNoIssue,
+              onPressed: userId == null
+                  ? null
+                  : () => cubit.acknowledgeNoIssue(userId: userId),
             ),
           ] else if (isOwner &&
               booking.status == BookingStatus.review &&
@@ -200,18 +151,28 @@ class _CautionSettlementPageState extends State<CautionSettlementPage> {
             const Text('The booking is not ready for this settlement action.'),
           ],
 
-          if (_isLoading) ...[
-            const SizedBox(height: 16),
-            const Center(child: CircularProgressIndicator()),
-          ],
-
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
+          BlocBuilder<SettlementCubit, SettlementState>(
+            builder: (context, state) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (state.isLoading) ...[
+                    const SizedBox(height: 16),
+                    const Center(child: CircularProgressIndicator()),
+                  ],
+                  if (state.message != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      state.message!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -249,14 +210,18 @@ class _CautionSettlementPageState extends State<CautionSettlementPage> {
 
   Widget _actionButton({
     required String label,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : onPressed,
-        child: Text(label),
-      ),
+    return BlocBuilder<SettlementCubit, SettlementState>(
+      builder: (context, state) {
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: state.isLoading ? null : onPressed,
+            child: Text(label),
+          ),
+        );
+      },
     );
   }
 }
