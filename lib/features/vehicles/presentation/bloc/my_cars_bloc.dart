@@ -1,9 +1,11 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/error/result.dart';
 
+import '../../domain/usecases/find_next_rentals.dart';
 import '../../domain/usecases/remove_vehicle.dart';
 import '../../domain/usecases/set_status.dart';
 import '../../domain/usecases/watch_owner_vehicles.dart';
@@ -16,6 +18,7 @@ class MyCarsBloc extends Bloc<MyCarsEvent, MyCarsState> {
     required this._watchVehicles,
     required this._setStatus,
     required this._removeVehicle,
+    required this._findNextRentals,
   }) : super(const MyCarsLoading()) {
     on<MyCarsStarted>(_onStarted);
     on<MyCarsStatusToggled>(_onStatusToggled);
@@ -26,17 +29,24 @@ class MyCarsBloc extends Bloc<MyCarsEvent, MyCarsState> {
   final WatchOwnerVehicles _watchVehicles;
   final SetStatus _setStatus;
   final RemoveVehicle _removeVehicle;
+  final FindNextRentals _findNextRentals;
 
   Future<void> _onStarted(MyCarsStarted event, Emitter<MyCarsState> emit) {
     emit(const MyCarsLoading());
-    return emit.forEach<Result<List<Vehicle>>>(
-      _watchVehicles(),
-      onData: (result) => result.when<MyCarsState>(
-        success: (vehicles) =>
-            vehicles.isEmpty ? const MyCarsEmpty() : MyCarsLoaded(vehicles),
-        failure: (failure) => MyCarsFailure(failure.message),
-      ),
+    return emit.forEach<MyCarsState>(
+      _watchVehicles().asyncMap(_toState),
+      onData: (state) => state,
     );
+  }
+
+  Future<MyCarsState> _toState(Result<List<Vehicle>> result) async {
+    switch (result) {
+      case Failure(:final failure):
+        return MyCarsFailure(failure.message);
+      case Success(:final value):
+        if (value.isEmpty) return const MyCarsEmpty();
+        return MyCarsLoaded(value, nextRentals: await _findNextRentals(value));
+    }
   }
 
   Future<void> _onStatusToggled(
@@ -63,7 +73,7 @@ class MyCarsBloc extends Bloc<MyCarsEvent, MyCarsState> {
   void _onNoticeCleared(MyCarsNoticeCleared event, Emitter<MyCarsState> emit) {
     final current = state;
     if (current is MyCarsLoaded && current.notice != null) {
-      emit(MyCarsLoaded(current.vehicles));
+      emit(MyCarsLoaded(current.vehicles, nextRentals: current.nextRentals));
     }
   }
 
@@ -71,7 +81,13 @@ class MyCarsBloc extends Bloc<MyCarsEvent, MyCarsState> {
     final current = state;
     if (current is! MyCarsLoaded) return;
     if (result case Failure<void>(:final failure)) {
-      emit(MyCarsLoaded(current.vehicles, notice: failure.message));
+      emit(
+        MyCarsLoaded(
+          current.vehicles,
+          nextRentals: current.nextRentals,
+          notice: failure.message,
+        ),
+      );
     }
   }
 }

@@ -5,6 +5,7 @@ import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/vehicles/domain/usecases/find_next_rentals.dart';
 import 'package:veloce/features/vehicles/domain/usecases/remove_vehicle.dart';
 import 'package:veloce/features/vehicles/domain/usecases/set_status.dart';
 import 'package:veloce/features/vehicles/domain/usecases/watch_owner_vehicles.dart';
@@ -23,6 +24,7 @@ void main() {
       ),
       setStatus: SetStatus(repository, clock),
       removeVehicle: RemoveVehicle(repository, clock),
+      findNextRentals: FindNextRentals(repository, clock),
     );
   }
 
@@ -38,6 +40,23 @@ void main() {
       expect: () => [
         const MyCarsLoading(),
         MyCarsLoaded([aVehicle()]),
+      ],
+    );
+
+    blocTest<MyCarsBloc, MyCarsState>(
+      'an open booking shows as the next rental of the car',
+      build: () => buildBloc(
+        FakeVehicleRepository(
+          vehicleStream: Stream.value(Result.success([aVehicle()])),
+          bookings: [aBooking(status: BookingStatus.confirmed)],
+        ),
+      ),
+      act: (bloc) => bloc.add(const MyCarsStarted()),
+      expect: () => [
+        const MyCarsLoading(),
+        isA<MyCarsLoaded>().having((s) => s.nextRentals.keys, 'next rentals', [
+          'car-1',
+        ]),
       ],
     );
 

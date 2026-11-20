@@ -46,7 +46,7 @@ class MyCarsPage extends StatelessWidget {
             onRetry: () =>
                 context.read<MyCarsBloc>().add(const MyCarsStarted()),
           ),
-          MyCarsLoaded(:final vehicles) => ListView.builder(
+          MyCarsLoaded(:final vehicles, :final nextRentals) => ListView.builder(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg,
               AppSpacing.lg,
@@ -60,6 +60,7 @@ class MyCarsPage extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: VehicleCard(
                   vehicle: vehicle,
+                  nextRental: nextRentals[vehicle.id],
                   onOpen: () => context.push(RouteNames.ownerCar(vehicle.id)),
                   onEdit: () =>
                       context.push(RouteNames.ownerCarEdit(vehicle.id)),

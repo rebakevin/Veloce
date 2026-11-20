@@ -16,13 +16,14 @@ final class MyCarsEmpty extends MyCarsState {
 }
 
 final class MyCarsLoaded extends MyCarsState {
-  const MyCarsLoaded(this.vehicles, {this.notice});
+  const MyCarsLoaded(this.vehicles, {this.nextRentals = const {}, this.notice});
 
   final List<Vehicle> vehicles;
+  final Map<String, Booking> nextRentals;
   final String? notice;
 
   @override
-  List<Object?> get props => [vehicles, notice];
+  List<Object?> get props => [vehicles, nextRentals, notice];
 }
 
 final class MyCarsFailure extends MyCarsState {

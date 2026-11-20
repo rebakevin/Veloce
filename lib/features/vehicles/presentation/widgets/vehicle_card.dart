@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/formatting/formatters.dart';
@@ -14,10 +15,12 @@ class VehicleCard extends StatelessWidget {
     required this.onAvailability,
     required this.onToggleStatus,
     required this.onRemove,
+    this.nextRental,
     super.key,
   });
 
   final Vehicle vehicle;
+  final Booking? nextRental;
   final VoidCallback onOpen;
   final VoidCallback onEdit;
   final VoidCallback onAvailability;
@@ -65,6 +68,11 @@ class VehicleCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               Text('${Formatters.rwf(vehicle.dailyPrice)} per day'),
               Text(_availability),
+              Text(
+                nextRental == null
+                    ? 'No upcoming rental'
+                    : 'Next rental: ${Formatters.dateRange(nextRental!.startDate, nextRental!.endDate)}',
+              ),
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: AppSpacing.sm,
