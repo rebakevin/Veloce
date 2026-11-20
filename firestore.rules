@@ -37,7 +37,9 @@ service cloud.firestore {
     match /vehicles/{vid} {
       allow read:   if signedIn();
       allow create: if signedIn() && request.resource.data.ownerId == me();
-      allow update, delete: if signedIn() && resource.data.ownerId == me();
+      allow update: if signedIn() && resource.data.ownerId == me()
+                    && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if signedIn() && resource.data.ownerId == me();
       match /photos/{pid} {
         allow read:  if signedIn();
         allow write: if signedIn()
