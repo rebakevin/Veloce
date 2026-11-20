@@ -104,14 +104,11 @@ class FinancesState extends Equatable {
 
 class FinancesBloc extends Bloc<FinancesEvent, FinancesState> {
   FinancesBloc({
-    required FinancesRepository repository,
-    required AuthSession session,
-    required VehicleLookup vehicleLookup,
+    required this._repository,
+    required this._session,
+    required this._vehicleLookup,
     String? vehicleId,
-  }) : _repository = repository,
-       _session = session,
-       _vehicleLookup = vehicleLookup,
-       super(FinancesState(vehicleId: vehicleId)) {
+  }) : super(FinancesState(vehicleId: vehicleId)) {
     on<FinancesStarted>(_onStarted);
     on<FinancesPeriodChanged>(_onPeriodChanged);
     on<FinancesViewModeChanged>(_onViewModeChanged);

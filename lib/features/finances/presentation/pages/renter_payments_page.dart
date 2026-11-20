@@ -65,7 +65,7 @@ class _RenterPaymentsView extends StatelessWidget {
             padding: Responsive.pagePadding(context)
                 .copyWith(top: AppSpacing.md, bottom: AppSpacing.xl),
             itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, index) {
               final item = items[index];
               return _PaymentItemTile(item: item);

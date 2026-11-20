@@ -1,4 +1,3 @@
-import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -41,12 +40,8 @@ final class FinancesCardFailure extends FinancesCardState {
 }
 
 class FinancesCardCubit extends Cubit<FinancesCardState> {
-  FinancesCardCubit({
-    required FinancesRepository repository,
-    required AuthSession session,
-  }) : _repository = repository,
-       _session = session,
-       super(const FinancesCardLoading());
+  FinancesCardCubit({required this._repository, required this._session})
+    : super(const FinancesCardLoading());
 
   final FinancesRepository _repository;
   final AuthSession _session;

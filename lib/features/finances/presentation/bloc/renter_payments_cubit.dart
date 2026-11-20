@@ -41,12 +41,8 @@ final class RenterPaymentsFailure extends RenterPaymentsState {
 }
 
 class RenterPaymentsCubit extends Cubit<RenterPaymentsState> {
-  RenterPaymentsCubit({
-    required FinancesRepository repository,
-    required AuthSession session,
-  }) : _repository = repository,
-       _session = session,
-       super(const RenterPaymentsLoading());
+  RenterPaymentsCubit({required this._repository, required this._session})
+    : super(const RenterPaymentsLoading());
 
   final FinancesRepository _repository;
   final AuthSession _session;
