@@ -27,11 +27,11 @@ class ReviewStep extends StatelessWidget {
         _Section(
           title: 'Car',
           lines: [
-            '${draft.make} ${draft.model} · ${draft.year}',
+            '${draft.make.trim()} ${draft.model.trim()} · ${draft.year}',
             draft.plate.trim().toUpperCase(),
             '${draft.type?.label} · ${draft.transmission?.label} · '
                 '${draft.fuel?.label} · ${draft.seats} seats',
-            'Pickup: ${draft.neighbourhood}',
+            'Pickup: ${draft.neighbourhood.trim()}',
           ],
         ),
         _Section(
