@@ -43,11 +43,11 @@ service cloud.firestore {
       match /photos/{pid} {
         allow read:  if signedIn();
         allow write: if signedIn()
-                     && get(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
+                      && getAfter(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
       }
       match /documents/{kind} {
         allow read, write: if signedIn()
-                           && get(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
+                            && getAfter(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
       }
     }
 
