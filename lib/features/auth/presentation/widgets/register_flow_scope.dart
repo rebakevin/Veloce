@@ -13,9 +13,8 @@ import '../bloc/register_bloc.dart';
 
 /// Owns the single [RegisterBloc] of the sign-up flow and moves between the
 /// register routes when its step changes. Mount it as the builder of a
-/// `ShellRoute` that wraps `/register/role`, `/register/details`,
-/// `/register/verify` and `/register/welcome`, so the draft survives every
-/// step.
+/// `ShellRoute` that wraps `/register/role`, `/register/details` and
+/// `/register/welcome`, so the draft survives every step.
 ///
 /// The Google user comes from [AuthBloc] (`AuthNeedsProfile` with a Google
 /// account); email sign-ups get `null`. If a Google user appears after the
@@ -30,7 +29,6 @@ class RegisterFlowScope extends StatefulWidget {
   static String? routeFor(RegisterStep step) => switch (step) {
     RegisterStep.role => RouteNames.registerRole,
     RegisterStep.details => RouteNames.registerDetails,
-    RegisterStep.otp => RouteNames.registerVerify,
     RegisterStep.submitting => null,
     RegisterStep.done => RouteNames.registerWelcome,
   };

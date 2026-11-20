@@ -9,6 +9,7 @@ import 'package:veloce/core/data/services/preferences_service.dart';
 import 'package:veloce/core/data/services/verification_sim.dart';
 import 'package:veloce/core/domain/entities/contact.dart';
 import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
+import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
@@ -19,6 +20,7 @@ import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
 import 'package:veloce/features/auth/auth.dart';
 import 'package:veloce/features/auth/data/dev_sign_in.dart';
+import 'package:veloce/features/booking/booking.dart';
 import 'package:veloce/features/discovery/domain/entities/car_detail_args.dart';
 import 'package:veloce/features/discovery/domain/repositories/search_repository.dart';
 import 'package:veloce/features/discovery/domain/usecases/get_vehicle_detail.dart';
@@ -39,6 +41,7 @@ import 'package:veloce/features/vehicles/presentation/bloc/car_wizard_bloc.dart'
 import 'package:veloce/features/vehicles/presentation/bloc/documents_bloc.dart';
 import 'package:veloce/features/vehicles/presentation/bloc/my_cars_bloc.dart';
 
+import '../features/booking/support/booking_test_data.dart';
 import '../features/discovery/support/discovery_fakes.dart';
 import 'builders.dart';
 
@@ -70,6 +73,22 @@ class MockAccountsBloc extends MockBloc<AccountsEvent, AccountsState>
 
 class MockSettingsCubit extends MockCubit<SettingsState>
     implements SettingsCubit {}
+
+class MockActivityBloc extends MockBloc<ActivityEvent, ActivityState>
+    implements ActivityBloc {}
+
+class MockBookingDetailBloc
+    extends MockBloc<BookingDetailEvent, BookingDetailState>
+    implements BookingDetailBloc {}
+
+class MockDecisionBloc extends MockBloc<DecisionEvent, DecisionState>
+    implements DecisionBloc {}
+
+class MockPaymentBloc extends MockBloc<PaymentEvent, PaymentState>
+    implements PaymentBloc {}
+
+class MockExpirySweeperCubit extends MockCubit<ExpirySweeperState>
+    implements ExpirySweeperCubit {}
 
 class MockFavouritesBloc extends MockBloc<FavouritesEvent, FavouritesState>
     implements FavouritesBloc {}
@@ -109,7 +128,6 @@ class MockDocumentsBloc extends MockBloc<DocumentsEvent, DocumentsState>
 /// only stays put when the bloc is at that step.
 RegisterStep _registerStepFor(String path) => switch (path) {
   RouteNames.registerDetails => RegisterStep.details,
-  RouteNames.registerVerify => RegisterStep.otp,
   RouteNames.registerWelcome => RegisterStep.done,
   _ => RegisterStep.role,
 };
@@ -276,6 +294,41 @@ class RouterTestScope {
             themeMode: ThemeMode.system,
             notificationsEnabled: true,
           ),
+        ),
+      )
+      ..registerFactory<ActivityBloc>(
+        () => idle<MockActivityBloc, ActivityState>(
+          MockActivityBloc(),
+          ActivityLoaded(role: role, bookings: const []),
+        ),
+      )
+      ..registerFactoryParam<BookingDetailBloc, String, void>(
+        (id, _) => idle<MockBookingDetailBloc, BookingDetailState>(
+          MockBookingDetailBloc(),
+          BookingDetailLoaded(
+            view: bookingView(id: id),
+            role: role,
+          ),
+        ),
+      )
+      ..registerFactoryParam<DecisionBloc, String, void>(
+        (id, _) => idle<MockDecisionBloc, DecisionState>(
+          MockDecisionBloc(),
+          DecisionLoaded(view: bookingView(id: id)),
+        ),
+      )
+      ..registerFactoryParam<PaymentBloc, String, void>(
+        (id, _) => idle<MockPaymentBloc, PaymentState>(
+          MockPaymentBloc(),
+          PaymentLoaded(
+            view: bookingView(id: id, status: BookingStatus.approved),
+          ),
+        ),
+      )
+      ..registerFactory<ExpirySweeperCubit>(
+        () => idle<MockExpirySweeperCubit, ExpirySweeperState>(
+          MockExpirySweeperCubit(),
+          const ExpirySweeperIdle(),
         ),
       )
       ..registerFactory<MyCarsBloc>(

@@ -252,16 +252,6 @@ class FakeVerificationProvider implements VerificationProvider {
   final bool succeeds;
 
   @override
-  Future<Result<OtpChallenge>> sendOtp(String phone) async =>
-      const Result.failure(UnknownFailure());
-
-  @override
-  Future<Result<void>> confirmOtp({
-    required OtpChallenge challenge,
-    required String code,
-  }) async => const Result.failure(UnknownFailure());
-
-  @override
   Future<Result<void>> verifyDocument({
     required String documentNumber,
     required String photoUrl,

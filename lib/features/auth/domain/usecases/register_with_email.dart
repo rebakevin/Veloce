@@ -13,7 +13,7 @@ import 'submit_identity_document.dart';
 
 /// Creates an email account end to end (TECHNICAL.md §6.1): validate, upload
 /// and verify the document, create the Auth user, write the profile in one
-/// atomic batch, then send the verification email. Run it after the OTP step.
+/// atomic batch, then send the verification email. Run it after the details form.
 ///
 /// The document is checked before the Auth user exists, so a failed check
 /// leaves nothing behind. If a later step fails, the uploaded photo and the

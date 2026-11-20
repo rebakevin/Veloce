@@ -77,7 +77,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 - [x] `PricingCalculator` (+ long-rental tiers) with unit tests
 - [x] `BookingStateMachine` (transition table + `effectiveStatus`) with unit tests
 - [x] `LedgerWriter` (+ held-balance invariant test), `AuditLogger`, `NotificationWriter` Firestore implementations
-- [x] `MomoGatewaySim` (success/failure toggle), `VerificationSim` (OTP + document check)
+- [x] `MomoGatewaySim` (success/failure toggle), `VerificationSim` (document check)
 - [x] `PreferencesService` (5 keys, §9) + `ThemeCubit`
 - [x] `PendingReviewChecker` stub (returns false) registered inside `reviews_injection.dart` for P6 to replace
 
@@ -116,7 +116,7 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 ### 1.C Authentication screens
 - [x] Splash → welcome/onboarding (`onboarding_seen` pref)
 - [x] Login (email + password, Google button, "Forgot password?")
-- [x] Register: role → details (name, phone, email, password, DOB 18+, licence or National ID with photo) → OTP + email verification → welcome
+- [x] Register: role → details (name, phone, email, password, DOB 18+, licence or National ID with photo) → email verification → welcome
 - [x] Google first sign-in → role choice → document steps; returning Google user → Home
 - [x] Forgot-password page; verify-email pending page (resend)
 - [x] Inline validation messages on every field; blank submissions blocked
@@ -233,36 +233,36 @@ Branch naming: `phaseN/<feature>`. Commit often (small, descriptive). Review rin
 **Owner:** ____ · Collections written: `bookings` (pending→approved/declined/cancelled/expired, approved→confirmed, confirmed→cancelled), `bookings/*/private/owner`, `calendarBlocks`, `renterLocks`, `transactions` (charge, refund), `notifications` · Spec §4.1 steps 3–6, §4.4, §5.5–5.6 · Slots: `PendingRequestsCard`, `UpcomingRentalsCard`
 
 ### 4.A Domain & data
-- [ ] `BookingRepository` (watch my bookings by role, watch one, transitions in transactions/batches)
-- [ ] `ApproveBooking`: owner tick required, `PendingReviewChecker`, creates `renterLocks`, writes `calendarBlocks`, declines the car's overlapping pending requests, writes owner contact doc, notifies renter
-- [ ] `DeclineBooking` (reason required), `CancelBooking` (until pickup confirmed; refund everything via `LedgerWriter`, free block/lock), `ExpiryEngine` (lazy: pending 24 h, payment deadline = earlier of +24 h and pickup date)
-- [ ] `PayBooking`: `MomoGateway.charge`, then `charge` ledger entry, status `confirmed`, contact unlock (rules), notifications; failure keeps `approved` and allows retry
-- [ ] `AcknowledgeAgreement`
-- [ ] `EffectiveStatus` applied to every list so cancelled-by-lock requests show correctly
+- [x] `BookingRepository` (watch my bookings by role, watch one, transitions in transactions/batches)
+- [x] `ApproveBooking`: owner tick required, `PendingReviewChecker`, creates `renterLocks`, writes `calendarBlocks`, declines the car's overlapping pending requests, writes owner contact doc, notifies renter
+- [x] `DeclineBooking` (reason required), `CancelBooking` (until pickup confirmed; refund everything via `LedgerWriter`, free block/lock), `ExpiryEngine` (lazy: pending 24 h, payment deadline = earlier of +24 h and pickup date)
+- [x] `PayBooking`: `MomoGateway.charge`, then `charge` ledger entry, status `confirmed`, contact unlock (rules), notifications; failure keeps `approved` and allows retry
+- [x] `AcknowledgeAgreement`
+- [x] `EffectiveStatus` applied to every list so cancelled-by-lock requests show correctly
 
 ### 4.B State
-- [ ] `ActivityBloc` (Open / Active / Past), `BookingDetailBloc` (stream), `DecisionBloc`, `PaymentBloc`, `ExpirySweeperCubit` (runs at app start/resume and on activity load)
+- [x] `ActivityBloc` (Open / Active / Past), `BookingDetailBloc` (stream), `DecisionBloc`, `PaymentBloc`, `ExpirySweeperCubit` (runs at app start/resume and on activity load)
 
 ### 4.C Screens
-- [ ] My Activity (renter and owner): Open (action required, pending), Active, Past; grouped by car for owners; quick actions
-- [ ] Booking detail: reference, status headline, six-step timeline, car, dates, parties, price rows, payment/caution/agreement status, **locked contact tile** until payment, then phone/email/meeting point; hosts `HandoverSection` (P5) and `PostRentalSection` (P6) slots
-- [ ] Owner request detail `/booking/:id/decision`: renter profile info (no contact), "You earn RWF X", "I reviewed their info" tick, approve / decline with reason
-- [ ] Payment screen: MoMo 9-digit number, total breakdown, processing, success with reference, failure with retry; deadline countdown
-- [ ] Rental agreement (nine sections; late-fee 30%/day text; cancellation text)
-- [ ] Cancel flow with confirmation dialog and refund note
-- [ ] `PendingRequestsCard` and `UpcomingRentalsCard` slots
+- [x] My Activity (renter and owner): Open (action required, pending), Active, Past; grouped by car for owners; quick actions
+- [x] Booking detail: reference, status headline, six-step timeline, car, dates, parties, price rows, payment/caution/agreement status, **locked contact tile** until payment, then phone/email/meeting point; hosts `HandoverSection` (P5) and `PostRentalSection` (P6) slots
+- [x] Owner request detail `/booking/:id/decision`: renter profile info (no contact), "You earn RWF X", "I reviewed their info" tick, approve / decline with reason
+- [x] Payment screen: MoMo 9-digit number, total breakdown, processing, success with reference, failure with retry; deadline countdown
+- [x] Rental agreement (nine sections; late-fee 30%/day text; cancellation text)
+- [x] Cancel flow with confirmation dialog and refund note
+- [x] `PendingRequestsCard` and `UpcomingRentalsCard` slots
 
 ### 4.D Rules
-- [ ] `validTransition` for your rows of the §5.1 table; lock and calendar rules; contact lock; `transactions` create rules for `charge`/`refund` amounts
+- [x] `validTransition` for your rows of the §5.1 table; lock and calendar rules; contact lock; `transactions` create rules for `charge`/`refund` amounts
 - [ ] Demonstrate: contact docs unreadable before payment, readable after
 
 ### 4.E Tests
-- [ ] Unit: approve conflict (renter already locked), overlap declining, deadline calculation, cancel refund amounts, effective status
-- [ ] Bloc: `PaymentBloc` (success/failure/retry), `DecisionBloc`
-- [ ] Widget: locked contact tile switches to revealed data
+- [x] Unit: approve conflict (renter already locked), overlap declining, deadline calculation, cancel refund amounts, effective status
+- [x] Bloc: `PaymentBloc` (success/failure/retry), `DecisionBloc`
+- [x] Widget: locked contact tile switches to revealed data
 
 ### 4.F Docs & demo
-- [ ] Report: booking state machine diagram, lazy expiry and lock design, ledger invariants sections
+- [x] Report: booking state machine diagram, lazy expiry and lock design, ledger invariants sections
 - [ ] Demo segment D (~2.5 min): owner approves, renter pays, console shows `confirmed` + `charge` row, contact unlocks, **rotate the phone once**
 
 ---

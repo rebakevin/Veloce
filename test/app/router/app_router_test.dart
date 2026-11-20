@@ -135,6 +135,9 @@ void main() {
       }
     }
     expect(failures, isEmpty);
-    expect(tapped, greaterThan(35));
+    // Real screens (Phase 4 booking pages) no longer show PlaceholderLinks, so
+    // the number of tappable placeholder links drops as phases land. The route
+    // count above still checks that every path is registered.
+    expect(tapped, greaterThan(0));
   });
 }

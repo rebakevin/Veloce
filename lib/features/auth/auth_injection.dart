@@ -7,7 +7,6 @@ import 'package:veloce/core/data/services/user_lookup.dart';
 import 'package:veloce/core/data/services/vehicle_lookup.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
-import 'package:veloce/core/domain/services/verification_provider.dart';
 
 import 'data/dev_sign_in.dart';
 import 'data/firebase_auth_data_source.dart';
@@ -132,7 +131,6 @@ void registerAuth(GetIt getIt) {
         registerWithEmail: getIt(),
         completeGoogle: getIt(),
         linkCurrentAccount: getIt(),
-        verification: getIt<VerificationProvider>(),
         clock: getIt<Clock>(),
         googleUser: googleUser,
       ),
