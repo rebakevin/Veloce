@@ -4,6 +4,8 @@ import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/document_photo.dart';
 import 'package:veloce/core/domain/entities/long_rate.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
+import 'package:veloce/core/domain/entities/vehicle_document.dart';
+import 'package:veloce/core/domain/entities/vehicle_photo.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/document_kind.dart';
 import 'package:veloce/core/domain/enums/fuel_type.dart';
@@ -119,6 +121,11 @@ class FakeVehicleRepository implements VehicleRepository {
   final List<String> removed = [];
   final List<PublishRequest> published = [];
   final Map<String, VehicleStatus> statuses = {};
+  final Map<String, Vehicle> vehicles = {};
+  final Map<String, List<VehiclePhoto>> photos = {};
+  final Map<String, List<VehicleDocument>> documents = {};
+  final Map<String, (DateTime?, DateTime?)> availability = {};
+  final List<VehicleDocument> upserted = [];
 
   @override
   Stream<Result<List<Vehicle>>> watchOwnerVehicles(String ownerId) =>
@@ -144,6 +151,53 @@ class FakeVehicleRepository implements VehicleRepository {
   @override
   Future<Result<void>> remove(String vehicleId) async {
     removed.add(vehicleId);
+    return const Result.success(null);
+  }
+
+  @override
+  Stream<Result<Vehicle>> watchVehicle(String vehicleId) {
+    final vehicle = vehicles[vehicleId];
+    return vehicle == null
+        ? const Stream.empty()
+        : Stream.value(Result.success(vehicle));
+  }
+
+  @override
+  Future<Result<List<VehiclePhoto>>> photosOf(String vehicleId) async =>
+      Result.success(photos[vehicleId] ?? const []);
+
+  @override
+  Future<Result<List<VehicleDocument>>> documentsOf(String vehicleId) async =>
+      Result.success(documents[vehicleId] ?? const []);
+
+  @override
+  Future<Result<void>> update(
+    Vehicle vehicle,
+    List<VehiclePhoto> photos,
+  ) async {
+    vehicles[vehicle.id] = vehicle;
+    this.photos[vehicle.id] = photos;
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> setAvailability(
+    String vehicleId,
+    DateTime? from,
+    DateTime? to,
+  ) async {
+    availability[vehicleId] = (from, to);
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> upsertDocument(
+    VehicleDocument document, {
+    required DateTime? docsValidUntil,
+    required VehicleStatus status,
+  }) async {
+    upserted.add(document);
+    statuses[document.vehicleId] = status;
     return const Result.success(null);
   }
 }
