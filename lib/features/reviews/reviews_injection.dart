@@ -4,7 +4,6 @@ import 'package:get_it/get_it.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/data/services/user_lookup.dart';
 import 'package:veloce/core/data/services/vehicle_lookup.dart';
-import 'package:veloce/core/domain/services/atomic_write.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/domain/services/pending_review_checker.dart';
@@ -20,7 +19,6 @@ void registerReviews(GetIt getIt) {
     ..registerLazySingleton<ReviewRepository>(
       () => FirestoreReviewRepository(
         firestore: getIt<FirebaseFirestore>(),
-        writes: getIt<AtomicWriteFactory>(),
         clock: getIt<Clock>(),
       ),
     )

@@ -5,23 +5,21 @@ import 'package:veloce/core/data/models/review_model.dart';
 import 'package:veloce/core/data/services/failure_mapper.dart';
 import 'package:veloce/core/domain/entities/review.dart';
 import 'package:veloce/core/domain/enums/subject_type.dart';
-import 'package:veloce/core/domain/services/atomic_write.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
 
 import '../../domain/repositories/review_repository.dart';
+import '../../domain/services/rating_aggregate.dart';
 
 /// Firestore implementation of [ReviewRepository].
 class FirestoreReviewRepository implements ReviewRepository {
   const FirestoreReviewRepository({
     required this._firestore,
-    required this._writes,
     required this._clock,
   });
 
   final FirebaseFirestore _firestore;
-  final AtomicWriteFactory _writes;
   final Clock _clock;
 
   @override
@@ -50,70 +48,79 @@ class FirestoreReviewRepository implements ReviewRepository {
       final reviewRef = _firestore
           .collection(FirestorePaths.reviews)
           .doc(docId);
-      final existingDoc = await reviewRef.get();
+      final subjectRef = _firestore.doc(
+        subjectType == SubjectType.user
+            ? FirestorePaths.user(subjectId)
+            : FirestorePaths.vehicle(subjectId),
+      );
 
-      final String targetPath;
-      final DocumentReference<Map<String, dynamic>> subjectRef;
-      if (subjectType == SubjectType.user) {
-        targetPath = FirestorePaths.user(subjectId);
-        subjectRef = _firestore.doc(targetPath);
-      } else {
-        targetPath = FirestorePaths.vehicle(subjectId);
-        subjectRef = _firestore.doc(targetPath);
+      // Stars of the other reviews of this subject: the aggregate is rebuilt
+      // from real data, so it is exact and does not drift.
+      final othersSnapshot = await _firestore
+          .collection(FirestorePaths.reviews)
+          .where(FirestoreFields.subjectType, isEqualTo: subjectType.key)
+          .where(FirestoreFields.subjectId, isEqualTo: subjectId)
+          .get();
+      final otherStars = [
+        for (final doc in othersSnapshot.docs)
+          if (doc.id != docId)
+            (doc.data()[FirestoreFields.stars] as num).toInt(),
+      ];
+
+      Future<Review> write({required bool writeAggregate}) =>
+          _firestore.runTransaction<Review>((transaction) async {
+            final existingDoc = await transaction.get(reviewRef);
+            final subjectDoc = await transaction.get(subjectRef);
+
+            final Review review;
+            if (existingDoc.exists) {
+              review = ReviewModel.fromMap(existingDoc.id, existingDoc.data()!)
+                  .copyWith(
+                    stars: stars,
+                    comment: trimmedComment,
+                    editedAt: _clock.now(),
+                  );
+            } else {
+              review = Review(
+                id: docId,
+                bookingId: bookingId,
+                authorId: authorId,
+                subjectType: subjectType,
+                subjectId: subjectId,
+                stars: stars,
+                comment: trimmedComment,
+                createdAt: _clock.now(),
+                editedAt: null,
+              );
+            }
+
+            transaction.set(reviewRef, ReviewModel.toMap(review));
+            // A deleted subject (account or vehicle) must not block the review.
+            // The aggregate is recomputed from the real reviews and written as
+            // is, so a stored count that drifted is corrected instead of
+            // blocking every later review.
+            if (subjectDoc.exists && writeAggregate) {
+              final aggregate = RatingAggregate.fromStars([
+                ...otherStars,
+                stars,
+              ]);
+              transaction.update(subjectRef, {
+                FirestoreFields.ratingAvg: aggregate.average,
+                FirestoreFields.ratingCount: aggregate.count,
+              });
+            }
+            return review;
+          });
+
+      try {
+        return Result.success(await write(writeAggregate: true));
+      } on FirebaseException catch (e) {
+        // The rules may refuse a recomputed aggregate that moved by more than
+        // one. The review itself must still be saved; the next review
+        // recomputes the aggregate again.
+        if (e.code != 'permission-denied') rethrow;
+        return Result.success(await write(writeAggregate: false));
       }
-
-      final subjectDoc = await subjectRef.get();
-      final subjectData = subjectDoc.data() ?? <String, dynamic>{};
-      final oldAvg =
-          (subjectData[FirestoreFields.ratingAvg] as num?)?.toDouble() ?? 0.0;
-      final oldCount =
-          (subjectData[FirestoreFields.ratingCount] as num?)?.toInt() ?? 0;
-
-      final Review review;
-      final int newCount;
-      final double newAvg;
-
-      if (existingDoc.exists) {
-        final existing = ReviewModel.fromMap(
-          existingDoc.id,
-          existingDoc.data()!,
-        );
-        review = existing.copyWith(
-          stars: stars,
-          comment: trimmedComment,
-          editedAt: _clock.now(),
-        );
-        newCount = oldCount;
-        final sum = (oldAvg * oldCount) - existing.stars + stars;
-        newAvg = newCount > 0 ? sum / newCount : 0.0;
-      } else {
-        review = Review(
-          id: docId,
-          bookingId: bookingId,
-          authorId: authorId,
-          subjectType: subjectType,
-          subjectId: subjectId,
-          stars: stars,
-          comment: trimmedComment,
-          createdAt: _clock.now(),
-          editedAt: null,
-        );
-        newCount = oldCount + 1;
-        final sum = (oldAvg * oldCount) + stars;
-        newAvg = sum / newCount;
-      }
-
-      final roundedAvg = (newAvg * 10).round() / 10.0;
-
-      final batch = _writes.begin();
-      batch.set('${FirestorePaths.reviews}/$docId', ReviewModel.toMap(review));
-      batch.update(targetPath, {
-        FirestoreFields.ratingAvg: roundedAvg,
-        FirestoreFields.ratingCount: newCount,
-      });
-
-      await batch.commit();
-      return Result.success(review);
     } catch (e, st) {
       return Result.failure(mapToFailure(e, st));
     }
