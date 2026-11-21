@@ -42,8 +42,11 @@ class FirebaseAuthRepository implements AuthRepository {
       _guard(_source.signInWithGoogle);
 
   @override
-  Future<Result<AuthUser?>> signInWithGoogleSilently() =>
-      _guard(_source.signInWithGoogleSilently);
+  Future<Result<AuthUser?>> signInWithGoogleSilently({
+    required String expectedEmail,
+  }) => _guard(
+    () => _source.signInWithGoogleSilently(expectedEmail: expectedEmail),
+  );
 
   @override
   Future<Result<void>> sendPasswordReset(String email) =>

@@ -10,13 +10,15 @@ import '../repositories/linked_account_store.dart';
 
 /// Switches to a linked account without asking for a password (spec §8.2).
 ///
-/// Signs the current user out of Firebase (the linked list is kept), then signs
-/// the target in: email accounts with the stored password, Google accounts
-/// with a silent re-sign-in. When that cannot work (credential missing or
-/// rejected, Google needs interaction, or a different Google account is
-/// active) the result is [SwitchOutcome.signInRequired] and the UI asks the
-/// user to sign in again. Network and other technical errors come back as
-/// failures. The caller resets route-level blocs and navigates afterwards.
+/// Signs the target in directly (email accounts with the stored password,
+/// Google accounts with a silent re-sign-in), without signing the current user
+/// out first: the router would send a signed-out user to the welcome page and
+/// drop the accounts page before the outcome is shown. When that cannot work
+/// (credential missing or rejected, Google needs interaction) the current
+/// session stays and the result is [SwitchOutcome.signInRequired], so the UI
+/// asks the user to sign in again. If Google restores a different account than
+/// the target it is never signed in, and the result is the same. Network and
+/// other technical errors come back as failures. The caller resets route-level blocs and navigates afterwards.
 class SwitchAccount {
   const SwitchAccount({required this._auth, required this._store});
 
@@ -32,9 +34,6 @@ class SwitchAccount {
     if (_auth.currentUser?.uid == uid) {
       return const Result.success(SwitchOutcome.switched);
     }
-
-    final suspended = await _auth.suspendSession();
-    if (suspended case Failure(:final failure)) return Result.failure(failure);
 
     return switch (target.authType) {
       AuthProviderKind.password => _signInWithStoredPassword(target),
@@ -70,14 +69,16 @@ class SwitchAccount {
   Future<Result<SwitchOutcome>> _signInWithGoogleSilently(
     LinkedAccount target,
   ) async {
-    final signedIn = await _auth.signInWithGoogleSilently();
+    final signedIn = await _auth.signInWithGoogleSilently(
+      expectedEmail: target.email,
+    );
     if (signedIn case Failure(:final failure)) return Result.failure(failure);
     final AuthUser? user = (signedIn as Success<AuthUser?>).value;
     if (user == null) {
       return const Result.success(SwitchOutcome.signInRequired);
     }
     if (user.uid != target.uid) {
-      // Google restored a different account than the one we want.
+      // Same email, different uid: not expected, do not keep that session.
       await _auth.suspendSession();
       return const Result.success(SwitchOutcome.signInRequired);
     }

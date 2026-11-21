@@ -37,7 +37,12 @@ class FirebaseAuthDataSource {
         .createUserWithEmailAndPassword(email: email, password: password)
         .timeout(_timeout);
     final user = credential.user!;
-    await user.updateDisplayName(displayName);
+    try {
+      await user.updateDisplayName(displayName).timeout(_timeout);
+    } on Object {
+      // The name is also stored on the profile document, so a failure here must
+      // not leave a signed-in Auth user behind with a failed registration.
+    }
     return _map(user)!;
   }
 
@@ -57,12 +62,17 @@ class FirebaseAuthDataSource {
     return _signInToFirebase(account);
   }
 
-  /// `null` when the platform cannot restore a Google session without UI.
-  Future<AuthUser?> signInWithGoogleSilently() async {
+  /// `null` when the platform cannot restore a Google session without UI, or
+  /// restores an account other than [expectedEmail]: that one is never signed
+  /// into Firebase.
+  Future<AuthUser?> signInWithGoogleSilently({
+    required String expectedEmail,
+  }) async {
     await _ensureGoogleReady();
     final attempt = _google.attemptLightweightAuthentication();
     final account = attempt == null ? null : await attempt;
     if (account == null) return null;
+    if (account.email.toLowerCase() != expectedEmail.toLowerCase()) return null;
     return _signInToFirebase(account);
   }
 

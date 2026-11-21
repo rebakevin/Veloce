@@ -48,15 +48,12 @@ void main() {
       ((await switchAccount(uid)) as Success<SwitchOutcome>).value;
 
   test(
-    'email account: suspends the session and signs in with the stored password',
+    'email account: signs in with the stored password without signing out',
     () async {
       auth.signInResult = Result.success(anAuthUser(uid: 'owner-1'));
 
       expect(await outcomeOf('owner-1'), SwitchOutcome.switched);
-      expect(auth.calls, [
-        'suspend',
-        'signInEmail:owner-1@example.com:secret123',
-      ]);
+      expect(auth.calls, ['signInEmail:owner-1@example.com:secret123']);
       expect(store.accounts, hasLength(2));
     },
   );
@@ -73,7 +70,9 @@ void main() {
     store.passwords.clear();
 
     expect(await outcomeOf('owner-1'), SwitchOutcome.signInRequired);
-    expect(auth.calls, ['suspend']);
+    // The current session stays, so the user remains on the accounts page.
+    expect(auth.calls, isEmpty);
+    expect(auth.user, isNotNull);
   });
 
   test('a network error is a failure, not a sign-in prompt', () async {
@@ -90,7 +89,7 @@ void main() {
     );
 
     expect(await outcomeOf('g-1'), SwitchOutcome.switched);
-    expect(auth.calls, ['suspend', 'googleSilent']);
+    expect(auth.calls, ['googleSilent']);
   });
 
   test(
@@ -102,7 +101,8 @@ void main() {
         anAuthUser(uid: 'someone-else', provider: AuthProviderKind.google),
       );
       expect(await outcomeOf('g-1'), SwitchOutcome.signInRequired);
-      expect(auth.user, isNull);
+      // The other account was never signed in: the session stays.
+      expect(auth.user, isNotNull);
     },
   );
 
@@ -142,6 +142,26 @@ void main() {
       expect(account.name, 'Aline Uwase');
       expect(store.passwords['renter-1'], 'pw-12345');
     });
+
+    test(
+      'relinking keeps the stored password and refreshes the name',
+      () async {
+        store
+          ..accounts['renter-1'] = const LinkedAccount(
+            uid: 'renter-1',
+            email: 'renter-1@example.com',
+            name: 'Old name',
+            role: UserRole.renter,
+            authType: AuthProviderKind.password,
+          )
+          ..passwords['renter-1'] = 'kept-pw-1';
+
+        final result = await link();
+
+        expect((result as Success<LinkedAccount>).value.name, 'Aline Uwase');
+        expect(store.passwords['renter-1'], 'kept-pw-1');
+      },
+    );
 
     test('email account without a password is refused', () async {
       final result = await link();

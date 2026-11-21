@@ -28,8 +28,11 @@ abstract interface class AuthRepository {
   Future<Result<AuthUser>> signInWithGoogle();
 
   /// Re-signs in the last Google account without UI. Success with `null`
-  /// means the platform needs the user to interact.
-  Future<Result<AuthUser?>> signInWithGoogleSilently();
+  /// means the platform needs the user to interact, or restored an account
+  /// other than [expectedEmail] (which is then not signed in).
+  Future<Result<AuthUser?>> signInWithGoogleSilently({
+    required String expectedEmail,
+  });
 
   Future<Result<void>> sendPasswordReset(String email);
 

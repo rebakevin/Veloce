@@ -42,6 +42,7 @@ void main() {
     reload = _MockReload();
     cacheClears = 0;
     when(() => observe()).thenAnswer((_) => users.stream);
+    when(() => reload()).thenAnswer((_) async => Result.success(anAuthUser()));
   });
 
   tearDown(() => users.close());
@@ -210,6 +211,89 @@ void main() {
         expect(bloc.state.isEmailVerified, isTrue);
         verify(() => store.findProfile(any())).called(1);
       },
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'an unverified user without a profile is reloaded once, not per event',
+      setUp: () =>
+          when(() => store.findProfile(any()))
+              .thenAnswer((_) async => const Result.success(null)),
+      build: build,
+      act: (bloc) async {
+        bloc.add(const AuthStarted());
+        users.add(user);
+        await Future<void>.delayed(Duration.zero);
+        users.add(user);
+        await Future<void>.delayed(Duration.zero);
+        users.add(user);
+      },
+      wait: const Duration(milliseconds: 50),
+      verify: (_) => verify(() => reload()).called(1),
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'an unverified user is reloaded on restore, so a confirmed link counts',
+      setUp: () {
+        when(() => store.findProfile(any()))
+            .thenAnswer((_) async => Result.success(account));
+        when(() => reload()).thenAnswer(
+          (_) async => Result.success(
+            AuthUser(
+              uid: user.uid,
+              email: user.email,
+              emailVerified: true,
+              displayName: user.displayName,
+              provider: user.provider,
+            ),
+          ),
+        );
+      },
+      build: build,
+      act: (bloc) {
+        bloc.add(const AuthStarted());
+        users.add(user);
+      },
+      wait: const Duration(milliseconds: 10),
+      verify: (bloc) {
+        expect(bloc.state.isEmailVerified, isTrue);
+        verify(() => reload()).called(1);
+        verify(() => store.findProfile(any())).called(1);
+      },
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'another account signing in clears the caches of the previous one',
+      setUp: () =>
+          when(() => store.findProfile(any()))
+              .thenAnswer((_) async => Result.success(account)),
+      build: build,
+      act: (bloc) async {
+        bloc.add(const AuthStarted());
+        users.add(user);
+        await Future<void>.delayed(Duration.zero);
+        users.add(anAuthUser(uid: 'other'));
+      },
+      verify: (_) => expect(cacheClears, 1),
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'a failed profile refresh keeps the signed-in state',
+      setUp: () {
+        var calls = 0;
+        when(() => store.findProfile(user.uid)).thenAnswer(
+          (_) async => ++calls == 1
+              ? Result.success(account)
+              : const Result.failure(NetworkFailure()),
+        );
+      },
+      build: build,
+      act: (bloc) async {
+        bloc.add(const AuthStarted());
+        users.add(user);
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const AuthProfileRefreshed());
+      },
+      expect: () => [AuthAuthenticated(user: user, account: account)],
     );
 
     blocTest<AuthBloc, AuthState>(

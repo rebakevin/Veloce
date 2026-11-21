@@ -27,7 +27,14 @@ class LinkCurrentAccount {
       return const Result.failure(ValidationFailure('Sign in first.'));
     }
     final isEmail = user.provider == AuthProviderKind.password;
-    if (isEmail && (password == null || password.isEmpty)) {
+    var credential = password;
+    if (isEmail && (credential == null || credential.isEmpty)) {
+      // Re-linking an account that is already stored (to refresh its name)
+      // keeps the password saved earlier.
+      final stored = await _store.passwordOf(user.uid);
+      credential = stored is Success<String?> ? stored.value : null;
+    }
+    if (isEmail && (credential == null || credential.isEmpty)) {
       return const Result.failure(
         ValidationFailure('Enter your password to link this account.'),
       );
@@ -47,7 +54,7 @@ class LinkCurrentAccount {
     );
     final saved = await _store.save(
       account,
-      password: isEmail ? password : null,
+      password: isEmail ? credential : null,
     );
     return switch (saved) {
       Failure(:final failure) => Result.failure(failure),

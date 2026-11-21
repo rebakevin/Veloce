@@ -134,9 +134,16 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Result<AuthUser?>> signInWithGoogleSilently() async {
+  Future<Result<AuthUser?>> signInWithGoogleSilently({
+    required String expectedEmail,
+  }) async {
     calls.add('googleSilent');
-    if (silentGoogleResult case Success(:final value)) user = value;
+    // Like the real source: a different account is never signed in.
+    if (silentGoogleResult case Success(:final value?)
+        when value.email != expectedEmail) {
+      return const Result.success(null);
+    }
+    if (silentGoogleResult case Success(:final value?)) user = value;
     return silentGoogleResult;
   }
 

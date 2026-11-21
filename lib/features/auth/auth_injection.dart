@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
@@ -40,8 +41,14 @@ import 'presentation/bloc/verify_email_cubit.dart';
 
 /// Registers the auth feature's dependencies. Owned by Phase 1.
 void registerAuth(GetIt getIt) {
+  // The seeded accounts share one password, so the dev sign-in must not exist
+  // in release builds.
+  if (kDebugMode) {
+    getIt.registerLazySingleton<DevSignIn>(
+      () => DevSignIn(getIt<FirebaseAuth>()),
+    );
+  }
   getIt
-    ..registerLazySingleton<DevSignIn>(() => DevSignIn(getIt<FirebaseAuth>()))
     ..registerLazySingleton<FirebaseAuthDataSource>(
       () => FirebaseAuthDataSource(auth: getIt<FirebaseAuth>()),
     )
