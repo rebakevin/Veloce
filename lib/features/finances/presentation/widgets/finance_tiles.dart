@@ -26,8 +26,7 @@ class FinanceTiles extends StatelessWidget {
             label: 'Total earned',
             amount: Formatters.rwf(totalEarned),
             amountColor: colors.ink,
-            backgroundColor: colors.surface,
-            borderColor: colors.line,
+            dotColor: colors.brand,
           ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -35,9 +34,8 @@ class FinanceTiles extends StatelessWidget {
           child: _Tile(
             label: 'Total losses',
             amount: Formatters.rwf(totalLosses),
-            amountColor: totalLosses > 0 ? colors.danger : colors.ink,
-            backgroundColor: colors.surface,
-            borderColor: colors.line,
+            amountColor: colors.ink,
+            dotColor: colors.star,
           ),
         ),
       ],
@@ -50,33 +48,44 @@ class _Tile extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.amountColor,
-    required this.backgroundColor,
-    required this.borderColor,
+    required this.dotColor,
   });
 
   final String label;
   final String amount;
   final Color amountColor;
-  final Color backgroundColor;
-  final Color borderColor;
+  final Color dotColor;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: borderColor),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(color: colors.muted),
+          Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: const SizedBox(width: 10, height: 10),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  label,
+                  style: AppTextStyles.label.copyWith(color: colors.muted),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(

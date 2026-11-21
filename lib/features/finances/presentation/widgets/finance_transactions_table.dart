@@ -45,13 +45,13 @@ class FinanceTransactionsTable extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: colors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: colors.line),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
           child: Column(
             children: [
+              const _HeaderRow(),
               for (int i = 0; i < displayed.length; i++) ...[
-                if (i > 0) Divider(height: 1, color: colors.line),
+                Divider(height: 1, color: colors.sand),
                 _TransactionRow(transaction: displayed[i]),
               ],
             ],
@@ -90,49 +90,68 @@ class _TransactionRow extends StatelessWidget {
     final amountColor = isEarned ? colors.brand : colors.danger;
 
     return Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isEarned ? colors.brandWash : colors.dangerWash,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isEarned ? Icons.arrow_downward : Icons.arrow_upward,
-              color: amountColor,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction.vehicleName ?? 'Vehicle',
-                  style: AppTextStyles.cardTitle.copyWith(
-                    color: colors.ink,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${isEarned ? 'Earned' : 'Loss'} • ${Formatters.date(transaction.date)}',
-                  style: AppTextStyles.caption.copyWith(color: colors.muted),
-                ),
-              ],
+            flex: 14,
+            child: Text(
+              transaction.vehicleName ?? 'Vehicle',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: colors.ink,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-          Text(
-            signedAmount,
-            style: AppTextStyles.cardTitle.copyWith(
-              color: amountColor,
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
+          Expanded(
+            flex: 11,
+            child: Text(
+              signedAmount,
+              textAlign: TextAlign.end,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: amountColor,
+                fontWeight: FontWeight.w800,
+              ),
             ),
+          ),
+          Expanded(
+            flex: 10,
+            child: Text(
+              Formatters.date(transaction.date),
+              textAlign: TextAlign.end,
+              style: AppTextStyles.bodySmall.copyWith(color: colors.muted),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderRow extends StatelessWidget {
+  const _HeaderRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppTextStyles.label.copyWith(color: context.colors.muted);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: 14, child: Text('Car', style: style)),
+          Expanded(
+            flex: 11,
+            child: Text('Amount', textAlign: TextAlign.end, style: style),
+          ),
+          Expanded(
+            flex: 10,
+            child: Text('Date', textAlign: TextAlign.end, style: style),
           ),
         ],
       ),

@@ -103,15 +103,14 @@ class _FinancesCardView extends StatelessWidget {
 
     return Material(
       color: colors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.sm),
+      borderRadius: BorderRadius.circular(AppRadius.xl),
       child: InkWell(
         onTap: () => context.push(RouteNames.ownerFinances),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: colors.line),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
