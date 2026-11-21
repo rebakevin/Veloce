@@ -43,6 +43,10 @@ class WelcomeView extends StatefulWidget {
 class _WelcomeViewState extends State<WelcomeView> {
   static const Duration _slideDuration = Duration(milliseconds: 300);
   static const double _actionsWidth = 360;
+
+  /// Below this the slide and the buttons no longer fit together, so the
+  /// page scrolls instead of overflowing.
+  static const double _minContentHeight = 480;
   final PageController _controller = PageController();
 
   int get _last => onboardingSlides.length - 1;
@@ -118,22 +122,31 @@ class _WelcomeViewState extends State<WelcomeView> {
               ),
             ),
             Expanded(
-              child: landscape
-                  ? Row(
-                      children: [
-                        Expanded(child: slides),
-                        SizedBox(
-                          width: _actionsWidth,
-                          child: SingleChildScrollView(child: actions),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        Expanded(child: slides),
-                        actions,
-                      ],
-                    ),
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  child: SizedBox(
+                    height: constraints.maxHeight < _minContentHeight
+                        ? _minContentHeight
+                        : constraints.maxHeight,
+                    child: landscape
+                        ? Row(
+                            children: [
+                              Expanded(child: slides),
+                              SizedBox(
+                                width: _actionsWidth,
+                                child: SingleChildScrollView(child: actions),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              Expanded(child: slides),
+                              actions,
+                            ],
+                          ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
