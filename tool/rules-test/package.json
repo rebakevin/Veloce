@@ -1,9 +1,9 @@
 {
   "name": "veloce-rules-test",
   "private": true,
-  "description": "Firestore rules tests for the Phase 3 to 5 rules.",
+  "description": "Firestore rules tests: Phase 1 to 6 rules, create/delete negatives and the real client write and query shapes.",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-veloce \"mocha firestore.rules.test.js --timeout 20000\""
+    "test": "firebase emulators:exec --only firestore --project demo-veloce \"mocha firestore.rules.test.js gaps.rules.test.js client-shapes.rules.test.js --timeout 20000\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",

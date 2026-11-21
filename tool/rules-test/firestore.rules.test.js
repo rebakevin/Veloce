@@ -140,7 +140,10 @@ describe('booking create', () => {
     });
     batch.set(doc(db, 'notifications/notification-new'), {
       userId: 'owner1',
+      type: 'requestReceived',
       title: 'New booking request',
+      read: false,
+      createdAt: NOW(),
     });
     await assertSucceeds(batch.commit());
   });
@@ -261,22 +264,44 @@ function ledgerRow(type, fromParty, toParty, amount, overrides = {}) {
 const NOW = () => new Date();
 
 describe('pickup (confirmed to active)', () => {
-  const pickupBoth = () => ({
+  // The second confirmation adds only the actor's own stamp; the other side's
+  // stamp is already on the booking.
+  const ownerSecond = () => ({
     status: 'active',
     ownerPickupConfirmedAt: NOW(),
+    updatedAt: NOW(),
+  });
+  const renterSecond = () => ({
+    status: 'active',
     renterPickupConfirmedAt: NOW(),
     updatedAt: NOW(),
   });
 
-  beforeEach(() => seedBooking('booking-p5', 'confirmed'));
+  beforeEach(() =>
+    seedBooking('booking-p5', 'confirmed', { renterPickupConfirmedAt: NOW() }),
+  );
 
-  it('lets a party move to active with both pickup timestamps', async () => {
+  it('lets the second side move to active with its own timestamp', async () => {
     await assertSucceeds(
-      updateDoc(doc(dbFor(OWNER), 'bookings/booking-p5'), pickupBoth()),
+      updateDoc(doc(dbFor(OWNER), 'bookings/booking-p5'), ownerSecond()),
     );
-    await seedBooking('booking-p5b', 'confirmed');
+    await seedBooking('booking-p5b', 'confirmed', {
+      ownerPickupConfirmedAt: NOW(),
+    });
     await assertSucceeds(
-      updateDoc(doc(dbFor(RENTER), 'bookings/booking-p5b'), pickupBoth()),
+      updateDoc(doc(dbFor(RENTER), 'bookings/booking-p5b'), renterSecond()),
+    );
+  });
+
+  it('rejects one party stamping both sides', async () => {
+    await seedBooking('booking-p5c', 'confirmed');
+    await assertFails(
+      updateDoc(doc(dbFor(OWNER), 'bookings/booking-p5c'), {
+        status: 'active',
+        ownerPickupConfirmedAt: NOW(),
+        renterPickupConfirmedAt: NOW(),
+        updatedAt: NOW(),
+      }),
     );
   });
 
@@ -292,14 +317,14 @@ describe('pickup (confirmed to active)', () => {
 
   it('rejects a non-party', async () => {
     await assertFails(
-      updateDoc(doc(dbFor(OUTSIDER), 'bookings/booking-p5'), pickupBoth()),
+      updateDoc(doc(dbFor(OUTSIDER), 'bookings/booking-p5'), ownerSecond()),
     );
   });
 
   it('rejects touching other fields during pickup', async () => {
     await assertFails(
       updateDoc(doc(dbFor(OWNER), 'bookings/booking-p5'), {
-        ...pickupBoth(),
+        ...ownerSecond(),
         rentalFee: 1,
       }),
     );
@@ -308,7 +333,7 @@ describe('pickup (confirmed to active)', () => {
   it('rejects skipping straight from approved to active', async () => {
     await seedBooking('booking-p5c', 'approved');
     await assertFails(
-      updateDoc(doc(dbFor(OWNER), 'bookings/booking-p5c'), pickupBoth()),
+      updateDoc(doc(dbFor(OWNER), 'bookings/booking-p5c'), ownerSecond()),
     );
   });
 });
@@ -490,13 +515,14 @@ describe('ledger entries at pickup (rentalFee 90000)', () => {
   });
 
   it('commits pickup and the three rows in one batch', async () => {
-    await seedBooking('booking-p5', 'confirmed');
+    await seedBooking('booking-p5', 'confirmed', {
+      renterPickupConfirmedAt: NOW(),
+    });
     const db = dbFor(OWNER);
     const batch = writeBatch(db);
     batch.update(doc(db, 'bookings/booking-p5'), {
       status: 'active',
       ownerPickupConfirmedAt: NOW(),
-      renterPickupConfirmedAt: NOW(),
       updatedAt: NOW(),
     });
     batch.set(
@@ -628,11 +654,19 @@ describe('ledger is append-only', () => {
 });
 
 describe('cautionClaims', () => {
+  // The wire map of CautionClaimModel.toMap (lib/core/data/models).
   const claim = (amount, overrides = {}) => ({
     bookingId: 'booking-p5',
-    amount,
     originalAmount: amount,
+    currentAmount: amount,
     reason: 'Scratched bumper',
+    evidenceUrls: [],
+    renterResponse: 'none',
+    history: [
+      { amount, reason: 'Scratched bumper', at: new Date(), response: 'none' },
+    ],
+    status: 'open',
+    updatedAt: new Date(),
     ...overrides,
   });
 
@@ -685,7 +719,7 @@ describe('cautionClaims', () => {
       );
       await assertSucceeds(
         updateDoc(doc(dbFor(OWNER), 'cautionClaims/booking-p5'), {
-          amount: 30000,
+          currentAmount: 30000,
         }),
       );
     });
@@ -693,7 +727,7 @@ describe('cautionClaims', () => {
     it('rejects an update above the caution or by an outsider', async () => {
       await assertFails(
         updateDoc(doc(dbFor(OWNER), 'cautionClaims/booking-p5'), {
-          amount: 100001,
+          currentAmount: 100001,
         }),
       );
       await assertFails(
@@ -903,7 +937,7 @@ describe('reviews', () => {
       await assertFails(updateDoc(ref, { subjectType: 'vehicle' }));
     });
 
-    it('lets the author, the subject and a booking party delete', async () => {
+    it('lets the author, the reviewed user and the car owner delete', async () => {
       // Author.
       await assertSucceeds(
         deleteDoc(doc(dbFor(RENTER), `reviews/${REVIEW_USER}`)),
@@ -913,7 +947,7 @@ describe('reviews', () => {
       await assertSucceeds(
         deleteDoc(doc(dbFor(OWNER), `reviews/${REVIEW_USER}`)),
       );
-      // Booking party for a car review: subjectId is the car, not the user.
+      // Car review: subjectId is the car, so the car's owner may delete it.
       await seedDoc(
         `reviews/${REVIEW_CAR}`,
         review({ subjectType: 'vehicle', subjectId: 'car-1' }),
@@ -970,30 +1004,21 @@ describe('rating aggregate (users)', () => {
     await assertFails(rate(RENTER, 'owner1', { verified: true }));
   });
 
-  it('rejects a count that jumps by 2 or goes down', async () => {
-    await assertFails(
-      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: 4 }),
+  it('lets the client repair a drifted count but not make it negative', async () => {
+    await assertSucceeds(
+      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: 7 }),
     );
     await assertFails(
-      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: 1 }),
-    );
-    await assertFails(
-      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: 0 }),
+      rate(RENTER, 'owner1', { ratingAvg: 4.3, ratingCount: -1 }),
     );
   });
 
-  it('rejects an average of 0 or above 5', async () => {
+  it('rejects an average below 0 or above 5', async () => {
     await assertFails(
-      rate(RENTER, 'owner1', { ratingAvg: 0, ratingCount: 3 }),
-    );
-    await assertFails(
-      rate(RENTER, 'owner1', { ratingAvg: 0.9, ratingCount: 3 }),
+      rate(RENTER, 'owner1', { ratingAvg: -0.1, ratingCount: 3 }),
     );
     await assertFails(
       rate(RENTER, 'owner1', { ratingAvg: 5.1, ratingCount: 3 }),
-    );
-    await assertFails(
-      rate(RENTER, 'owner1', { ratingAvg: 6, ratingCount: 3 }),
     );
   });
 
@@ -1038,13 +1063,13 @@ describe('rating aggregate (vehicles)', () => {
     await assertFails(rate(RENTER, { ownerId: RENTER }));
   });
 
-  it('rejects a count that jumps by 2 or goes down', async () => {
-    await assertFails(rate(RENTER, { ratingAvg: 4.3, ratingCount: 4 }));
-    await assertFails(rate(RENTER, { ratingAvg: 4.3, ratingCount: 1 }));
+  it('lets the client repair a drifted count but not make it negative', async () => {
+    await assertSucceeds(rate(RENTER, { ratingAvg: 4.3, ratingCount: 7 }));
+    await assertFails(rate(RENTER, { ratingAvg: 4.3, ratingCount: -1 }));
   });
 
-  it('rejects an average of 0 or above 5', async () => {
-    await assertFails(rate(RENTER, { ratingAvg: 0, ratingCount: 3 }));
+  it('rejects an average below 0 or above 5', async () => {
+    await assertFails(rate(RENTER, { ratingAvg: -1, ratingCount: 3 }));
     await assertFails(rate(RENTER, { ratingAvg: 5.5, ratingCount: 3 }));
   });
 });
@@ -1101,7 +1126,7 @@ describe('review batch (review + aggregate)', () => {
     const db = dbFor(RENTER);
     const batch = writeBatch(db);
     batch.set(doc(db, `reviews/${REVIEW_USER}`), review());
-    batch.update(doc(db, 'users/owner1'), { ratingAvg: 4, ratingCount: 5 });
+    batch.update(doc(db, 'users/owner1'), { ratingAvg: 6, ratingCount: 1 });
     await assertFails(batch.commit());
     await environment.withSecurityRulesDisabled(async (context) => {
       const snap = await getDoc(doc(context.firestore(), `reviews/${REVIEW_USER}`));
