@@ -9,8 +9,10 @@ import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/domain/services/media_storage.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/auth/auth.dart';
 
 import '../entities/publish_request.dart';
+import '../entities/rules_pdf.dart';
 import '../entities/wizard_draft.dart';
 import '../entities/wizard_step.dart';
 import '../repositories/vehicle_repository.dart';
@@ -35,9 +37,15 @@ class PublishVehicle {
     if (ownerId == null) {
       return const Result.failure(PermissionFailure('Sign in to list a car.'));
     }
+    final emailFailure = EmailVerificationGate(_session).check();
+    if (emailFailure != null) return Result.failure(emailFailure);
     final errors = {
-      ...WizardStepRules.validate(WizardStep.review, draft),
-      ...WizardStepRules.validate(WizardStep.documents, draft),
+      ...WizardStepRules.validate(WizardStep.review, draft, now: _clock.now()),
+      ...WizardStepRules.validate(
+        WizardStep.documents,
+        draft,
+        now: _clock.now(),
+      ),
     };
     if (errors.isNotEmpty) {
       return Result.failure(ValidationFailure(errors.values.first));
@@ -54,6 +62,38 @@ class PublishVehicle {
         case Success(:final value):
           uploaded.add(value);
           photoUrls.add(value);
+      }
+    }
+
+    String? videoUrl;
+    final video = draft.video;
+    if (video != null) {
+      final result = await _upload(video, StorageBucket.carMedia);
+      switch (result) {
+        case Failure(:final failure):
+          await _cleanUp(uploaded);
+          return Result.failure(failure);
+        case Success(:final value):
+          uploaded.add(value);
+          videoUrl = value;
+      }
+    }
+
+    String? rulesUrl;
+    final rules = draft.rulesPdf;
+    if (rules != null) {
+      final result = await _storage.upload(
+        bytes: rules.bytes,
+        extension: RulesPdf.extension,
+        bucket: StorageBucket.carMedia,
+      );
+      switch (result) {
+        case Failure(:final failure):
+          await _cleanUp(uploaded);
+          return Result.failure(failure);
+        case Success(:final value):
+          uploaded.add(value);
+          rulesUrl = value;
       }
     }
 
@@ -101,8 +141,8 @@ class PublishVehicle {
       fuelRule: draft.fuelRule.trim(),
       smoking: draft.smoking.trim(),
       extras: draft.extras,
-      rulesFileUrl: null,
-      videoUrl: null,
+      rulesFileUrl: rulesUrl,
+      videoUrl: videoUrl,
       status: VehicleStatus.published,
       availableFrom: null,
       availableTo: null,

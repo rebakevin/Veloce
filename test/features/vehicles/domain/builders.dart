@@ -66,6 +66,7 @@ Booking aBooking({
 Vehicle aVehicle({
   VehicleStatus status = VehicleStatus.paused,
   DateTime? docsValidUntil,
+  String? videoUrl,
 }) {
   return Vehicle(
     id: 'car-1',
@@ -88,7 +89,7 @@ Vehicle aVehicle({
     smoking: 'No smoking',
     extras: const [],
     rulesFileUrl: null,
-    videoUrl: null,
+    videoUrl: videoUrl,
     status: status,
     availableFrom: null,
     availableTo: null,
@@ -113,11 +114,13 @@ class FakeVehicleRepository implements VehicleRepository {
     this.bookings = const [],
     this.vehicleStream,
     this.publishFails = false,
+    this.statusWriteFails = false,
   });
 
   final List<Booking> bookings;
   final Stream<Result<List<Vehicle>>>? vehicleStream;
   final bool publishFails;
+  final bool statusWriteFails;
   final List<String> removed = [];
   final List<PublishRequest> published = [];
   final Map<String, VehicleStatus> statuses = {};
@@ -144,6 +147,7 @@ class FakeVehicleRepository implements VehicleRepository {
 
   @override
   Future<Result<void>> setStatus(String vehicleId, VehicleStatus status) async {
+    if (statusWriteFails) return const Result.failure(NetworkFailure());
     statuses[vehicleId] = status;
     return const Result.success(null);
   }

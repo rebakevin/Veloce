@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:veloce/core/domain/entities/document_photo.dart';
 import 'package:veloce/core/domain/enums/document_kind.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/vehicles/domain/entities/rules_pdf.dart';
 import 'package:veloce/features/vehicles/domain/usecases/publish_vehicle.dart';
 
 import '../builders.dart';
@@ -26,6 +30,65 @@ void main() {
       expect(result, isA<Success<String>>());
       expect(storage.uploaded, hasLength(5));
       expect(repository.published.single.vehicle.ownerId, 'owner-1');
+    });
+
+    test('a chosen video is uploaded and its url saved on the car', () async {
+      final repository = FakeVehicleRepository();
+      final storage = FakeMediaStorage();
+      final draft = aPublishableDraft().copyWith(
+        video: DocumentPhoto(bytes: Uint8List(1), extension: 'mp4'),
+      );
+
+      await build(repository, storage)(draft);
+
+      expect(repository.published.single.vehicle.videoUrl, endsWith('.mp4'));
+      expect(storage.uploaded, hasLength(6));
+    });
+
+    test('a chosen rules PDF is uploaded and its url saved', () async {
+      final repository = FakeVehicleRepository();
+      final storage = FakeMediaStorage();
+      final draft = aPublishableDraft().copyWith(
+        rulesPdf: RulesPdf(bytes: Uint8List(1), name: 'rules.pdf'),
+      );
+
+      await build(repository, storage)(draft);
+
+      expect(
+        repository.published.single.vehicle.rulesFileUrl,
+        endsWith('.pdf'),
+      );
+    });
+
+    test('without a PDF the car has no rules file', () async {
+      final repository = FakeVehicleRepository();
+
+      await build(repository, FakeMediaStorage())(aPublishableDraft());
+
+      expect(repository.published.single.vehicle.rulesFileUrl, isNull);
+    });
+
+    test('a failed rules PDF upload cleans up earlier uploads', () async {
+      final repository = FakeVehicleRepository();
+      final storage = FakeMediaStorage(failOnUpload: 3);
+      final draft = aPublishableDraft().copyWith(
+        rulesPdf: RulesPdf(bytes: Uint8List(1), name: 'rules.pdf'),
+      );
+
+      final result = await build(repository, storage)(draft);
+
+      expect(result, isA<Failure<String>>());
+      expect(storage.deleted, storage.uploaded);
+      expect(repository.published, isEmpty);
+    });
+
+    test('extras typed in the rules step are saved', () async {
+      final repository = FakeVehicleRepository();
+      final draft = aPublishableDraft().copyWith(extras: ['Child seat']);
+
+      await build(repository, FakeMediaStorage())(draft);
+
+      expect(repository.published.single.vehicle.extras, ['Child seat']);
     });
 
     test('docsValidUntil is the earlier of insurance and medical', () async {

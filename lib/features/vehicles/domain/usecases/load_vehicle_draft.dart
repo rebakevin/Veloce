@@ -46,6 +46,8 @@ class LoadVehicleDraft {
             vehicleId: vehicle.id,
             keptPhotos: photos,
             primaryIndex: primary < 0 ? 0 : primary,
+            existingVideoUrl: vehicle.videoUrl,
+            existingRulesUrl: vehicle.rulesFileUrl,
             plate: vehicle.plate,
             make: vehicle.make,
             model: vehicle.model,

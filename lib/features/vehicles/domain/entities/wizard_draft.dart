@@ -7,6 +7,8 @@ import 'package:veloce/core/domain/enums/fuel_type.dart';
 import 'package:veloce/core/domain/enums/transmission.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
 
+import 'rules_pdf.dart';
+
 class DraftDocument extends Equatable {
   const DraftDocument({
     this.photo,
@@ -50,6 +52,7 @@ class WizardDraft extends Equatable {
     this.photos = const [],
     this.primaryIndex = 0,
     this.video,
+    this.existingVideoUrl,
     this.plate = '',
     this.make = '',
     this.model = '',
@@ -68,6 +71,7 @@ class WizardDraft extends Equatable {
     this.smoking = '',
     this.extras = const [],
     this.rulesPdf,
+    this.existingRulesUrl,
     this.documents = const {},
   });
 
@@ -81,6 +85,9 @@ class WizardDraft extends Equatable {
   /// Index of the main photo across [keptPhotos] followed by [photos].
   final int primaryIndex;
   final DocumentPhoto? video;
+
+  /// Video the car already has when editing; null once the owner removes it.
+  final String? existingVideoUrl;
   final String plate;
   final String make;
   final String model;
@@ -98,12 +105,51 @@ class WizardDraft extends Equatable {
   final String fuelRule;
   final String smoking;
   final List<String> extras;
-  final DocumentPhoto? rulesPdf;
+  final RulesPdf? rulesPdf;
+
+  /// Rules PDF the car already has when editing; null once the owner removes it.
+  final String? existingRulesUrl;
   final Map<DocumentKind, DraftDocument> documents;
 
   bool get isEditing => vehicleId != null;
 
   int get photoCount => keptPhotos.length + photos.length;
+
+  /// Whether the photo at [index] (across kept then new photos) can move one
+  /// place by [delta] (-1 earlier, 1 later). Photos stay inside their own
+  /// group: kept photos before the newly picked ones.
+  bool canMovePhoto(int index, int delta) {
+    final kept = keptPhotos.length;
+    final target = index + delta;
+    if (index < 0 || index >= photoCount || target < 0) return false;
+    if (target >= photoCount) return false;
+    return (index < kept) == (target < kept);
+  }
+
+  /// The draft with the photo at [index] moved by [delta], keeping
+  /// [primaryIndex] on the same photo. Unchanged when the move is not allowed.
+  WizardDraft movePhoto(int index, int delta) {
+    if (!canMovePhoto(index, delta)) return this;
+    final target = index + delta;
+    final kept = keptPhotos.length;
+    final newKept = [...keptPhotos];
+    final newPhotos = [...photos];
+    if (index < kept) {
+      newKept.insert(target, newKept.removeAt(index));
+    } else {
+      newPhotos.insert(target - kept, newPhotos.removeAt(index - kept));
+    }
+    final primary = primaryIndex == index
+        ? target
+        : primaryIndex == target
+        ? index
+        : primaryIndex;
+    return copyWith(
+      keptPhotos: newKept,
+      photos: newPhotos,
+      primaryIndex: primary,
+    );
+  }
 
   WizardDraft copyWith({
     String? vehicleId,
@@ -112,6 +158,8 @@ class WizardDraft extends Equatable {
     int? primaryIndex,
     DocumentPhoto? video,
     bool clearVideo = false,
+    String? existingVideoUrl,
+    bool clearExistingVideo = false,
     String? plate,
     String? make,
     String? model,
@@ -129,8 +177,10 @@ class WizardDraft extends Equatable {
     String? fuelRule,
     String? smoking,
     List<String>? extras,
-    DocumentPhoto? rulesPdf,
+    RulesPdf? rulesPdf,
     bool clearRulesPdf = false,
+    String? existingRulesUrl,
+    bool clearExistingRules = false,
     Map<DocumentKind, DraftDocument>? documents,
   }) {
     return WizardDraft(
@@ -139,6 +189,9 @@ class WizardDraft extends Equatable {
       photos: photos ?? this.photos,
       primaryIndex: primaryIndex ?? this.primaryIndex,
       video: clearVideo ? null : video ?? this.video,
+      existingVideoUrl: clearExistingVideo
+          ? null
+          : existingVideoUrl ?? this.existingVideoUrl,
       plate: plate ?? this.plate,
       make: make ?? this.make,
       model: model ?? this.model,
@@ -157,6 +210,9 @@ class WizardDraft extends Equatable {
       smoking: smoking ?? this.smoking,
       extras: extras ?? this.extras,
       rulesPdf: clearRulesPdf ? null : rulesPdf ?? this.rulesPdf,
+      existingRulesUrl: clearExistingRules
+          ? null
+          : existingRulesUrl ?? this.existingRulesUrl,
       documents: documents ?? this.documents,
     );
   }
@@ -168,6 +224,7 @@ class WizardDraft extends Equatable {
     photos,
     primaryIndex,
     video,
+    existingVideoUrl,
     plate,
     make,
     model,
@@ -186,6 +243,7 @@ class WizardDraft extends Equatable {
     smoking,
     extras,
     rulesPdf,
+    existingRulesUrl,
     documents,
   ];
 }

@@ -60,9 +60,11 @@ class DocumentsBloc extends Bloc<DocumentsEvent, DocumentsState> {
         emit(DocumentsFailure(failure.message));
       case Success(:final value):
         final current = state;
+        final shown = await _pauseIfLapsed(vehicle);
+        if (isClosed) return;
         emit(
           DocumentsLoaded(
-            vehicle: vehicle,
+            vehicle: shown,
             documents: value,
             expired: _expired(value),
             busy: current is DocumentsLoaded
@@ -72,6 +74,18 @@ class DocumentsBloc extends Bloc<DocumentsEvent, DocumentsState> {
           ),
         );
     }
+  }
+
+  /// Nothing pauses a car when a paper expires, so do it when the owner opens
+  /// the documents. Best effort: a failed write leaves the car as it was.
+  Future<Vehicle> _pauseIfLapsed(Vehicle vehicle) async {
+    if (!DocumentStatusRules.needsPausing(vehicle, now: _clock.now())) {
+      return vehicle;
+    }
+    final result = await _setStatus(vehicle, VehicleStatus.paused);
+    return result is Success<void>
+        ? vehicle.copyWith(status: VehicleStatus.paused)
+        : vehicle;
   }
 
   Future<void> _onSubmitted(

@@ -6,6 +6,7 @@ import 'package:veloce/core/domain/services/media_storage.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
 
+import '../entities/rules_pdf.dart';
 import '../entities/wizard_draft.dart';
 import '../entities/wizard_step.dart';
 import '../repositories/vehicle_repository.dart';
@@ -62,7 +63,40 @@ class UpdateVehicle {
           }
         }
 
-        final urls = [for (final p in draft.keptPhotos) p.url, ...uploaded];
+        final photoUrls = [...uploaded];
+        final video = draft.video;
+        String? videoUrl;
+        if (video != null) {
+          final result = await _upload(video);
+          switch (result) {
+            case Failure(:final failure):
+              await _delete(uploaded);
+              return Result.failure(failure);
+            case Success(:final value):
+              uploaded.add(value);
+              videoUrl = value;
+          }
+        }
+
+        String? rulesUrl;
+        final rules = draft.rulesPdf;
+        if (rules != null) {
+          final result = await _storage.upload(
+            bytes: rules.bytes,
+            extension: RulesPdf.extension,
+            bucket: StorageBucket.carMedia,
+          );
+          switch (result) {
+            case Failure(:final failure):
+              await _delete(uploaded);
+              return Result.failure(failure);
+            case Success(:final value):
+              uploaded.add(value);
+              rulesUrl = value;
+          }
+        }
+
+        final urls = [for (final p in draft.keptPhotos) p.url, ...photoUrls];
         final photos = [
           for (var i = 0; i < urls.length; i++)
             VehiclePhoto(
@@ -91,6 +125,10 @@ class UpdateVehicle {
           fuelRule: draft.fuelRule.trim(),
           smoking: draft.smoking.trim(),
           extras: draft.extras,
+          videoUrl: videoUrl ?? draft.existingVideoUrl,
+          clearVideoUrl: videoUrl == null && draft.existingVideoUrl == null,
+          rulesFileUrl: rulesUrl ?? draft.existingRulesUrl,
+          clearRulesFileUrl: rulesUrl == null && draft.existingRulesUrl == null,
         );
 
         final result = await _vehicles.update(vehicle, photos);
@@ -100,6 +138,12 @@ class UpdateVehicle {
           case Success():
             final kept = urls.toSet();
             await _delete([
+              if (existing.videoUrl != null &&
+                  existing.videoUrl != draft.existingVideoUrl)
+                existing.videoUrl!,
+              if (existing.rulesFileUrl != null &&
+                  existing.rulesFileUrl != draft.existingRulesUrl)
+                existing.rulesFileUrl!,
               for (final old
                   in (oldPhotos as Success<List<VehiclePhoto>>).value)
                 if (!kept.contains(old.url)) old.url,

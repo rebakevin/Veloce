@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:veloce/core/domain/enums/document_kind.dart';
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/domain/services/pricing_calculator.dart';
 import 'package:veloce/core/error/result.dart';
 
@@ -22,6 +23,7 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
     required this._updateVehicle,
     required this._loadVehicleDraft,
     this._calculator = const PricingCalculator(),
+    this._clock = const SystemClock(),
   }) : super(const CarWizardState()) {
     on<WizardDraftChanged>(_onDraftChanged);
     on<WizardNextPressed>(_onNextPressed);
@@ -36,6 +38,7 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
   final UpdateVehicle _updateVehicle;
   final LoadVehicleDraft _loadVehicleDraft;
   final PricingCalculator _calculator;
+  final Clock _clock;
 
   void _onDraftChanged(WizardDraftChanged event, Emitter<CarWizardState> emit) {
     final errors = state.errors.isEmpty
@@ -44,6 +47,7 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
             state.step,
             event.draft,
             calculator: _calculator,
+            now: _clock.now(),
           );
     emit(CarWizardState(step: state.step, draft: event.draft, errors: errors));
   }
@@ -53,6 +57,7 @@ class CarWizardBloc extends Bloc<CarWizardEvent, CarWizardState> {
       state.step,
       state.draft,
       calculator: _calculator,
+      now: _clock.now(),
     );
     if (errors.isNotEmpty) {
       emit(
