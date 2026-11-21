@@ -8,11 +8,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/empty_state.dart';
 import 'package:veloce/core/widgets/error_view.dart';
 import 'package:veloce/core/widgets/loading_view.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
-import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../bloc/car_detail_bloc.dart';
 import '../widgets/discovery_scope.dart';
@@ -61,54 +61,97 @@ class _MediaBody extends StatelessWidget {
                   message: 'The owner has not added photos for this car.',
                 )
               : ListView(
-                  padding: const EdgeInsets.all(AppSpacing.gutter),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.gutter,
+                    0,
+                    AppSpacing.gutter,
+                    AppSpacing.xl,
+                  ),
                   children: [
                     if (detail.vehicle.videoUrl != null) ...[
-                      PrimaryButton(
-                        label: 'Play walkaround video',
-                        onPressed: () {
-                          unawaited(
-                            launchUrl(
-                              Uri.parse(detail.vehicle.videoUrl!),
-                              mode: LaunchMode.externalApplication,
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
+                      _VideoTile(url: detail.vehicle.videoUrl!),
+                      const SizedBox(height: AppSpacing.md),
                     ],
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: detail.photos.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: AppSpacing.sm,
-                            crossAxisSpacing: AppSpacing.sm,
-                            childAspectRatio: 4 / 3,
-                          ),
-                      itemBuilder: (context, index) => ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        child: CachedNetworkImage(
-                          imageUrl: detail.photos[index].url,
-                          fit: BoxFit.cover,
-                          placeholder: (_, _) =>
-                              ColoredBox(color: context.colors.brandWash),
-                          errorWidget: (_, _, _) => ColoredBox(
-                            color: context.colors.brandWash,
-                            child: Icon(
-                              Icons.directions_car_outlined,
-                              color: context.colors.brandDeep,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: Text(
+                        'Photos · ${detail.photos.length}',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: context.colors.muted,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    for (final photo in detail.photos)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadius.xl),
+                          child: AspectRatio(
+                            aspectRatio: 16 / 10,
+                            child: CachedNetworkImage(
+                              imageUrl: photo.url,
+                              fit: BoxFit.cover,
+                              placeholder: (_, _) =>
+                                  ColoredBox(color: context.colors.brandWash),
+                              errorWidget: (_, _, _) => ColoredBox(
+                                color: context.colors.brandWash,
+                                child: Icon(
+                                  Icons.directions_car_outlined,
+                                  color: context.colors.brandDeep,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
         ),
       },
+    );
+  }
+}
+
+/// The walkaround video block: a round Play button on a brand wash.
+class _VideoTile extends StatelessWidget {
+  const _VideoTile({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: ColoredBox(
+          color: colors.brandWash,
+          child: Center(
+            child: Material(
+              color: colors.surface,
+              shape: const CircleBorder(),
+              child: IconButton(
+                tooltip: 'Play walkaround video',
+                iconSize: 28,
+                color: colors.brand,
+                constraints: const BoxConstraints.tightFor(
+                  width: 64,
+                  height: 64,
+                ),
+                icon: const Icon(Icons.play_arrow_rounded),
+                onPressed: () => unawaited(
+                  launchUrl(
+                    Uri.parse(url),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

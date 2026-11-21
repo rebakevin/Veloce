@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/core/domain/services/clock.dart';
+import 'package:veloce/core/formatting/formatters.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
@@ -95,19 +96,16 @@ class _ResultsBodyState extends State<_ResultsBody> {
       value: _results,
       child: BlocBuilder<ResultsBloc, ResultsState>(
         builder: (context, state) => Scaffold(
-          appBar: PageAppBar(
-            title: switch (state) {
-              ResultsLoaded(:final cars) => '${cars.length} cars',
-              ResultsEmpty() => 'No cars',
-              _ => 'Cars',
-            },
-          ),
+          appBar: const PageAppBar(title: 'Results'),
           body: Column(
             children: [
               _FilterBar(
+                summary: _summary(state.query),
                 activeCount: state.filters.activeCount,
+                onSearch: context.pop,
                 onFilter: () => _openFilters(context, state),
               ),
+              if (state is ResultsLoaded) _Count(count: state.cars.length),
               Expanded(child: _body(context, state)),
             ],
           ),
@@ -115,6 +113,10 @@ class _ResultsBodyState extends State<_ResultsBody> {
       ),
     );
   }
+
+  static String _summary(SearchQuery query) =>
+      '${query.area ?? 'Anywhere in Kigali'} · '
+      '${Formatters.dateRange(query.start, query.end)}';
 
   Widget _body(BuildContext context, ResultsState state) {
     return switch (state) {
@@ -175,10 +177,46 @@ class _ResultsBodyState extends State<_ResultsBody> {
   }
 }
 
-class _FilterBar extends StatelessWidget {
-  const _FilterBar({required this.activeCount, required this.onFilter});
+class _Count extends StatelessWidget {
+  const _Count({required this.count});
 
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.md,
+        AppSpacing.gutter,
+        0,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          '$count ${count == 1 ? 'car' : 'cars'} available',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: context.colors.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The search summary pill (tap to change the search) and the Filters button.
+class _FilterBar extends StatelessWidget {
+  const _FilterBar({
+    required this.summary,
+    required this.activeCount,
+    required this.onSearch,
+    required this.onFilter,
+  });
+
+  final String summary;
   final int activeCount;
+  final VoidCallback onSearch;
   final VoidCallback onFilter;
 
   @override
@@ -194,18 +232,44 @@ class _FilterBar extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              activeCount == 0 ? 'All cars' : '$activeCount filters active',
-              style: AppTextStyles.caption.copyWith(color: colors.muted),
+            child: Material(
+              color: colors.surface,
+              shape: const StadiumBorder(),
+              child: InkWell(
+                customBorder: const StadiumBorder(),
+                onTap: onSearch,
+                child: Container(
+                  height: AppSizes.iconControl,
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  child: Text(
+                    summary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: colors.ink,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
-          SizedBox(
-            width: 120,
-            child: OutlinedButton.icon(
-              onPressed: onFilter,
-              icon: const Icon(Icons.tune, size: 18),
-              label: const Text('Filters'),
+          const SizedBox(width: AppSpacing.md - 2),
+          FilledButton.icon(
+            onPressed: onFilter,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, AppSizes.iconControl),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              textStyle: AppTextStyles.bodySmall.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            icon: const Icon(Icons.tune, size: 18),
+            label: Text(
+              activeCount == 0 ? 'Filters' : 'Filters · $activeCount',
             ),
           ),
         ],

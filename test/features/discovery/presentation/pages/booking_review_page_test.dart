@@ -72,6 +72,8 @@ void main() {
     );
     expect(button().onPressed, isNull);
 
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
     expect(button().onPressed, isNotNull);

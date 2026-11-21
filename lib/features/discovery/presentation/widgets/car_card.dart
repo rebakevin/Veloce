@@ -85,17 +85,29 @@ class CarCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             '${vehicle.make} ${vehicle.model} · ${vehicle.year}',
-                            style: AppTextStyles.cardTitle,
+                            style: AppTextStyles.cardTitle.copyWith(
+                              color: colors.ink,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          '${Formatters.rwf(vehicle.dailyPrice)}/day',
-                          style: AppTextStyles.caption.copyWith(
-                            color: colors.brandDeep,
-                            fontWeight: FontWeight.w800,
+                        Text.rich(
+                          TextSpan(
+                            text: Formatters.rwf(vehicle.dailyPrice),
+                            children: [
+                              TextSpan(
+                                text: '/day',
+                                style: AppTextStyles.label.copyWith(
+                                  color: colors.muted,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          style: AppTextStyles.cardTitle.copyWith(
+                            color: colors.brand,
                           ),
                         ),
                       ],

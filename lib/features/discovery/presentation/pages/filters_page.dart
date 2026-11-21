@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/core/domain/enums/transmission.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
+import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
@@ -12,6 +13,7 @@ import 'package:veloce/core/widgets/primary_button.dart';
 import '../../domain/entities/search_options.dart';
 import '../../domain/entities/vehicle_filters.dart';
 import '../bloc/filters_cubit.dart';
+import '../widgets/pill_choice.dart';
 
 /// Filters route. Pops with the chosen [VehicleFilters].
 class FiltersPage extends StatelessWidget {
@@ -35,57 +37,48 @@ class _FiltersBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<FiltersCubit, VehicleFilters>(
       builder: (context, filters) => Scaffold(
-        appBar: PageAppBar(title: 'Filters (${filters.activeCount})'),
-        body: ListView(
-          padding: const EdgeInsets.all(AppSpacing.gutter),
+        appBar: const PageAppBar(title: 'Filters'),
+        body: Column(
           children: [
-            const _PriceFields(),
-            const SizedBox(height: AppSpacing.xl),
-            _ChoiceSection<VehicleType>(
-              title: 'Vehicle type',
-              values: VehicleType.values,
-              label: (value) => value.label,
-              selected: filters.type,
-              onSelected: (value) =>
-                  context.read<FiltersCubit>().typeChanged(value),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _ChoiceSection<Transmission>(
-              title: 'Transmission',
-              values: Transmission.values,
-              label: (value) => value.label,
-              selected: filters.transmission,
-              onSelected: (value) =>
-                  context.read<FiltersCubit>().transmissionChanged(value),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _ChoiceSection<int>(
-              title: 'Seats',
-              values: SearchOptions.seatOptions,
-              label: (value) => '$value+',
-              selected: filters.minSeats,
-              onSelected: (value) =>
-                  context.read<FiltersCubit>().seatsChanged(value),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => context.read<FiltersCubit>().reset(),
-                    child: const Text('Reset'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpacing.gutter),
+                children: [
+                  const _PriceFields(),
+                  const SizedBox(height: AppSpacing.lg),
+                  _ChoiceSection<VehicleType>(
+                    title: 'Vehicle type',
+                    values: VehicleType.values,
+                    label: (value) => value.label,
+                    selected: filters.type,
+                    onSelected: (value) =>
+                        context.read<FiltersCubit>().typeChanged(value),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: PrimaryButton(
-                    label: 'Apply',
-                    onPressed: filters.hasValidPriceRange
-                        ? () => context.pop(filters)
-                        : null,
+                  const SizedBox(height: AppSpacing.lg),
+                  _ChoiceSection<Transmission>(
+                    title: 'Transmission',
+                    values: Transmission.values,
+                    label: (value) => value.label,
+                    selected: filters.transmission,
+                    onSelected: (value) =>
+                        context.read<FiltersCubit>().transmissionChanged(value),
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.lg),
+                  _ChoiceSection<int>(
+                    title: 'Seats',
+                    values: SearchOptions.seatOptions,
+                    label: (value) => '$value+',
+                    selected: filters.minSeats,
+                    onSelected: (value) =>
+                        context.read<FiltersCubit>().seatsChanged(value),
+                  ),
+                ],
+              ),
+            ),
+            _ActionBar(
+              canApply: filters.hasValidPriceRange,
+              onReset: context.read<FiltersCubit>().reset,
+              onApply: () => context.pop(filters),
             ),
           ],
         ),
@@ -133,8 +126,7 @@ class _PriceFieldsState extends State<_PriceFields> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Price per day (RWF)', style: AppTextStyles.caption),
-          const SizedBox(height: AppSpacing.sm),
+          const _SectionLabel('Price per day (RWF)'),
           Row(
             children: [
               Expanded(
@@ -142,7 +134,7 @@ class _PriceFieldsState extends State<_PriceFields> {
                   controller: _min,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(hintText: 'Min'),
+                  decoration: const InputDecoration(hintText: '0'),
                   onChanged: (value) => context
                       .read<FiltersCubit>()
                       .minPriceChanged(int.tryParse(value)),
@@ -154,7 +146,7 @@ class _PriceFieldsState extends State<_PriceFields> {
                   controller: _max,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(hintText: 'Max'),
+                  decoration: const InputDecoration(hintText: 'Any'),
                   onChanged: (value) => context
                       .read<FiltersCubit>()
                       .maxPriceChanged(int.tryParse(value)),
@@ -188,26 +180,100 @@ class _ChoiceSection<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: AppTextStyles.caption),
-        const SizedBox(height: AppSpacing.sm),
+        _SectionLabel(title),
         Wrap(
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
-            ChoiceChip(
-              label: const Text('Any'),
+            PillChoice(
+              label: 'Any',
               selected: selected == null,
-              onSelected: (_) => onSelected(null),
+              onTap: () => onSelected(null),
             ),
             for (final value in values)
-              ChoiceChip(
-                label: Text(label(value)),
+              PillChoice(
+                label: label(value),
                 selected: selected == value,
-                onSelected: (_) => onSelected(value),
+                onTap: () => onSelected(value),
               ),
           ],
         ),
       ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm - 2),
+      child: Text(
+        text,
+        style: AppTextStyles.caption.copyWith(
+          color: context.colors.muted,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// Reset and Apply, pinned under the list.
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({
+    required this.canApply,
+    required this.onReset,
+    required this.onApply,
+  });
+
+  final bool canApply;
+  final VoidCallback onReset;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        border: Border(top: BorderSide(color: context.colors.sand)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl - 4,
+            AppSpacing.md,
+            AppSpacing.xl - 4,
+            AppSpacing.md,
+          ),
+          child: Row(
+            children: [
+              OutlinedButton(
+                onPressed: onReset,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, AppSizes.button),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                  ),
+                ),
+                child: const Text('Reset'),
+              ),
+              const SizedBox(width: AppSpacing.md - 2),
+              Expanded(
+                child: PrimaryButton(
+                  label: 'Apply',
+                  onPressed: canApply ? onApply : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

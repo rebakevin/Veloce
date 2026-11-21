@@ -75,8 +75,8 @@ class _CarPhotoCarouselState extends State<CarPhotoCarousel> {
                 },
               ),
               Positioned(
-                right: AppSpacing.md,
-                bottom: AppSpacing.md,
+                left: AppSpacing.gutter,
+                bottom: AppSpacing.xl + AppSpacing.md,
                 child: ValueListenableBuilder<int>(
                   valueListenable: _index,
                   builder: (context, value, _) => DecoratedBox(
