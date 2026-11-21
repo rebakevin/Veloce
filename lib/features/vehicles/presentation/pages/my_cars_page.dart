@@ -79,8 +79,7 @@ class MyCarsPage extends StatelessWidget {
                       nextRental: nextRentals[vehicle.id],
                       photoUrl: primaryPhotos[vehicle.id],
                       docsExpired: expiredIds.contains(vehicle.id),
-                      onOpen: () =>
-                          context.push(RouteNames.ownerCar(vehicle.id)),
+                      onOpen: () => context.push(RouteNames.car(vehicle.id)),
                       onEdit: () =>
                           context.push(RouteNames.ownerCarEdit(vehicle.id)),
                       onAvailability: () => context.push(

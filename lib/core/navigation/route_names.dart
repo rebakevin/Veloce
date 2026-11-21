@@ -61,8 +61,6 @@ abstract final class RouteNames {
   static const String ownerHome = '/owner/home';
   static const String ownerCars = '/owner/cars';
   static const String ownerCarNew = '/owner/cars/new';
-  static const String ownerCarPattern = '/owner/cars/:id';
-  static String ownerCar(String id) => '/owner/cars/$id';
   static const String ownerCarPublishedPattern = '/owner/cars/:id/published';
   static String ownerCarPublished(String id) => '/owner/cars/$id/published';
   static const String ownerCarRequestsPattern = '/owner/cars/:id/requests';
