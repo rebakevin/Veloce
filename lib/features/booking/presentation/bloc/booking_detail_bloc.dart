@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
@@ -38,6 +40,14 @@ class BookingDetailBloc extends Bloc<BookingDetailEvent, BookingDetailState> {
   final AcknowledgeAgreement _acknowledgeAgreement;
   final AuthSession _session;
 
+  StreamSubscription<Result<BookingView>>? _subscription;
+
+  @override
+  Future<void> close() async {
+    await _subscription?.cancel();
+    return super.close();
+  }
+
   Future<void> _onStarted(
     BookingDetailStarted event,
     Emitter<BookingDetailState> emit,
@@ -52,10 +62,10 @@ class BookingDetailBloc extends Bloc<BookingDetailEvent, BookingDetailState> {
       return;
     }
     emit(const BookingDetailLoading());
-    await emit.onEach<Result<BookingView>>(
-      _repository.watchBooking(_bookingId),
-      onData: (result) => add(_BookingChanged(result)),
-    );
+    await _subscription?.cancel();
+    _subscription = _repository
+        .watchBooking(_bookingId)
+        .listen((result) => add(_BookingChanged(result)));
   }
 
   Future<void> _onChanged(
@@ -125,8 +135,10 @@ class BookingDetailBloc extends Bloc<BookingDetailEvent, BookingDetailState> {
     );
     final result = await _cancelBooking(current.view, reason: event.reason);
     if (isClosed) return;
+    final latest = state;
+    if (latest is! BookingDetailLoaded) return;
     emit(
-      current.copyWith(
+      latest.copyWith(
         action: switch (result) {
           Success<void>() => const BookingDetailAction(
             kind: BookingDetailActionKind.cancel,
@@ -158,8 +170,10 @@ class BookingDetailBloc extends Bloc<BookingDetailEvent, BookingDetailState> {
     );
     final result = await _acknowledgeAgreement(_bookingId);
     if (isClosed) return;
+    final latest = state;
+    if (latest is! BookingDetailLoaded) return;
     emit(
-      current.copyWith(
+      latest.copyWith(
         action: switch (result) {
           Success<void>() => const BookingDetailAction(
             kind: BookingDetailActionKind.agreement,

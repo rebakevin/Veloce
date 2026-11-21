@@ -23,6 +23,7 @@ void main() {
     session = MockAuthSession();
     when(() => session.currentUserId).thenReturn('renter-1');
     when(() => session.role).thenReturn(UserRole.renter);
+    when(() => session.changes).thenAnswer((_) => const Stream<void>.empty());
   });
 
   blocTest<ExpirySweeperCubit, ExpirySweeperState>(
@@ -80,4 +81,19 @@ void main() {
     expect: () => [const ExpirySweeperRunning(), const ExpirySweeperDone(1)],
     verify: (_) => verify(() => expireBookings()).called(1),
   );
+
+  test('sweeps again when a session appears after start-up', () async {
+    final changes = StreamController<void>.broadcast();
+    addTearDown(changes.close);
+    when(() => session.changes).thenAnswer((_) => changes.stream);
+    when(() => expireBookings())
+        .thenAnswer((_) async => const Result.success(0));
+    final cubit = build();
+    addTearDown(cubit.close);
+
+    changes.add(null);
+    await Future<void>.delayed(Duration.zero);
+
+    verify(() => expireBookings()).called(1);
+  });
 }

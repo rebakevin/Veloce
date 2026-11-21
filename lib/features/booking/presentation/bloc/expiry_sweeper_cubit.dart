@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
@@ -40,14 +42,27 @@ final class ExpirySweeperFailure extends ExpirySweeperState {
   List<Object?> get props => [failure];
 }
 
-/// Runs the lazy expiry sweep on app start, resume and activity load. A second
-/// call while one is running is ignored.
+/// Runs the lazy expiry sweep on app start, resume, sign-in and activity
+/// load. A second call while one is running is ignored.
 class ExpirySweeperCubit extends Cubit<ExpirySweeperState> {
   ExpirySweeperCubit({required this._expireBookings, required this._session})
-    : super(const ExpirySweeperIdle());
+    : super(const ExpirySweeperIdle()) {
+    // The app-start sweep runs before anyone is signed in: sweep again once a
+    // session appears.
+    _sessionChanges = _session.changes.listen((_) {
+      if (_session.currentUserId != null) sweep();
+    });
+  }
 
   final ExpireBookings _expireBookings;
   final AuthSession _session;
+  late final StreamSubscription<void> _sessionChanges;
+
+  @override
+  Future<void> close() async {
+    await _sessionChanges.cancel();
+    return super.close();
+  }
 
   Future<void> sweep() async {
     if (state is ExpirySweeperRunning) return;
