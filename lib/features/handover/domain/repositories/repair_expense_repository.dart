@@ -1,38 +1,27 @@
 import 'dart:typed_data';
 
-class RepairExpense {
-  const RepairExpense({
-    required this.id,
-    required this.bookingId,
-    required this.ownerId,
-    required this.amount,
-    required this.description,
-    required this.receiptUrl,
-  });
+import '../../../../core/domain/entities/repair_expense.dart';
+import '../../../../core/error/result.dart';
 
-  final String id;
-  final String bookingId;
-  final String ownerId;
-  final int amount;
-  final String description;
-  final String receiptUrl;
-}
-
-abstract class RepairExpenseRepository {
+abstract interface class RepairExpenseRepository {
   Stream<List<RepairExpense>> watchExpenses({
     required String bookingId,
     required String ownerId,
   });
 
-  Future<void> saveExpense({
-    String? expenseId,
+  /// Creates an expense, or updates [existing]. A new receipt photo
+  /// ([receiptBytes]) replaces the stored one; without it the existing
+  /// receipt stays. An expense always needs a receipt.
+  Future<Result<RepairExpense>> saveExpense({
+    RepairExpense? existing,
     required String bookingId,
+    required String vehicleId,
     required String ownerId,
     required int amount,
     required String description,
     Uint8List? receiptBytes,
-    String? existingReceiptUrl,
+    String receiptExtension = 'jpg',
   });
 
-  Future<void> deleteExpense(RepairExpense expense);
+  Future<Result<void>> deleteExpense(RepairExpense expense);
 }

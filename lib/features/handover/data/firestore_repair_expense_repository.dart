@@ -1,20 +1,36 @@
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
+import 'package:veloce/core/constants/firestore_fields.dart';
+import 'package:veloce/core/constants/firestore_paths.dart';
+import 'package:veloce/core/data/models/repair_expense_model.dart';
+import 'package:veloce/core/data/services/failure_mapper.dart';
+import 'package:veloce/core/domain/entities/repair_expense.dart';
+import 'package:veloce/core/domain/enums/storage_bucket.dart';
+import 'package:veloce/core/domain/services/clock.dart';
+import 'package:veloce/core/domain/services/media_storage.dart';
+import 'package:veloce/core/error/app_failure.dart';
+import 'package:veloce/core/error/result.dart';
 
+import '../domain/repositories/repair_expense_repository.dart';
+
+/// Repair costs an owner logs for a booking. Receipts go to the Supabase
+/// `receipts` bucket through [MediaStorage].
 class FirestoreRepairExpenseRepository implements RepairExpenseRepository {
-  FirestoreRepairExpenseRepository({
+  const FirestoreRepairExpenseRepository({
     required this._firestore,
-    required this._storage,
+    required this._mediaStorage,
+    required this._clock,
   });
 
+  static const Duration _timeout = Duration(seconds: 20);
+
   final FirebaseFirestore _firestore;
-  final FirebaseStorage _storage;
+  final MediaStorage _mediaStorage;
+  final Clock _clock;
 
   CollectionReference<Map<String, dynamic>> get _expenses =>
-      _firestore.collection('repairExpenses');
+      _firestore.collection(FirestorePaths.repairExpenses);
 
   @override
   Stream<List<RepairExpense>> watchExpenses({
@@ -22,90 +38,106 @@ class FirestoreRepairExpenseRepository implements RepairExpenseRepository {
     required String ownerId,
   }) {
     return _expenses
-        .where('bookingId', isEqualTo: bookingId)
-        .where('ownerId', isEqualTo: ownerId)
+        .where(FirestoreFields.bookingId, isEqualTo: bookingId)
+        .where(FirestoreFields.ownerId, isEqualTo: ownerId)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs.map((document) {
-            final data = document.data();
-
-            return RepairExpense(
-              id: document.id,
-              bookingId: data['bookingId'] as String,
-              ownerId: data['ownerId'] as String,
-              amount: (data['amount'] as num).toInt(),
-              description: data['description'] as String,
-              receiptUrl: data['receiptUrl'] as String,
-            );
-          }).toList(),
+          (snapshot) => [
+            for (final doc in snapshot.docs)
+              RepairExpenseModel.fromMap(doc.id, doc.data()),
+          ],
         );
   }
 
   @override
-  Future<void> saveExpense({
-    String? expenseId,
+  Future<Result<RepairExpense>> saveExpense({
+    RepairExpense? existing,
     required String bookingId,
+    required String vehicleId,
     required String ownerId,
     required int amount,
     required String description,
     Uint8List? receiptBytes,
-    String? existingReceiptUrl,
+    String receiptExtension = 'jpg',
   }) async {
     if (amount <= 0) {
-      throw ArgumentError('Repair expense amount must be greater than zero.');
+      return const Result.failure(
+        ValidationFailure('Enter a repair amount above 0.'),
+      );
     }
 
     if (description.trim().isEmpty) {
-      throw ArgumentError('Repair expense description is required.');
+      return const Result.failure(
+        ValidationFailure('Enter a description of the repair.'),
+      );
     }
 
-    final document = expenseId == null
-        ? _expenses.doc()
-        : _expenses.doc(expenseId);
+    final oldReceipt = existing?.receiptUrl;
 
-    String? receiptUrl = existingReceiptUrl;
+    if (receiptBytes == null && (oldReceipt == null || oldReceipt.isEmpty)) {
+      return const Result.failure(ValidationFailure('Attach a receipt photo.'));
+    }
 
-    if (receiptBytes != null) {
-      final reference = _storage.ref().child(
-        'repair-expenses/$bookingId/${document.id}.jpg',
+    try {
+      var receiptUrl = oldReceipt;
+
+      if (receiptBytes != null) {
+        final uploaded = await _mediaStorage.upload(
+          bytes: receiptBytes,
+          extension: receiptExtension,
+          bucket: StorageBucket.receipts,
+        );
+
+        switch (uploaded) {
+          case Failure<String>(:final failure):
+            return Result.failure(failure);
+          case Success<String>(:final value):
+            receiptUrl = value;
+        }
+      }
+
+      final doc = existing == null
+          ? _expenses.doc()
+          : _expenses.doc(existing.id);
+
+      final expense = RepairExpense(
+        id: doc.id,
+        bookingId: bookingId,
+        vehicleId: vehicleId,
+        ownerId: ownerId,
+        amount: amount,
+        description: description.trim(),
+        receiptUrl: receiptUrl,
+        createdAt: existing?.createdAt ?? _clock.now(),
       );
 
-      await reference.putData(
-        receiptBytes,
-        SettableMetadata(contentType: 'image/jpeg'),
-      );
+      await doc.set(RepairExpenseModel.toMap(expense)).timeout(_timeout);
 
-      receiptUrl = await reference.getDownloadURL();
+      if (receiptBytes != null && oldReceipt != null && oldReceipt.isNotEmpty) {
+        // Best effort: the replaced receipt may stay in storage.
+        await _mediaStorage.delete(oldReceipt);
+      }
+
+      return Result.success(expense);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
     }
-
-    if (receiptUrl == null || receiptUrl.isEmpty) {
-      throw ArgumentError('A receipt photo is required.');
-    }
-
-    final data = <String, dynamic>{
-      'bookingId': bookingId,
-      'ownerId': ownerId,
-      'amount': amount,
-      'description': description.trim(),
-      'receiptUrl': receiptUrl,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    if (expenseId == null) {
-      data['createdAt'] = FieldValue.serverTimestamp();
-    }
-
-    await document.set(data, SetOptions(merge: true));
   }
 
   @override
-  Future<void> deleteExpense(RepairExpense expense) async {
-    await _expenses.doc(expense.id).delete();
-
+  Future<Result<void>> deleteExpense(RepairExpense expense) async {
     try {
-      await _storage.refFromURL(expense.receiptUrl).delete();
-    } on Object {
-      // The expense is deleted even if its receipt is unavailable.
+      await _expenses.doc(expense.id).delete().timeout(_timeout);
+
+      final receipt = expense.receiptUrl;
+      if (receipt != null && receipt.isNotEmpty) {
+        // Best effort: the expense is gone even if the file stays.
+        await _mediaStorage.delete(receipt);
+      }
+
+      return const Result.success(null);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
     }
   }
 }

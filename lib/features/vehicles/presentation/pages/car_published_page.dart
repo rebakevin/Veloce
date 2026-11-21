@@ -23,12 +23,19 @@ class CarPublishedPage extends StatelessWidget {
               const Text('Your car is live', style: AppTextStyles.cardTitle),
               const SizedBox(height: AppSpacing.sm),
               const Text(
-                'Renters can find it now. You can pause it or change the '
-                'price any time from My cars.',
+                'Renters can only find it once you set the dates it is '
+                'available. You can also pause it or change the price any '
+                'time from My cars.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
               FilledButton(
+                onPressed: () =>
+                    context.push(RouteNames.ownerCarAvailability(vehicleId)),
+                child: const Text('Set availability'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              OutlinedButton(
                 onPressed: () => context.go(RouteNames.ownerHome),
                 child: const Text('Back to home'),
               ),

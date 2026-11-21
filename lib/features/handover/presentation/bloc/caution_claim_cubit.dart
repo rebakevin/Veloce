@@ -1,17 +1,27 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/domain/entities/booking.dart';
 import '../../../../core/domain/enums/claim_response.dart';
+import '../../../../core/domain/enums/storage_bucket.dart';
+import '../../../../core/domain/services/media_storage.dart';
 import '../../../../core/error/app_failure.dart';
 import '../../../../core/error/result.dart';
 import '../../domain/repositories/handover_repository.dart';
 import 'caution_claim_state.dart';
 
 class CautionClaimCubit extends Cubit<CautionClaimState> {
-  CautionClaimCubit({required this.bookingId, required this._repository})
-    : super(const CautionClaimState()) {
+  CautionClaimCubit({
+    required this.bookingId,
+    required this._repository,
+    required this._mediaStorage,
+  }) : super(const CautionClaimState()) {
+    _listen();
+  }
+
+  void _listen() {
     _subscription = _repository
         .watchClaim(bookingId)
         .listen(
@@ -29,18 +39,25 @@ class CautionClaimCubit extends Cubit<CautionClaimState> {
 
   final String bookingId;
   final HandoverRepository _repository;
+  final MediaStorage _mediaStorage;
   StreamSubscription<Object?>? _subscription;
+
+  /// Resubscribes to the claim after a failed load.
+  Future<void> retryLoad() async {
+    await _subscription?.cancel();
+    emit(state.copyWith(loadStatus: CautionClaimLoad.loading));
+    _listen();
+  }
 
   Future<void> submitClaim({
     required String userId,
     required String amountText,
     required String reason,
-    required String evidenceText,
   }) {
     return _runClaimForm(
       amountText: amountText,
       reason: reason,
-      evidenceText: evidenceText,
+      evidenceUrls: state.evidence,
       action: (amount, evidenceUrls) => _repository.submitClaim(
         bookingId: bookingId,
         userId: userId,
@@ -69,12 +86,12 @@ class CautionClaimCubit extends Cubit<CautionClaimState> {
     required String userId,
     required String amountText,
     required String reason,
-    required String evidenceText,
   }) {
     return _runClaimForm(
       amountText: amountText,
       reason: reason,
-      evidenceText: evidenceText,
+      // Photos from the first claim stay; new ones are added.
+      evidenceUrls: [...?state.claim?.evidenceUrls, ...state.evidence],
       action: (amount, evidenceUrls) => _repository.reviseClaim(
         bookingId: bookingId,
         userId: userId,
@@ -94,7 +111,7 @@ class CautionClaimCubit extends Cubit<CautionClaimState> {
   Future<void> _runClaimForm({
     required String amountText,
     required String reason,
-    required String evidenceText,
+    required List<String> evidenceUrls,
     required Future<Result<Booking>> Function(
       int amount,
       List<String> evidenceUrls,
@@ -108,11 +125,17 @@ class CautionClaimCubit extends Cubit<CautionClaimState> {
       return Future.value();
     }
 
-    final evidenceUrls = evidenceText
-        .split(',')
-        .map((url) => url.trim())
-        .where((url) => url.isNotEmpty)
-        .toList();
+    if (state.isUploading) {
+      emit(
+        state.copyWith(errorMessage: 'Wait for the photo to finish uploading.'),
+      );
+      return Future.value();
+    }
+
+    if (evidenceUrls.isEmpty) {
+      emit(state.copyWith(errorMessage: 'Add at least one evidence photo.'));
+      return Future.value();
+    }
 
     return _runAction(() => action(amount, evidenceUrls));
   }
@@ -127,8 +150,13 @@ class CautionClaimCubit extends Cubit<CautionClaimState> {
       if (isClosed) return;
 
       result.when(
-        success: (_) =>
-            emit(state.copyWith(isLoading: false, clearError: true)),
+        success: (_) => emit(
+          state.copyWith(
+            isLoading: false,
+            evidence: const [],
+            clearError: true,
+          ),
+        ),
         failure: (failure) => emit(
           state.copyWith(isLoading: false, errorMessage: failure.message),
         ),
@@ -143,6 +171,58 @@ class CautionClaimCubit extends Cubit<CautionClaimState> {
         ),
       );
     }
+  }
+
+  /// Uploads one evidence photo and adds it to the pending evidence.
+  Future<void> addEvidence({
+    required Uint8List bytes,
+    required String extension,
+  }) async {
+    if (state.isUploading || state.isLoading) return;
+
+    emit(state.copyWith(isUploading: true, clearError: true));
+
+    try {
+      final result = await _mediaStorage.upload(
+        bytes: bytes,
+        extension: extension,
+        bucket: StorageBucket.checklistMedia,
+      );
+      if (isClosed) return;
+
+      result.when(
+        success: (url) => emit(
+          state.copyWith(
+            isUploading: false,
+            evidence: [...state.evidence, url],
+          ),
+        ),
+        failure: (failure) => emit(
+          state.copyWith(isUploading: false, errorMessage: failure.message),
+        ),
+      );
+    } catch (_) {
+      if (isClosed) return;
+
+      emit(
+        state.copyWith(
+          isUploading: false,
+          errorMessage: const UnknownFailure().message,
+        ),
+      );
+    }
+  }
+
+  /// Removes a pending evidence photo (best effort delete of the file).
+  Future<void> removeEvidence(String url) async {
+    emit(
+      state.copyWith(
+        evidence: state.evidence.where((item) => item != url).toList(),
+        clearError: true,
+      ),
+    );
+
+    await _mediaStorage.delete(url);
   }
 
   @override

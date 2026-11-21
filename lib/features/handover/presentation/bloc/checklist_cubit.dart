@@ -47,6 +47,42 @@ class ChecklistCubit extends Cubit<ChecklistState> {
 
   _PendingUpload? _pendingUpload;
 
+  /// Set once [HandoverRepository.startReturn] succeeded, so a retry after a
+  /// failed confirm does not start the return a second time.
+  bool _returnStarted = false;
+
+  /// Loads what this side already saved (a partly ticked checklist).
+  Future<void> load() async {
+    final result = await _repository.loadChecklist(
+      bookingId: bookingId,
+      kind: kind,
+      side: side,
+    );
+    if (isClosed) return;
+
+    result.when(
+      success: (saved) {
+        final ticked = {
+          for (final entry in saved.entries)
+            if (entry.ticked && checklistItems.contains(entry.item)) entry.item,
+        };
+
+        // Anything the user did before the load finished wins.
+        emit(
+          state.copyWith(
+            checkedItems: {...ticked, ...state.checkedItems},
+            media: state.media.isEmpty ? saved.media : state.media,
+          ),
+        );
+      },
+      failure: (_) {},
+    );
+  }
+
+  /// Same id for the same item, so a retried submit overwrites instead of
+  /// adding duplicates.
+  String _entryId(int index) => '${kind.key}_${side.key}_$index';
+
   List<String> get checklistItems {
     if (kind == ChecklistKind.pickup) {
       return const [
@@ -80,19 +116,18 @@ class ChecklistCubit extends Cubit<ChecklistState> {
     );
 
     try {
-      final entries = checklistItems
-          .map(
-            (item) => ChecklistEntry(
-              id: _uuid.v4(),
-              bookingId: bookingId,
-              kind: kind,
-              side: side,
-              item: item,
-              ticked: state.checkedItems.contains(item),
-              at: _clock.now(),
-            ),
-          )
-          .toList();
+      final entries = [
+        for (final (index, item) in checklistItems.indexed)
+          ChecklistEntry(
+            id: _entryId(index),
+            bookingId: bookingId,
+            kind: kind,
+            side: side,
+            item: item,
+            ticked: state.checkedItems.contains(item),
+            at: _clock.now(),
+          ),
+      ];
 
       final saved = await _repository.saveChecklist(
         bookingId: bookingId,
@@ -138,7 +173,7 @@ class ChecklistCubit extends Cubit<ChecklistState> {
       );
     }
 
-    if (startReturnFirst) {
+    if (startReturnFirst && !_returnStarted) {
       final started = await _repository.startReturn(
         bookingId: bookingId,
         userId: userId,
@@ -149,6 +184,7 @@ class ChecklistCubit extends Cubit<ChecklistState> {
         failure: (f) => f,
       );
       if (startFailure != null) return Result.failure(startFailure);
+      _returnStarted = true;
     }
 
     return _repository.confirmReturn(

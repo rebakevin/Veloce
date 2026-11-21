@@ -231,5 +231,69 @@ void main() {
         ),
       ],
     );
+    blocTest<ReviewBloc, ReviewState>(
+      'ReviewStarted fails for a user who is not a party of the booking',
+      setUp: () => when(() => session.currentUserId).thenReturn('stranger'),
+      build: buildBloc,
+      act: (bloc) => bloc.add(const ReviewStarted('booking_1')),
+      expect: () => [
+        predicate<ReviewState>((s) => s.status == ReviewStatus.loading),
+        predicate<ReviewState>(
+          (s) =>
+              s.status == ReviewStatus.failure &&
+              s.failure is PermissionFailure &&
+              s.booking == null,
+        ),
+      ],
+    );
+
+    blocTest<ReviewBloc, ReviewState>(
+      'ReviewStarted fails while the booking is not completed',
+      setUp: () => when(() => bookingLookup.byId('booking_1')).thenAnswer(
+        (_) async => Result.success(
+          aBooking(id: 'booking_1', status: BookingStatus.active),
+        ),
+      ),
+      build: buildBloc,
+      act: (bloc) => bloc.add(const ReviewStarted('booking_1')),
+      expect: () => [
+        predicate<ReviewState>((s) => s.status == ReviewStatus.loading),
+        predicate<ReviewState>(
+          (s) =>
+              s.status == ReviewStatus.failure &&
+              s.failure is ValidationFailure,
+        ),
+      ],
+    );
+
+    blocTest<ReviewBloc, ReviewState>(
+      'ReviewSubmitted never reaches the repository for an active booking',
+      build: buildBloc,
+      seed: () => ReviewState(
+        status: ReviewStatus.ready,
+        booking: aBooking(id: 'booking_1', status: BookingStatus.active),
+        isRenter: true,
+        ownerStars: 5,
+        ownerComment: 'Nice',
+      ),
+      act: (bloc) => bloc.add(const ReviewSubmitted(SubjectType.user)),
+      expect: () => [
+        predicate<ReviewState>(
+          (s) =>
+              s.status == ReviewStatus.failure &&
+              s.failure is ValidationFailure,
+        ),
+      ],
+      verify: (_) => verifyNever(
+        () => repository.submitReview(
+          bookingId: any(named: 'bookingId'),
+          authorId: any(named: 'authorId'),
+          subjectType: any(named: 'subjectType'),
+          subjectId: any(named: 'subjectId'),
+          stars: any(named: 'stars'),
+          comment: any(named: 'comment'),
+        ),
+      ),
+    );
   });
 }

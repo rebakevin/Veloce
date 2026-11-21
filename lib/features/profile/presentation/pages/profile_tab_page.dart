@@ -52,6 +52,7 @@ class _ProfileContent extends StatelessWidget {
           roleLabel: account.role.label,
           verified: account.verified,
         ),
+        const _VerifyEmailBanner(),
         const SizedBox(height: AppSpacing.xl),
         ContactDetailsCard(
           phone: state.contact.phone,
@@ -186,5 +187,33 @@ class _ProfileContent extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
     context.read<AuthBloc>().add(const SignOutRequested());
+  }
+}
+
+/// Shown while the email is unconfirmed: the only way back to `/verify-email`
+/// after the first session, which request, publish and pay depend on.
+class _VerifyEmailBanner extends StatelessWidget {
+  const _VerifyEmailBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final unverified = context.select<AuthBloc, bool>(
+      (bloc) => bloc.state.user != null && !bloc.state.isEmailVerified,
+    );
+    if (!unverified) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.lg),
+      child: Card(
+        child: ListTile(
+          leading: const Icon(Icons.mark_email_unread_outlined),
+          title: const Text('Verify your email'),
+          subtitle: const Text(
+            'You need a confirmed email to request, publish or pay.',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push<void>(RouteNames.verifyEmail),
+        ),
+      ),
+    );
   }
 }

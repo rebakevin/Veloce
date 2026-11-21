@@ -92,4 +92,27 @@ void main() {
     );
     await bloc.close();
   });
+
+  test('flags a written total that differs from the reviewed one', () async {
+    requests.createResult = Result.success(
+      aBooking().copyWith(totalPayable: draft.quote.totalPayable + 5000),
+    );
+    final bloc = build();
+    bloc
+      ..add(const RequestTermsChanged(true))
+      ..add(const RequestSubmitted());
+    await pumpEventQueue();
+    expect((bloc.state as RequestSuccess).priceChanged, isTrue);
+    await bloc.close();
+  });
+
+  test('does not flag a matching total', () async {
+    final bloc = build();
+    bloc
+      ..add(const RequestTermsChanged(true))
+      ..add(const RequestSubmitted());
+    await pumpEventQueue();
+    expect((bloc.state as RequestSuccess).priceChanged, isFalse);
+    await bloc.close();
+  });
 }

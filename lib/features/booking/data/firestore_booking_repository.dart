@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:veloce/core/constants/firestore_fields.dart';
 import 'package:veloce/core/constants/firestore_paths.dart';
+import 'package:veloce/core/data/models/app_notification_model.dart';
 import 'package:veloce/core/data/models/booking_contact_model.dart';
 import 'package:veloce/core/data/models/booking_model.dart';
 import 'package:veloce/core/data/models/calendar_block_model.dart';
@@ -12,6 +13,7 @@ import 'package:veloce/core/data/models/renter_lock_model.dart';
 import 'package:veloce/core/data/services/failure_mapper.dart';
 import 'package:veloce/core/data/services/user_lookup.dart';
 import 'package:veloce/core/data/services/vehicle_lookup.dart';
+import 'package:veloce/core/domain/entities/app_notification.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/booking_contact.dart';
 import 'package:veloce/core/domain/entities/calendar_block.dart';
@@ -47,7 +49,7 @@ import '../domain/services/expiry_engine.dart';
 /// [BookingRepository] on Firestore. Reads use the cached lookups; every
 /// transition is one batch so the rules can verify the whole change.
 class FirestoreBookingRepository implements BookingRepository {
-  const FirestoreBookingRepository({
+  FirestoreBookingRepository({
     required this._firestore,
     required this._writes,
     required this._users,
@@ -83,6 +85,13 @@ class FirestoreBookingRepository implements BookingRepository {
   final ExpiryEngine _expiry;
   final CancellationPolicy _cancellation;
 
+  /// The sweep in flight per user, so concurrent callers share one run.
+  final Map<String, Future<Result<int>>> _sweeps = {};
+
+  /// Bookings whose payment reminder was written in this session, so a
+  /// dismissed reminder is not recreated by the next sweep.
+  final Set<String> _reminded = {};
+
   CollectionReference<Map<String, dynamic>> get _bookings =>
       _firestore.collection(FirestorePaths.bookings);
 
@@ -102,7 +111,7 @@ class FirestoreBookingRepository implements BookingRepository {
         .snapshots();
     return _mapStream(
       source,
-      (snapshot) => _views(snapshot.docs, applyLock: role == UserRole.renter),
+      (snapshot) => _views(snapshot.docs, applyLock: true),
     );
   }
 
@@ -112,8 +121,7 @@ class FirestoreBookingRepository implements BookingRepository {
     if (role == null) return Stream.value(_signedOut());
     return _mapStream(
       _bookings.doc(bookingId).snapshots(),
-      (snapshot) =>
-          _viewFromSnapshot(snapshot, applyLock: role == UserRole.renter),
+      (snapshot) => _viewFromSnapshot(snapshot, applyLock: true),
     );
   }
 
@@ -125,7 +133,7 @@ class FirestoreBookingRepository implements BookingRepository {
     if (booking case Failure(:final failure)) return Result.failure(failure);
     return _viewFromBooking(
       (booking as Success<Booking>).value,
-      applyLock: role == UserRole.renter,
+      applyLock: true,
     );
   }
 
@@ -182,11 +190,21 @@ class FirestoreBookingRepository implements BookingRepository {
         ConflictFailure('Write your pending review before approving.'),
       );
     }
+    final deadline = _expiry.paymentDeadline(
+      approvedAt: now,
+      pickupAt: booking.startDate,
+    );
+    if (!deadline.isAfter(now)) {
+      return const Result.failure(
+        ConflictFailure('The pickup date has passed. Decline this request.'),
+      );
+    }
     final lock = await _readLock(booking.renterId);
     if (lock case Failure(:final failure)) {
       return Result.failure(failure);
     }
-    if ((lock as Success<RenterLock?>).value != null) {
+    final held = (lock as Success<RenterLock?>).value;
+    if (held != null && await _isLockLive(held, now)) {
       return const Result.failure(
         ConflictFailure('This renter is already booked.'),
       );
@@ -208,10 +226,6 @@ class FirestoreBookingRepository implements BookingRepository {
       return Result.failure(failure);
     }
     final overlaps = (overlapsResult as Success<List<Booking>>).value;
-    final deadline = _expiry.paymentDeadline(
-      approvedAt: now,
-      pickupAt: booking.startDate,
-    );
 
     try {
       final write = _writes.begin();
@@ -475,21 +489,25 @@ class FirestoreBookingRepository implements BookingRepository {
         PermissionFailure('Only the renter can pay for this booking.'),
       );
     }
-    if (booking.status != BookingStatus.approved) {
-      return const Result.failure(
-        ConflictFailure('This booking is not waiting for payment.'),
-      );
-    }
-    if (_expiry.isPaymentExpired(booking, _clock.now())) {
-      return const Result.failure(
-        ConflictFailure('The payment deadline has passed.'),
+    final now = _clock.now();
+    final payable =
+        booking.status == BookingStatus.approved &&
+        !_expiry.isPaymentExpired(booking, now);
+    if (!payable) {
+      return Result.failure(
+        booking.status == BookingStatus.approved
+            ? const ConflictFailure('The payment deadline has passed.')
+            : const ConflictFailure('This booking is not waiting for payment.'),
       );
     }
 
+    // Idempotent per booking: a retry after a failed record gets the same
+    // receipt back and is never debited twice, even after an app restart.
     final charged = await _momo.charge(
       momoNumber: momoNumber.trim(),
       amount: booking.totalPayable,
       bookingReference: booking.reference,
+      idempotencyKey: booking.id,
     );
     if (charged case Failure<MomoReceipt>(:final failure)) {
       return Result.failure(failure);
@@ -530,14 +548,29 @@ class FirestoreBookingRepository implements BookingRepository {
       await write.commit().timeout(_timeout);
       return Result.success(receipt);
     } on Object catch (error, stackTrace) {
+      final failure = _transitionFailure(
+        error,
+        stackTrace,
+        'The booking changed before the payment was recorded.',
+      );
+      if (failure is ConflictFailure) {
+        return Result.failure(_chargeLost(receipt));
+      }
+      // Retry is safe: the gateway returns this receipt for the same booking.
       return Result.failure(
-        _transitionFailure(
-          error,
-          stackTrace,
-          'The booking changed before the payment was recorded. Refresh and try again.',
+        UnknownFailure(
+          'Your payment ${receipt.reference} was taken but not recorded yet. '
+          'Tap Retry: you will not be charged again.',
         ),
       );
     }
+  }
+
+  ConflictFailure _chargeLost(MomoReceipt receipt) {
+    return ConflictFailure(
+      'Your payment ${receipt.reference} was taken but the booking changed '
+      'before it was recorded. Contact support with this reference.',
+    );
   }
 
   @override
@@ -602,10 +635,17 @@ class FirestoreBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<Result<int>> expireDueBookings() async {
+  Future<Result<int>> expireDueBookings() {
     final userId = _session.currentUserId;
     final role = _session.role;
-    if (userId == null || role == null) return _signedOut();
+    if (userId == null || role == null) return Future.value(_signedOut());
+    return _sweeps[userId] ??= _sweep(
+      userId,
+      role,
+    ).whenComplete(() => _sweeps.remove(userId));
+  }
+
+  Future<Result<int>> _sweep(String userId, UserRole role) async {
     final field = role == UserRole.renter
         ? FirestoreFields.renterId
         : FirestoreFields.ownerId;
@@ -625,23 +665,121 @@ class FirestoreBookingRepository implements BookingRepository {
       var written = 0;
       for (final doc in snapshot.docs) {
         final booking = _parse(() => BookingModel.fromMap(doc.id, doc.data()));
-        if (booking case Failure<Booking>(:final failure)) {
-          return Result.failure(failure);
-        }
-        final value = (booking as Success<Booking>).value;
+        // One unreadable booking must not stop the rest of the sweep.
+        if (booking is! Success<Booking>) continue;
+        final value = booking.value;
+        final now = _clock.now();
         final effective = _stateMachine.effectiveStatus(
           value,
-          now: _clock.now(),
+          now: now,
           renterLock: role == UserRole.renter ? renterLock : null,
         );
-        if (effective != BookingStatus.expired) continue;
-        final expired = await _expire(value, renterLock);
-        if (expired case Failure<void>(:final failure)) {
-          return Result.failure(failure);
+        if (effective == BookingStatus.expired) {
+          final expired = await _expire(value, renterLock);
+          // A conflict means another sweep (or the other party) won: skip it.
+          if (expired is Success<void>) written++;
+        } else if (effective == BookingStatus.cancelled &&
+            value.status == BookingStatus.pending &&
+            role == UserRole.renter) {
+          // Another booking holds the renter lock: persist the cancellation the
+          // screens already show (the rules let the renter cancel a pending
+          // request), so it does not expire later with the wrong reason.
+          final cancelled = await _cancelPendingByLock(value);
+          if (cancelled is Success<void>) written++;
+        } else if (role == UserRole.renter &&
+            _expiry.isPaymentDeadlineNear(value, now)) {
+          await _remindPaymentDeadline(value, now);
         }
-        written++;
       }
       return Result.success(written);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  /// Writes the "payment due soon" notification once per booking: the id is
+  /// derived from the booking, and a second create is refused by the rules and
+  /// ignored here.
+  Future<void> _remindPaymentDeadline(Booking booking, DateTime now) async {
+    final id = 'payment-deadline-${booking.id}';
+    if (_reminded.contains(booking.id)) return;
+    try {
+      final existing = await _firestore
+          .collection(FirestorePaths.notifications)
+          .where(FirestoreFields.userId, isEqualTo: booking.renterId)
+          .where(FirestoreFields.bookingId, isEqualTo: booking.id)
+          .where(
+            FirestoreFields.type,
+            isEqualTo: NotificationType.paymentDeadline.key,
+          )
+          .limit(1)
+          .get()
+          .timeout(_timeout);
+      if (existing.docs.isNotEmpty) {
+        _reminded.add(booking.id);
+        return;
+      }
+      final write = _writes.begin();
+      write.set(
+        '${FirestorePaths.notifications}/$id',
+        AppNotificationModel.toMap(
+          AppNotification(
+            id: id,
+            userId: booking.renterId,
+            type: NotificationType.paymentDeadline,
+            title: 'Payment due soon',
+            text:
+                'Pay for ${booking.reference} before the deadline or the '
+                'booking will expire.',
+            bookingId: booking.id,
+            read: false,
+            createdAt: now,
+          ),
+        )..[FirestoreFields.createdAt] = FieldValue.serverTimestamp(),
+      );
+      await write.commit().timeout(_timeout);
+      _reminded.add(booking.id);
+    } on Object {
+      // A reminder is a convenience; the sweep must not fail because of it.
+    }
+  }
+
+  /// A renter lock blocks approval unless the booking holding it has expired
+  /// or ended. A holder booking of another owner cannot be read (the rules are
+  /// party-only), so a permission failure does not count as live: the rules
+  /// decide when the lock is replaced, and refuse it while the holder is live.
+  Future<bool> _isLockLive(RenterLock lock, DateTime now) async {
+    final holder = await _readBooking(lock.bookingId);
+    if (holder case Success<Booking>(:final value)) {
+      final effective = _stateMachine.effectiveStatus(value, now: now);
+      return effective != BookingStatus.expired &&
+          effective != BookingStatus.cancelled &&
+          effective != BookingStatus.declined;
+    }
+    if (holder case Failure<Booking>(:final failure)) {
+      return failure is! NotFoundFailure && failure is! PermissionFailure;
+    }
+    return true;
+  }
+
+  Future<Result<void>> _cancelPendingByLock(Booking booking) async {
+    try {
+      final write = _writes.begin();
+      write.update(FirestorePaths.booking(booking.id), {
+        FirestoreFields.status: BookingStatus.cancelled.key,
+        FirestoreFields.reason: 'The renter has another booking in progress.',
+        FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
+      });
+      _audit.record(
+        write,
+        actorId: _session.currentUserId!,
+        entityType: 'booking',
+        entityId: booking.id,
+        oldState: BookingStatus.pending.key,
+        newState: BookingStatus.cancelled.key,
+      );
+      await write.commit().timeout(_timeout);
+      return const Result.success(null);
     } on Object catch (error, stackTrace) {
       return Result.failure(mapToFailure(error, stackTrace));
     }
@@ -729,6 +867,7 @@ class FirestoreBookingRepository implements BookingRepository {
   Future<Result<List<Booking>>> _pendingOverlaps(Booking booking) async {
     try {
       final snapshot = await _bookings
+          .where(FirestoreFields.ownerId, isEqualTo: booking.ownerId)
           .where(FirestoreFields.vehicleId, isEqualTo: booking.vehicleId)
           .where(FirestoreFields.status, isEqualTo: BookingStatus.pending.key)
           .where(
@@ -758,7 +897,8 @@ class FirestoreBookingRepository implements BookingRepository {
   }) async {
     try {
       final userId = _session.currentUserId;
-      final lockResult = applyLock && userId != null
+      final isRenter = _session.role == UserRole.renter;
+      final lockResult = applyLock && isRenter && userId != null
           ? await _readLock(userId)
           : const Result<RenterLock?>.success(null);
       if (lockResult case Failure(:final failure)) {
@@ -822,8 +962,13 @@ class FirestoreBookingRepository implements BookingRepository {
     if (owner case Failure<UserAccount>(:final failure)) {
       return Result.failure(failure);
     }
+    // Owners see a request from an already-booked renter as cancelled too. Only
+    // open bookings are affected by a lock, so the others skip the read.
+    final isOpen =
+        booking.status == BookingStatus.pending ||
+        booking.status == BookingStatus.approved;
     RenterLock? renterLock;
-    if (applyLock) {
+    if (applyLock && isOpen) {
       if (lock != null) {
         renterLock = lock;
       } else {

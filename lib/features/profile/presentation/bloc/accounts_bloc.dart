@@ -48,16 +48,15 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     var listed = await _list();
     if (isClosed) return;
     final currentUid = _session.currentUserId;
-    if (listed case Success(:final value) when currentUid != null) {
-      if (!value.any((account) => account.uid == currentUid)) {
-        // Best effort: an email account without a stored password cannot be
-        // linked silently, and simply stays out of the list until the user
-        // adds it with their password.
-        final linked = await _link();
-        if (isClosed) return;
-        if (linked is Success<LinkedAccount>) listed = await _list();
-        if (isClosed) return;
-      }
+    if (listed is Success<List<LinkedAccount>> && currentUid != null) {
+      // Best effort: links the signed-in account, or refreshes its stored name
+      // and role after a profile edit. An email account without a stored
+      // password cannot be linked silently, and simply stays out of the list
+      // until the user adds it with their password.
+      final linked = await _link();
+      if (isClosed) return;
+      if (linked is Success<LinkedAccount>) listed = await _list();
+      if (isClosed) return;
     }
     emit(switch (listed) {
       Success(:final value) => AccountsLoaded(

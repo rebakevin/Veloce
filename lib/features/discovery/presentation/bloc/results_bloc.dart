@@ -1,6 +1,5 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-
 import 'package:veloce/core/error/app_failure.dart';
 
 import '../../domain/entities/search_query.dart';
@@ -27,6 +26,9 @@ class ResultsBloc extends Bloc<ResultsEvent, ResultsState> {
 
   final SearchVehicles _search;
 
+  /// Only the newest search may emit, so a slow older one cannot overwrite it.
+  int _generation = 0;
+
   Future<void> _onLoad(ResultsEvent event, Emitter<ResultsState> emit) =>
       _load(emit, state.query, state.filters);
 
@@ -45,9 +47,10 @@ class ResultsBloc extends Bloc<ResultsEvent, ResultsState> {
     SearchQuery query,
     VehicleFilters filters,
   ) async {
+    final generation = ++_generation;
     emit(ResultsLoading(query: query, filters: filters));
     final result = await _search(query: query, filters: filters);
-    if (isClosed) return;
+    if (isClosed || generation != _generation) return;
     result.when(
       success: (cars) => emit(
         cars.isEmpty

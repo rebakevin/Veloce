@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
@@ -38,6 +40,14 @@ class DecisionBloc extends Bloc<DecisionEvent, DecisionState> {
   final DeclineBooking _decline;
   final AuthSession _session;
 
+  StreamSubscription<Result<BookingView>>? _subscription;
+
+  @override
+  Future<void> close() async {
+    await _subscription?.cancel();
+    return super.close();
+  }
+
   Future<void> _onStarted(
     DecisionStarted event,
     Emitter<DecisionState> emit,
@@ -51,10 +61,10 @@ class DecisionBloc extends Bloc<DecisionEvent, DecisionState> {
       return;
     }
     emit(const DecisionLoading());
-    await emit.onEach<Result<BookingView>>(
-      _repository.watchBooking(_bookingId),
-      onData: (result) => add(_DecisionBookingChanged(result)),
-    );
+    await _subscription?.cancel();
+    _subscription = _repository
+        .watchBooking(_bookingId)
+        .listen((result) => add(_DecisionBookingChanged(result)));
   }
 
   void _onChanged(_DecisionBookingChanged event, Emitter<DecisionState> emit) {
@@ -105,8 +115,10 @@ class DecisionBloc extends Bloc<DecisionEvent, DecisionState> {
     );
     final result = await _approve(_bookingId, reviewed: current.reviewed);
     if (isClosed) return;
+    final latest = state;
+    if (latest is! DecisionLoaded) return;
     emit(
-      current.copyWith(action: _actionFor(DecisionActionKind.approve, result)),
+      latest.copyWith(action: _actionFor(DecisionActionKind.approve, result)),
     );
   }
 
@@ -126,8 +138,10 @@ class DecisionBloc extends Bloc<DecisionEvent, DecisionState> {
     );
     final result = await _decline(_bookingId, reason: event.reason);
     if (isClosed) return;
+    final latest = state;
+    if (latest is! DecisionLoaded) return;
     emit(
-      current.copyWith(action: _actionFor(DecisionActionKind.decline, result)),
+      latest.copyWith(action: _actionFor(DecisionActionKind.decline, result)),
     );
   }
 

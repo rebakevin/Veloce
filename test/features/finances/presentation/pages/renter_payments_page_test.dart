@@ -10,6 +10,7 @@ import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/core/theme/app_theme.dart';
 import 'package:veloce/features/finances/domain/entities/renter_payment_item.dart';
+import 'package:veloce/features/finances/domain/enums/renter_payment_kind.dart';
 import 'package:veloce/features/finances/domain/repositories/finances_repository.dart';
 import 'package:veloce/features/finances/presentation/pages/renter_payments_page.dart';
 
@@ -23,6 +24,7 @@ void main() {
 
   final testDate = DateTime(2026, 11, 10);
   final paymentItem = RenterPaymentItem(
+    kind: RenterPaymentKind.payment,
     entry: LedgerEntry(
       id: 'tx-1',
       bookingId: 'b-1',
@@ -75,7 +77,8 @@ void main() {
       expect(find.text('VLC-0042'), findsOneWidget);
       expect(find.text('Toyota Vitz'), findsOneWidget);
       expect(find.text('Payment'), findsOneWidget);
-      expect(find.textContaining('310,000'), findsOneWidget);
+      expect(find.text('Success'), findsOneWidget);
+      expect(find.textContaining('-RWF 310,000'), findsOneWidget);
     },
   );
 

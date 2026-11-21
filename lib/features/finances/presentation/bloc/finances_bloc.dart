@@ -21,12 +21,15 @@ sealed class FinancesEvent extends Equatable {
 }
 
 final class FinancesStarted extends FinancesEvent {
-  const FinancesStarted({this.vehicleId});
+  const FinancesStarted({this.vehicleId, this.period});
 
   final String? vehicleId;
 
+  /// Period to open on; keeps the current one when null.
+  final FinancePeriod? period;
+
   @override
-  List<Object?> get props => [vehicleId];
+  List<Object?> get props => [vehicleId, period];
 }
 
 final class FinancesPeriodChanged extends FinancesEvent {
@@ -124,6 +127,7 @@ class FinancesBloc extends Bloc<FinancesEvent, FinancesState> {
     Emitter<FinancesState> emit,
   ) async {
     final vehicleId = event.vehicleId ?? state.vehicleId;
+    final period = event.period ?? state.period;
     Vehicle? vehicle;
     if (vehicleId != null) {
       final res = await _vehicleLookup.byId(vehicleId);
@@ -135,12 +139,13 @@ class FinancesBloc extends Bloc<FinancesEvent, FinancesState> {
     emit(
       state.copyWith(
         status: FinancesStatus.loading,
+        period: period,
         vehicleId: vehicleId,
         vehicle: vehicle,
       ),
     );
 
-    await _loadSummary(emit, state.period, vehicleId);
+    await _loadSummary(emit, period, vehicleId);
   }
 
   Future<void> _onPeriodChanged(

@@ -15,14 +15,21 @@ service cloud.firestore {
     function serverUpdated() { return request.resource.data.updatedAt == request.time; }
 
     // P6: a reviewer (not the owner of the document) may move only the rating
-    // aggregate: the count stays or grows by one, the average stays in 1..5.
+    // aggregate. The client recomputes it from the real reviews, so the count
+    // may be repaired, not only grow by one; the average stays in 0..5.
     // A rule cannot tie this to the review written in the same batch (the
     // review id is not derivable from the subject document), so this bounds the
     // change instead of proving it.
     function ratingChange(before, after) {
       return changed().hasOnly(['ratingAvg', 'ratingCount'])
-        && after.ratingCount in [before.ratingCount, before.ratingCount + 1]
-        && after.ratingAvg >= 1 && after.ratingAvg <= 5;
+        && after.ratingCount >= 0
+        && after.ratingAvg >= 0 && after.ratingAvg <= 5;
+    }
+
+    // P5: each side may set only its own pickup confirmation.
+    function ownPickupSideOnly(before) {
+      return (before.ownerId == me() || !changed().hasAny(['ownerPickupConfirmedAt']))
+          && (before.renterId == me() || !changed().hasAny(['renterPickupConfirmedAt']));
     }
 
     // Rows of the TECHNICAL.md §5.1 table, joined with `||`: Phase 4 first,
@@ -82,12 +89,14 @@ service cloud.firestore {
         // P5: the first pickup confirmation; the booking stays confirmed.
         before.status == 'confirmed' && after.status == 'confirmed'
         && isParty(before)
+        && ownPickupSideOnly(before)
         && changed().hasOnly(['ownerPickupConfirmedAt',
                               'renterPickupConfirmedAt', 'updatedAt'])
       ) || (
         // P5: the second pickup confirmation activates the booking.
         before.status == 'confirmed' && after.status == 'active'
         && isParty(before)
+        && ownPickupSideOnly(before)
         && after.ownerPickupConfirmedAt != null
         && after.renterPickupConfirmedAt != null
         && changed().hasOnly(['status', 'ownerPickupConfirmedAt',
@@ -132,6 +141,11 @@ service cloud.firestore {
                     && !changed().hasAny(['role', 'verified', 'ratingAvg', 'ratingCount', 'completedCount']);
       allow update: if signedIn() && me() != uid
                     && ratingChange(resource.data, request.resource.data);   // P6
+      // P5: a settled booking adds one to a party's completed count. Bounded
+      // (+1 per write), not proven, like the rating aggregates.
+      allow update: if signedIn()
+                    && changed().hasOnly(['completedCount'])
+                    && request.resource.data.completedCount == resource.data.completedCount + 1;
       allow delete: if isSelf(uid);                      // account deletion
       match /private/{doc}       { allow read, write: if isSelf(uid); }
       match /favourites/{vid}    { allow read, write: if isSelf(uid); }          // P3
@@ -140,21 +154,32 @@ service cloud.firestore {
     // ---------- P2: vehicles ----------
     match /vehicles/{vid} {
       allow read:   if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerId == me();
+      allow create: if signedIn() && request.resource.data.ownerId == me()
+                    && request.resource.data.status in ['published', 'paused']
+                    && request.resource.data.ratingCount == 0
+                    && request.resource.data.ratingAvg == 0;
       allow update: if signedIn() && resource.data.ownerId == me()
                     && request.resource.data.ownerId == resource.data.ownerId
                     && !changed().hasAny(['ratingAvg', 'ratingCount']);   // P6
       allow update: if signedIn() && resource.data.ownerId != me()
                     && ratingChange(resource.data, request.resource.data);   // P6
       allow delete: if signedIn() && resource.data.ownerId == me();
+      // Writes read the vehicle after the batch; deletes read it before, so
+      // removing a car and its photos and documents in one batch works.
       match /photos/{pid} {
         allow read:  if signedIn();
-        allow write: if signedIn()
+        allow create, update: if signedIn()
                       && getAfter(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
+        allow delete: if signedIn()
+                      && get(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
       }
       match /documents/{kind} {
-        allow read, write: if signedIn()
-                            && getAfter(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
+        allow read: if signedIn()
+                     && get(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
+        allow create, update: if signedIn()
+                     && getAfter(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
+        allow delete: if signedIn()
+                     && get(/databases/$(db)/documents/vehicles/$(vid)).data.ownerId == me();
       }
     }
 
@@ -167,14 +192,23 @@ service cloud.firestore {
                     && request.resource.data.totalPayable
                          == request.resource.data.rentalFee + request.resource.data.cautionFee
                     && request.resource.data.ownerId ==
-                         get(/databases/$(db)/documents/vehicles/$(request.resource.data.vehicleId)).data.ownerId;
+                         get(/databases/$(db)/documents/vehicles/$(request.resource.data.vehicleId)).data.ownerId
+                    && request.resource.data.ownerId != me()
+                    && get(/databases/$(db)/documents/vehicles/$(request.resource.data.vehicleId)).data.status == 'published'
+                    && request.resource.data.days >= 1
+                    && request.resource.data.rentalFee
+                         == request.resource.data.days * request.resource.data.dailyRateApplied
+                    && request.resource.data.expiresAt is timestamp
+                    && request.resource.data.expiresAt <= request.time + duration.value(25, 'h');
       allow update: if isParty(resource.data)
                     && validTransition(resource.data, request.resource.data);
       allow delete: if isParty(resource.data);              // account deletion
 
       match /private/{side} {
-        allow write: if signedIn() && ((side == 'renter' && bkafter(id).renterId == me())
+        allow create, update: if signedIn() && ((side == 'renter' && bkafter(id).renterId == me())
                                     || (side == 'owner'  && bkafter(id).ownerId  == me()));
+        allow delete: if signedIn() && ((side == 'renter' && bk(id).renterId == me())
+                                    || (side == 'owner'  && bk(id).ownerId  == me()));
         allow read:  if signedIn() && ((side == 'renter' && bk(id).renterId == me())
                                     || (side == 'owner'  && bk(id).ownerId  == me())
                                     || (isParty(bk(id))
@@ -197,7 +231,8 @@ service cloud.firestore {
                     && bkafter(id).status in ['approved', 'confirmed'];
       allow update: if false;
       allow delete: if signedIn() && isParty(bk(id))
-                    && bkafter(id).status in ['cancelled', 'expired', 'declined'];
+                    && (!existsAfter(/databases/$(db)/documents/bookings/$(id))   // account deletion
+                        || bkafter(id).status in ['cancelled', 'expired', 'declined']);
     }
     match /renterLocks/{renterId} {
       allow read:   if signedIn();
@@ -206,10 +241,16 @@ service cloud.firestore {
                     && bkafter(request.resource.data.bookingId).ownerId == me()
                     && bkafter(request.resource.data.bookingId).renterId == renterId
                     && bkafter(request.resource.data.bookingId).status == 'approved';
-      allow update: if false;
+      // A lock held by a booking that is now dead may be replaced by an approval.
+      allow update: if signedIn()
+                    && bk(resource.data.bookingId).status in ['expired', 'cancelled', 'declined']
+                    && bkafter(request.resource.data.bookingId).ownerId == me()
+                    && bkafter(request.resource.data.bookingId).renterId == renterId
+                    && bkafter(request.resource.data.bookingId).status == 'approved';
       allow delete: if signedIn() && isParty(bk(resource.data.bookingId))
-                    && bkafter(resource.data.bookingId).status
-                         in ['cancelled', 'expired', 'return', 'review', 'completed'];
+                    && (!existsAfter(/databases/$(db)/documents/bookings/$(resource.data.bookingId))
+                        || bkafter(resource.data.bookingId).status
+                             in ['cancelled', 'expired', 'return', 'review', 'completed']);
     }
 
     // ---------- P4 / P5: ledger, claims, repairs ----------
@@ -239,6 +280,7 @@ service cloud.firestore {
                         request.resource.data.type == 'refund'
                         && request.resource.data.fromParty == 'veloce'
                         && request.resource.data.toParty == 'renter'
+                        && bk(request.resource.data.bookingId).status == 'confirmed'
                         && bkafter(request.resource.data.bookingId).status == 'cancelled'
                         && request.resource.data.amount
                              == bkafter(request.resource.data.bookingId).totalPayable
@@ -289,19 +331,23 @@ service cloud.firestore {
       allow create: if signedIn()
                     && bk(bid).ownerId == me()
                     && request.resource.data.bookingId == bid
-                    && request.resource.data.amount is number
-                    && request.resource.data.amount > 0
-                    && request.resource.data.amount <= bk(bid).cautionFee;
+                    && request.resource.data.originalAmount is number
+                    && request.resource.data.originalAmount > 0
+                    && request.resource.data.originalAmount <= bk(bid).cautionFee
+                    && request.resource.data.currentAmount is number
+                    && request.resource.data.currentAmount >= 0
+                    && request.resource.data.currentAmount <= request.resource.data.originalAmount;
       allow update: if isParty(bk(bid))
                     && request.resource.data.bookingId == bid
-                    && request.resource.data.amount is number
-                    && request.resource.data.amount > 0
-                    && request.resource.data.amount <= bk(bid).cautionFee;
-      allow delete: if false;
+                    && request.resource.data.originalAmount == resource.data.originalAmount
+                    && request.resource.data.currentAmount is number
+                    && request.resource.data.currentAmount >= 0
+                    && request.resource.data.currentAmount <= request.resource.data.originalAmount;
+      allow delete: if signedIn() && isParty(bk(bid))                // account deletion
+                    && !existsAfter(/databases/$(db)/documents/bookings/$(bid));
     }
     match /repairExpenses/{id} {
-      allow read, delete: if signedIn() && resource.data.ownerId == me()
-                          && bk(resource.data.bookingId).ownerId == me();
+      allow read, delete: if signedIn() && resource.data.ownerId == me();
       allow create: if signedIn() && request.resource.data.ownerId == me()
                     && request.resource.data.bookingId is string
                     && bk(request.resource.data.bookingId).ownerId == me()
@@ -323,23 +369,37 @@ service cloud.firestore {
     // ---------- P6: reviews and notifications ----------
     match /reviews/{id} {
       allow read:   if signedIn();
-      allow create: if signedIn() && request.resource.data.authorId == me();
+      allow create: if signedIn() && request.resource.data.authorId == me()
+                    && id == request.resource.data.bookingId + '_' + me() + '_'
+                             + request.resource.data.subjectType
+                    && request.resource.data.subjectType in ['user', 'vehicle']
+                    && request.resource.data.stars is int
+                    && request.resource.data.stars >= 1 && request.resource.data.stars <= 5
+                    && isParty(bk(request.resource.data.bookingId))
+                    && bk(request.resource.data.bookingId).status == 'completed';
       allow update: if signedIn() && resource.data.authorId == me()
-                    && !changed().hasAny(['authorId', 'bookingId', 'subjectId', 'subjectType']);
+                    && !changed().hasAny(['authorId', 'bookingId', 'subjectId', 'subjectType'])
+                    && request.resource.data.stars is int
+                    && request.resource.data.stars >= 1 && request.resource.data.stars <= 5;
       // No delete button in the app. Only account deletion removes reviews: the
-      // author's, and those received (the user, or a car through its booking).
+      // author's, and those received (the user, or a car's owner).
       allow delete: if signedIn()
-                    && (resource.data.authorId == me() || resource.data.subjectId == me()
-                        || isParty(bk(resource.data.bookingId)));
+                    && (resource.data.authorId == me()
+                        || (resource.data.subjectType == 'user' && resource.data.subjectId == me())
+                        || (resource.data.subjectType == 'vehicle'
+                            && get(/databases/$(db)/documents/vehicles/$(resource.data.subjectId)).data.ownerId == me()));
     }
     match /notifications/{id} {
-      allow read, update, delete: if signedIn() && resource.data.userId == me();
-      allow create: if signedIn();                          // the writer is the other party
+      allow read, delete: if signedIn() && resource.data.userId == me();
+      allow update: if signedIn() && resource.data.userId == me()
+                    && changed().hasOnly(['read']);
+      allow create: if signedIn() && request.resource.data.userId is string
+                    && request.resource.data.read == false;   // the writer is the other party
     }
 
     // ---------- audit (create-only) ----------
     match /auditLogs/{id} {
-      allow create: if signedIn();
+      allow create: if signedIn() && request.resource.data.actorId == me();
       allow read, update, delete: if false;
     }
 

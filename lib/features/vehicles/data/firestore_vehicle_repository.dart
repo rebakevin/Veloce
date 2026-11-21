@@ -12,6 +12,8 @@ import 'package:veloce/core/domain/entities/vehicle_document.dart';
 import 'package:veloce/core/domain/entities/vehicle_photo.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/services/atomic_write.dart';
+import 'package:veloce/core/domain/services/auth_session.dart';
+import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
 
 import '../domain/entities/publish_request.dart';
@@ -21,12 +23,14 @@ class FirestoreVehicleRepository implements VehicleRepository {
   const FirestoreVehicleRepository({
     required this._firestore,
     required this._writes,
+    required this._session,
   });
 
   static const Duration _timeout = Duration(seconds: 20);
 
   final FirebaseFirestore _firestore;
   final AtomicWriteFactory _writes;
+  final AuthSession _session;
 
   @override
   Stream<Result<List<Vehicle>>> watchOwnerVehicles(String ownerId) async* {
@@ -49,10 +53,19 @@ class FirestoreVehicleRepository implements VehicleRepository {
 
   @override
   Future<Result<List<Booking>>> bookingsOf(String vehicleId) async {
+    // The bookings read rule (`isParty`) only holds for a query that is also
+    // filtered by the signed-in owner.
+    final ownerId = _session.currentUserId;
+    if (ownerId == null) {
+      return const Result.failure(
+        PermissionFailure('Sign in to see your bookings.'),
+      );
+    }
     try {
       final snapshot = await _firestore
           .collection(FirestorePaths.bookings)
           .where(FirestoreFields.vehicleId, isEqualTo: vehicleId)
+          .where(FirestoreFields.ownerId, isEqualTo: ownerId)
           .get()
           .timeout(_timeout);
       return Result.success(

@@ -4,6 +4,7 @@ export 'domain/entities/finance_transaction.dart';
 export 'domain/entities/renter_payment_item.dart';
 export 'domain/enums/finance_period.dart';
 export 'domain/enums/finance_view_mode.dart';
+export 'domain/enums/renter_payment_kind.dart';
 export 'domain/repositories/finances_repository.dart';
 export 'finances_injection.dart';
 export 'finances_routes.dart';

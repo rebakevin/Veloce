@@ -50,6 +50,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// state (for example a sign-out that happened while it was loading).
   int _generation = 0;
 
+  /// The uid whose verified flag was already reloaded, so a user without a
+  /// profile does not reload on every user event.
+  String? _reloadedUid;
+
   void _onStarted(AuthStarted event, Emitter<AuthState> emit) {
     _subscription ??= _observe().listen(
       (user) => add(AuthUserChanged(user)),
@@ -64,6 +68,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final user = event.user;
     final generation = ++_generation;
     if (user == null) {
+      _reloadedUid = null;
       _clearCaches();
       emit(const AuthUnauthenticated());
       return;
@@ -75,7 +80,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthAuthenticated(user: user, account: current.account));
       return;
     }
+    // Another account signed in directly (account switch): nothing of the
+    // previous one may stay cached.
+    final previous = current.user;
+    if (previous != null && previous.uid != user.uid) _clearCaches();
     await _loadProfile(user, generation, emit);
+    // The verified flag is cached by Firebase until the next token refresh, so
+    // a user who confirmed the link in another app is not blocked after a
+    // restart or a switch.
+    if (!isClosed &&
+        generation == _generation &&
+        !user.emailVerified &&
+        _reloadedUid != user.uid) {
+      _reloadedUid = user.uid;
+      add(const EmailVerificationRefreshed());
+    }
   }
 
   Future<void> _onProfileRefreshed(
@@ -94,6 +113,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     final found = await _profiles.findProfile(user.uid);
     if (isClosed || generation != _generation) return;
+    // A failed refresh must not throw a signed-in user back to the splash.
+    final current = state;
+    if (found is Failure &&
+        current is AuthAuthenticated &&
+        current.user.uid == user.uid) {
+      return;
+    }
     emit(switch (found) {
       Success(:final value) when value != null => AuthAuthenticated(
         user: user,
@@ -127,6 +153,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final result = await _signOut();
     if (isClosed || result is Failure) return;
     _generation++;
+    _reloadedUid = null;
     _clearCaches();
     emit(const AuthUnauthenticated());
   }

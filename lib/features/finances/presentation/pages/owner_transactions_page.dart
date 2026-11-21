@@ -15,9 +15,16 @@ import '../bloc/finances_bloc.dart';
 import '../widgets/finance_transactions_table.dart';
 
 class OwnerTransactionsPage extends StatelessWidget {
-  const OwnerTransactionsPage({this.carId, super.key});
+  const OwnerTransactionsPage({
+    this.carId,
+    this.period = FinancePeriod.thisMonth,
+    super.key,
+  });
 
   final String? carId;
+
+  /// Period selected on the finances screen this page was opened from.
+  final FinancePeriod period;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +42,7 @@ class OwnerTransactionsPage extends StatelessWidget {
         session: GetIt.instance<AuthSession>(),
         vehicleLookup: GetIt.instance<VehicleLookup>(),
         vehicleId: carId,
-      )..add(FinancesStarted(vehicleId: carId)),
+      )..add(FinancesStarted(vehicleId: carId, period: period)),
       child: const _OwnerTransactionsView(),
     );
   }

@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 
-import '../../domain/repositories/repair_expense_repository.dart';
+import '../../../../core/domain/entities/repair_expense.dart';
 
 enum RepairExpenseLoad { loading, loaded, failed }
 
@@ -16,6 +16,7 @@ class RepairExpenseState extends Equatable {
     this.editing,
     this.receiptName,
     this.receiptBytes,
+    this.receiptExtension = 'jpg',
     this.errorMessage,
     this.notice,
   });
@@ -30,6 +31,7 @@ class RepairExpenseState extends Equatable {
   /// A newly picked receipt photo, not yet uploaded.
   final String? receiptName;
   final Uint8List? receiptBytes;
+  final String receiptExtension;
 
   /// Inline form error.
   final String? errorMessage;
@@ -41,7 +43,10 @@ class RepairExpenseState extends Equatable {
 
   bool get hasNewReceipt => receiptBytes != null;
 
-  String? get existingReceiptUrl => editing?.receiptUrl;
+  String? get existingReceiptUrl {
+    final url = editing?.receiptUrl;
+    return url == null || url.isEmpty ? null : url;
+  }
 
   int get total =>
       expenses.fold<int>(0, (sum, expense) => sum + expense.amount);
@@ -54,6 +59,7 @@ class RepairExpenseState extends Equatable {
     editing,
     receiptName,
     receiptBytes,
+    receiptExtension,
     errorMessage,
     notice,
   ];

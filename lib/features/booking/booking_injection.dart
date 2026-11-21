@@ -53,7 +53,9 @@ void registerBooking(GetIt getIt) {
     ..registerLazySingleton<CancelBooking>(
       () => CancelBooking(getIt(), getIt()),
     )
-    ..registerLazySingleton<PayBooking>(() => PayBooking(getIt(), getIt()))
+    ..registerLazySingleton<PayBooking>(
+      () => PayBooking(getIt(), getIt(), getIt()),
+    )
     ..registerLazySingleton<AcknowledgeAgreement>(
       () => AcknowledgeAgreement(getIt()),
     )

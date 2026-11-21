@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -5,6 +7,7 @@ import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/booking/domain/entities/booking_view.dart';
 import 'package:veloce/features/booking/presentation/bloc/decision_bloc.dart';
 
 import '../../support/booking_test_data.dart';
@@ -165,5 +168,34 @@ void main() {
             'This request has expired.',
           ),
     ],
+  );
+
+  blocTest<DecisionBloc, DecisionState>(
+    'a booking update during approval is kept, not overwritten',
+    setUp: () {
+      final approved = bookingView(status: BookingStatus.approved);
+      final controller = StreamController<Result<BookingView>>();
+      addTearDown(controller.close);
+      when(() => repository.watchBooking('booking-1'))
+          .thenAnswer((_) => controller.stream);
+      when(() => approve('booking-1', reviewed: false)).thenAnswer((_) async {
+        controller.add(Result.success(approved));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        return const Result.success(null);
+      });
+      controller.add(Result.success(pending));
+    },
+    build: build,
+    act: (bloc) async {
+      bloc.add(const DecisionStarted());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      bloc.add(const DecisionApproved());
+    },
+    wait: const Duration(milliseconds: 50),
+    verify: (bloc) {
+      final state = bloc.state as DecisionLoaded;
+      expect(state.view.booking.status, BookingStatus.approved);
+      expect(state.action.status, DecisionActionStatus.success);
+    },
   );
 }

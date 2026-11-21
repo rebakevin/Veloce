@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
@@ -36,6 +38,13 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
   final AuthSession _session;
 
   String? _lastMomoNumber;
+  StreamSubscription<Result<BookingView>>? _subscription;
+
+  @override
+  Future<void> close() async {
+    await _subscription?.cancel();
+    return super.close();
+  }
 
   Future<void> _onStarted(
     PaymentStarted event,
@@ -50,10 +59,10 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       return;
     }
     emit(const PaymentLoading());
-    await emit.onEach<Result<BookingView>>(
-      _repository.watchBooking(_bookingId),
-      onData: (result) => add(_PaymentBookingChanged(result)),
-    );
+    await _subscription?.cancel();
+    _subscription = _repository
+        .watchBooking(_bookingId)
+        .listen((result) => add(_PaymentBookingChanged(result)));
   }
 
   void _onChanged(_PaymentBookingChanged event, Emitter<PaymentState> emit) {
@@ -103,8 +112,10 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     );
     final result = await _pay(current.view, momoNumber: momoNumber);
     if (isClosed) return;
+    final latest = state;
+    if (latest is! PaymentLoaded) return;
     emit(
-      current.copyWith(
+      latest.copyWith(
         action: switch (result) {
           Success<MomoReceipt>(:final value) => PaymentAction(
             status: PaymentActionStatus.success,

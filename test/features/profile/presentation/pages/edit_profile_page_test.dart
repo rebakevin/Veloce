@@ -5,17 +5,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:veloce/features/auth/auth.dart';
 import 'package:veloce/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:veloce/features/profile/presentation/pages/edit_profile_page.dart';
 
 import 'profile_page_harness.dart';
 
+class _MockAuthBloc extends MockBloc<AuthEvent, AuthState>
+    implements AuthBloc {}
+
 void main() {
   late MockProfileBloc bloc;
+  late _MockAuthBloc authBloc;
 
-  setUpAll(() => registerFallbackValue(const ProfileStarted()));
+  setUpAll(() {
+    registerFallbackValue(const ProfileStarted());
+    registerFallbackValue(const AuthProfileRefreshed());
+  });
 
-  setUp(() => bloc = MockProfileBloc());
+  setUp(() {
+    bloc = MockProfileBloc();
+    authBloc = _MockAuthBloc();
+    when(() => authBloc.state).thenReturn(const AuthUnknown());
+  });
 
   tearDown(resetGetIt);
 
@@ -34,7 +46,10 @@ void main() {
       routerApp(
         router,
         registerMessenger(),
-        providers: [BlocProvider<ProfileBloc>.value(value: bloc)],
+        providers: [
+          BlocProvider<ProfileBloc>.value(value: bloc),
+          BlocProvider<AuthBloc>.value(value: authBloc),
+        ],
       ),
     );
     if (pushed) {
@@ -112,6 +127,8 @@ void main() {
 
     verify(() => bloc.add(const ProfileActionAcknowledged()))
         .called(greaterThan(0));
+    // The session profile follows the edit (name in the account switcher).
+    verify(() => authBloc.add(const AuthProfileRefreshed())).called(1);
     expect(find.text('start page'), findsOneWidget);
   });
 }

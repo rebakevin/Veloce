@@ -63,7 +63,7 @@ void registerCore(
     ..registerLazySingleton<UserLookup>(() => UserLookup(getIt()))
     ..registerLazySingleton<VehicleLookup>(() => VehicleLookup(getIt()))
     ..registerLazySingleton<BookingLookup>(() => BookingLookup(getIt()))
-    ..registerLazySingleton<MomoGatewaySim>(() => MomoGatewaySim(getIt()))
+    ..registerLazySingleton<MomoGatewaySim>(() => MomoGatewaySim())
     ..registerLazySingleton<MomoGateway>(() => getIt<MomoGatewaySim>())
     ..registerLazySingleton<VerificationSim>(() => VerificationSim())
     ..registerLazySingleton<VerificationProvider>(

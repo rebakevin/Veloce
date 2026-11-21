@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
@@ -67,7 +68,7 @@ class _Editor extends StatelessWidget {
     final to = state.to;
     final problem = state.problem;
     final bloc = context.read<AvailabilityBloc>();
-    final today = DateTime.now();
+    final today = GetIt.I<Clock>().now();
     final booked = state.overview.bookedDays;
     final earliest = [
       DateTime(today.year, today.month, today.day),

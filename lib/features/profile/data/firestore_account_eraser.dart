@@ -9,19 +9,99 @@ import 'package:veloce/core/error/result.dart';
 
 import '../domain/repositories/account_eraser.dart';
 
-typedef _Doc = DocumentSnapshot<Map<String, dynamic>>;
+/// A document found by the eraser: only what the plan needs.
+class ErasableDoc {
+  const ErasableDoc({required this.path, this.data});
+
+  final String path;
+
+  /// `null` when the document does not exist.
+  final Map<String, dynamic>? data;
+
+  bool get exists => data != null;
+
+  String get id => path.split('/').last;
+}
+
+/// Reads documents for the eraser. Split from the batches so tests do not have
+/// to fake the sealed Firestore snapshot classes.
+abstract interface class ErasableDocSource {
+  Future<List<ErasableDoc>> where(
+    String collection,
+    String field,
+    String value,
+  );
+
+  Future<List<ErasableDoc>> list(String collectionPath);
+
+  Future<ErasableDoc> get(String path);
+}
+
+/// [ErasableDocSource] on Firestore.
+class FirestoreDocSource implements ErasableDocSource {
+  const FirestoreDocSource(this._firestore);
+
+  static const Duration _timeout = Duration(seconds: 30);
+
+  final FirebaseFirestore _firestore;
+
+  @override
+  Future<List<ErasableDoc>> where(
+    String collection,
+    String field,
+    String value,
+  ) async {
+    final snapshot = await _firestore
+        .collection(collection)
+        .where(field, isEqualTo: value)
+        .get()
+        .timeout(_timeout);
+    return [
+      for (final doc in snapshot.docs)
+        ErasableDoc(path: doc.reference.path, data: doc.data()),
+    ];
+  }
+
+  @override
+  Future<List<ErasableDoc>> list(String collectionPath) async {
+    final snapshot = await _firestore
+        .collection(collectionPath)
+        .get()
+        .timeout(_timeout);
+    return [
+      for (final doc in snapshot.docs)
+        ErasableDoc(path: doc.reference.path, data: doc.data()),
+    ];
+  }
+
+  @override
+  Future<ErasableDoc> get(String path) async {
+    final doc = await _firestore.doc(path).get().timeout(_timeout);
+    return ErasableDoc(path: path, data: doc.data());
+  }
+}
 
 /// [AccountEraser] on Firestore. There is no backend to cascade deletes, so the
 /// client finds every document by query and deletes it in batches.
 ///
-/// A small account goes in one atomic batch. A large one is split: documents
-/// whose security rules read their parent (a car's photos, a booking's
-/// checklists, reviews of a booking) go first, then the bookings and cars, and
-/// the user document last. Either way the erase deletes whatever exists, so
-/// running it again after a failure finishes the job.
+/// The security rules read a document's parent while checking its delete, and
+/// a batch may make at most 20 such reads. So the erase runs in small steps,
+/// in this order:
+///
+/// 1. one unit per booking: checklist documents first, then the booking
+///    together with its contact copy, calendar block, caution claim and renter
+///    lock (those rules accept the delete only when the booking goes in the
+///    same batch, or is already terminal);
+/// 2. one unit per car: its photos, documents and received reviews, then the
+///    car (the rules read the car before the batch, so it must still exist);
+/// 3. ledger rows, repairs, notifications, reviews written or received;
+/// 4. the user's favourites and private documents, then the user document.
+///
+/// Every step deletes whatever exists, so running the erase again after a
+/// failure finishes the job.
 class FirestoreAccountEraser implements AccountEraser {
   const FirestoreAccountEraser({
-    required this._firestore,
+    required this._docs,
     required this._writes,
     required this._storage,
   });
@@ -31,7 +111,7 @@ class FirestoreAccountEraser implements AccountEraser {
   /// Firestore allows 500 writes per batch.
   static const int _batchSize = 450;
 
-  final FirebaseFirestore _firestore;
+  final ErasableDocSource _docs;
   final AtomicWriteFactory _writes;
   final MediaStorage _storage;
 
@@ -39,16 +119,8 @@ class FirestoreAccountEraser implements AccountEraser {
   Future<Result<void>> eraseAll(String uid) async {
     try {
       final plan = await _plan(uid);
-      final user = FirestorePaths.user(uid);
-      if (plan.size < _batchSize) {
-        // One atomic batch, so a rejected delete leaves nothing half-deleted.
-        // Rules read the state before the batch, so parents may go with their
-        // children.
-        await _delete([...plan.children, ...plan.parents, user]);
-      } else {
-        await _delete(plan.children);
-        await _delete(plan.parents);
-        await _delete([user]);
+      for (final batch in plan.batches) {
+        await _commit(batch);
       }
       // Best effort: the storage policy may not allow deletes (MediaStorage).
       await Future.wait(plan.files.map(_storage.delete));
@@ -72,129 +144,138 @@ class FirestoreAccountEraser implements AccountEraser {
           doc.id: doc,
     };
 
+    for (final booking in bookings.values) {
+      final checklists = <ErasableDoc>[
+        for (final sub in [
+          FirestorePaths.checklistEntries,
+          FirestorePaths.checklistMedia,
+        ])
+          ...await _list('${booking.path}/$sub'),
+      ];
+      final renterId = booking.data?[FirestoreFields.renterId] as String;
+      // Only my own side: the other party's contact copy is theirs.
+      final mine = renterId == uid ? UserRole.renter : UserRole.owner;
+      final claim = await _get('${FirestorePaths.cautionClaims}/${booking.id}');
+      // The lock is keyed by renter, and only counts when it points here.
+      final lock = await _get('${FirestorePaths.renterLocks}/$renterId');
+      plan
+        ..addUrlsOf(booking)
+        ..addUnit(
+          before: checklists,
+          // Their rules need the booking gone in the same batch.
+          withParent: [
+            FirestorePaths.bookingPrivate(booking.id, mine.key),
+            '${FirestorePaths.calendarBlocks}/${booking.id}',
+            if (claim.exists) claim.path,
+            if (lock.data?[FirestoreFields.bookingId] == booking.id) lock.path,
+          ],
+          parent: booking.path,
+        );
+      plan.addUrlsOf(claim);
+    }
+
     for (final vehicle in vehicles) {
-      plan.addParent(vehicle);
-      for (final sub in [FirestorePaths.photos, FirestorePaths.documents]) {
-        plan.addChildren(await _list('${vehicle.reference.path}/$sub'));
-      }
-      // Reviews of my cars, written by renters.
-      plan.addChildren(
-        await _where(
+      final before = <ErasableDoc>[
+        for (final sub in [FirestorePaths.photos, FirestorePaths.documents])
+          ...await _list('${vehicle.path}/$sub'),
+        // Reviews of my cars: their rules read the car, so it must still exist.
+        ...await _where(
           FirestorePaths.reviews,
           FirestoreFields.subjectId,
           vehicle.id,
         ),
-      );
-    }
-
-    for (final booking in bookings.values) {
-      plan.addParent(booking);
-      for (final sub in [
-        FirestorePaths.checklistEntries,
-        FirestorePaths.checklistMedia,
-      ]) {
-        plan.addChildren(await _list('${booking.reference.path}/$sub'));
-      }
-      final renterId = booking.data()?[FirestoreFields.renterId] as String;
-      // Only my own side: the other party's contact copy is theirs.
-      final mine = renterId == uid ? UserRole.renter : UserRole.owner;
+      ];
       plan
-        ..addChildPath(FirestorePaths.bookingPrivate(booking.id, mine.key))
-        ..addChildPath('${FirestorePaths.calendarBlocks}/${booking.id}')
-        ..addChildren([
-          await _get('${FirestorePaths.cautionClaims}/${booking.id}'),
-        ]);
-      // The lock is keyed by renter, and only counts when it points here.
-      final lock = await _get('${FirestorePaths.renterLocks}/$renterId');
-      if (lock.data()?[FirestoreFields.bookingId] == booking.id) {
-        plan.addChildren([lock]);
-      }
+        ..addUrlsOf(vehicle)
+        ..addUnit(before: before, withParent: const [], parent: vehicle.path);
     }
 
     for (final (collection, field) in [
-      (FirestorePaths.reviews, FirestoreFields.authorId),
-      (FirestorePaths.reviews, FirestoreFields.subjectId),
       (FirestorePaths.transactions, FirestoreFields.ownerId),
       (FirestorePaths.transactions, FirestoreFields.renterId),
       (FirestorePaths.repairExpenses, FirestoreFields.ownerId),
       (FirestorePaths.notifications, FirestoreFields.userId),
+      (FirestorePaths.reviews, FirestoreFields.authorId),
+      (FirestorePaths.reviews, FirestoreFields.subjectId),
     ]) {
-      plan.addChildren(await _where(collection, field, uid));
+      plan.addLoose(await _where(collection, field, uid));
     }
     plan
-      ..addChildren(await _list('$user/${FirestorePaths.favourites}'))
-      ..addChildren(await _list('$user/${FirestorePaths.privateDocs}'))
+      ..addLoose(await _list('$user/${FirestorePaths.favourites}'))
+      ..addLoose(await _list('$user/${FirestorePaths.privateDocs}'))
       ..addUrlsOf(await _get(user));
+    plan.flushLoose();
+    plan.batches.add([user]);
     return plan;
   }
 
-  Future<_Doc> _get(String path) =>
-      _firestore.doc(path).get().timeout(_timeout);
+  Future<ErasableDoc> _get(String path) => _docs.get(path);
 
-  Future<List<_Doc>> _where(
+  Future<List<ErasableDoc>> _where(
     String collection,
     String field,
     String value,
-  ) async {
-    final snapshot = await _firestore
-        .collection(collection)
-        .where(field, isEqualTo: value)
-        .get()
-        .timeout(_timeout);
-    return snapshot.docs;
-  }
+  ) => _docs.where(collection, field, value);
 
-  Future<List<_Doc>> _list(String collection) async {
-    final snapshot = await _firestore
-        .collection(collection)
-        .get()
-        .timeout(_timeout);
-    return snapshot.docs;
-  }
+  Future<List<ErasableDoc>> _list(String collection) => _docs.list(collection);
 
-  Future<void> _delete(Iterable<String> paths) async {
-    final all = paths.toList();
-    for (var start = 0; start < all.length; start += _batchSize) {
-      final write = _writes.begin();
-      all.skip(start).take(_batchSize).forEach(write.delete);
-      await write.commit().timeout(_timeout);
-    }
+  Future<void> _commit(List<String> paths) async {
+    final write = _writes.begin();
+    paths.forEach(write.delete);
+    await write.commit().timeout(_timeout);
   }
 }
 
-/// What to delete, split by the order the security rules need.
+/// The batches to commit, in order.
 class _Plan {
   static const String _publicUrlMarker = '/storage/v1/object/public/';
+  static const int _max = FirestoreAccountEraser._batchSize;
 
-  /// Documents whose rules read a parent that must still exist.
-  final Set<String> children = {};
-
-  /// Bookings and cars.
-  final Set<String> parents = {};
+  final List<List<String>> batches = [];
 
   /// Public file URLs found in the documents, for the best-effort cleanup.
   final Set<String> files = {};
 
-  /// Documents to delete, including the user document.
-  int get size => children.length + parents.length + 1;
+  final Set<String> _seen = {};
+  final List<String> _loose = [];
 
-  /// Missing documents are skipped, so callers can pass a `get` result as is.
-  void addChildren(Iterable<_Doc> docs) {
+  /// A parent and what its rules need deleted with it. [before] documents only
+  /// need the parent to exist, so they may go in earlier batches.
+  void addUnit({
+    required Iterable<ErasableDoc> before,
+    required List<String> withParent,
+    required String parent,
+  }) {
+    final early = [
+      for (final doc in before)
+        if (doc.exists && _seen.add(doc.path)) doc.path,
+    ];
+    before.forEach(addUrlsOf);
+    final last = [...withParent.where(_seen.add), parent];
+    var start = 0;
+    while (early.length - start + last.length > _max) {
+      final take = early.length - start > _max ? _max : early.length - start;
+      batches.add(early.sublist(start, start + take));
+      start += take;
+    }
+    batches.add([...early.sublist(start), ...last]);
+  }
+
+  /// Documents with no ordering needs, deleted after the units.
+  void addLoose(Iterable<ErasableDoc> docs) {
     for (final doc in docs.where((doc) => doc.exists)) {
-      children.add(doc.reference.path);
+      if (_seen.add(doc.path)) _loose.add(doc.path);
       addUrlsOf(doc);
     }
   }
 
-  /// A document with no files to clean up, deleted without being read.
-  void addChildPath(String path) => children.add(path);
-
-  void addParent(_Doc doc) {
-    parents.add(doc.reference.path);
-    addUrlsOf(doc);
+  void flushLoose() {
+    for (var start = 0; start < _loose.length; start += _max) {
+      batches.add(_loose.skip(start).take(_max).toList());
+    }
   }
 
-  void addUrlsOf(_Doc doc) => _scan(doc.data());
+  void addUrlsOf(ErasableDoc doc) => _scan(doc.data);
 
   void _scan(Object? value) {
     switch (value) {

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../domain/enums/user_role.dart';
 import 'route_names.dart';
 
@@ -10,7 +12,8 @@ String? authRedirect({
 }) {
   final isAuthPage = _isAuthPage(location);
 
-  if (RouteNames.isDevTool(location)) return null;
+  // Dev tools bypass every check, so they only exist in debug builds.
+  if (kDebugMode && RouteNames.isDevTool(location)) return null;
 
   if (userId == null) return isAuthPage ? null : RouteNames.welcome;
 

@@ -18,6 +18,7 @@ import '../../../../core/error/result.dart';
 import '../../domain/repositories/handover_repository.dart';
 import '../bloc/checklist_cubit.dart';
 import '../bloc/checklist_state.dart';
+import '../widgets/late_fee_preview_card.dart';
 
 class ChecklistPage extends StatelessWidget {
   const ChecklistPage({required this.bookingId, required this.kind, super.key});
@@ -91,26 +92,47 @@ class ChecklistPage extends StatelessWidget {
         mediaStorage: GetIt.I<MediaStorage>(),
         repository: GetIt.I<HandoverRepository>(),
         clock: GetIt.I<Clock>(),
-      ),
-      child: _ChecklistContent(kind: kind),
+      )..load(),
+      child: _ChecklistContent(kind: kind, booking: booking),
     );
   }
 }
 
 class _ChecklistContent extends StatelessWidget {
-  const _ChecklistContent({required this.kind});
+  const _ChecklistContent({required this.kind, required this.booking});
 
   final ChecklistKind kind;
+  final Booking booking;
 
-  Future<void> _pickPhoto(BuildContext context) async {
+  Future<void> _pickPhoto(BuildContext context, ImageSource source) async {
     final cubit = context.read<ChecklistCubit>();
 
     final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
+      source: source,
       imageQuality: 80,
       maxWidth: 1600,
     );
 
+    await _upload(cubit, file, MediaType.photo, 'jpg');
+  }
+
+  Future<void> _recordVideo(BuildContext context) async {
+    final cubit = context.read<ChecklistCubit>();
+
+    final file = await ImagePicker().pickVideo(
+      source: ImageSource.camera,
+      maxDuration: const Duration(seconds: 30),
+    );
+
+    await _upload(cubit, file, MediaType.video, 'mp4');
+  }
+
+  Future<void> _upload(
+    ChecklistCubit cubit,
+    XFile? file,
+    MediaType mediaType,
+    String fallbackExtension,
+  ) async {
     if (file == null || cubit.isClosed) return;
 
     final bytes = await file.readAsBytes();
@@ -118,12 +140,12 @@ class _ChecklistContent extends StatelessWidget {
 
     final extension = file.name.contains('.')
         ? file.name.split('.').last.toLowerCase()
-        : 'jpg';
+        : fallbackExtension;
 
     await cubit.uploadMedia(
       bytes: bytes,
       extension: extension,
-      mediaType: MediaType.photo,
+      mediaType: mediaType,
     );
   }
 
@@ -163,6 +185,13 @@ class _ChecklistContent extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 16),
+              if (!isPickup) ...[
+                LateFeePreviewCard(
+                  booking: booking,
+                  now: GetIt.I<Clock>().now(),
+                ),
+                const SizedBox(height: 16),
+              ],
               Text(
                 'Vehicle inspection',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -187,12 +216,31 @@ class _ChecklistContent extends StatelessWidget {
                 'You can remove photos before confirmation.',
               ),
               const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: state.isUploading || state.isSaving
-                    ? null
-                    : () => _pickPhoto(context),
-                icon: const Icon(Icons.add_a_photo),
-                label: const Text('Add photo'),
+              Wrap(
+                spacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: state.isUploading || state.isSaving
+                        ? null
+                        : () => _pickPhoto(context, ImageSource.camera),
+                    icon: const Icon(Icons.photo_camera),
+                    label: const Text('Take photo'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: state.isUploading || state.isSaving
+                        ? null
+                        : () => _pickPhoto(context, ImageSource.gallery),
+                    icon: const Icon(Icons.add_a_photo),
+                    label: const Text('Choose photo'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: state.isUploading || state.isSaving
+                        ? null
+                        : () => _recordVideo(context),
+                    icon: const Icon(Icons.videocam),
+                    label: const Text('Record video (optional)'),
+                  ),
+                ],
               ),
               if (state.isUploading) ...[
                 const SizedBox(height: 12),
@@ -213,7 +261,11 @@ class _ChecklistContent extends StatelessWidget {
               ...state.media.map(
                 (media) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.image),
+                  leading: Icon(
+                    media.mediaType == MediaType.video
+                        ? Icons.videocam
+                        : Icons.image,
+                  ),
                   title: Text(media.mediaType.label),
                   subtitle: Text(
                     media.url,
@@ -221,7 +273,7 @@ class _ChecklistContent extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: IconButton(
-                    tooltip: 'Remove photo',
+                    tooltip: 'Remove media',
                     icon: const Icon(Icons.delete_outline),
                     onPressed: state.isSaving
                         ? null

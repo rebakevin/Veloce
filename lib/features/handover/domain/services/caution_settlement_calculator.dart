@@ -40,6 +40,7 @@ abstract final class CautionSettlementCalculator {
     required DateTime returnedAt,
     required int claimAmount,
     required bool lateFeeWaived,
+    int? ownerAdjustedFee,
   }) {
     return _settle(
       rentalFee: rentalFee,
@@ -48,6 +49,7 @@ abstract final class CautionSettlementCalculator {
       returnedAt: returnedAt,
       claimAmount: claimAmount,
       lateFeeWaived: lateFeeWaived,
+      ownerAdjustedFee: ownerAdjustedFee,
       overdrawnMessage: 'Claim and late fee exceed the caution fee.',
     );
   }
@@ -60,6 +62,7 @@ abstract final class CautionSettlementCalculator {
     required DateTime dueAt,
     required DateTime returnedAt,
     required bool lateFeeWaived,
+    int? ownerAdjustedFee,
   }) {
     return _settle(
       rentalFee: rentalFee,
@@ -68,6 +71,7 @@ abstract final class CautionSettlementCalculator {
       returnedAt: returnedAt,
       claimAmount: 0,
       lateFeeWaived: lateFeeWaived,
+      ownerAdjustedFee: ownerAdjustedFee,
       overdrawnMessage: 'The late fee exceeds the caution fee.',
     );
   }
@@ -79,6 +83,7 @@ abstract final class CautionSettlementCalculator {
     required DateTime returnedAt,
     required int claimAmount,
     required bool lateFeeWaived,
+    required int? ownerAdjustedFee,
     required String overdrawnMessage,
   }) {
     final lateDays = LateFeeCalculator.calculateLateDays(
@@ -92,6 +97,7 @@ abstract final class CautionSettlementCalculator {
       cautionFee: cautionFee,
       claimAmount: claimAmount,
       waived: lateFeeWaived,
+      ownerAdjustedFee: ownerAdjustedFee,
     );
 
     final refund = cautionFee - claimAmount - lateFee;

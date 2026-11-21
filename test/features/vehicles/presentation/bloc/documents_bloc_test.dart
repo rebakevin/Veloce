@@ -57,6 +57,8 @@ void main() {
     photo: DocumentPhoto(bytes: Uint8List(1), extension: 'jpg'),
   );
 
+  late FakeVehicleRepository fake;
+
   group('DocumentsBloc loading', () {
     blocTest<DocumentsBloc, DocumentsState>(
       'paused car with expired insurance loads as paused by expiry',
@@ -71,6 +73,26 @@ void main() {
     );
 
     blocTest<DocumentsBloc, DocumentsState>(
+      'a published car with lapsed papers is paused when opened',
+      build: () {
+        fake = FakeVehicleRepository()
+          ..vehicles['car-1'] = aVehicle(
+            status: VehicleStatus.published,
+            docsValidUntil: DateTime(2026, 11, 1),
+          )
+          ..documents['car-1'] = [expiredInsurance, medical];
+        return buildBloc(fake);
+      },
+      act: (bloc) => bloc.add(const DocumentsStarted('car-1')),
+      verify: (bloc) {
+        final state = bloc.state as DocumentsLoaded;
+        expect(fake.statuses['car-1'], VehicleStatus.paused);
+        expect(state.vehicle.status, VehicleStatus.paused);
+        expect(state.pausedByExpiry, isTrue);
+      },
+    );
+
+    blocTest<DocumentsBloc, DocumentsState>(
       'unknown car emits only loading',
       build: () => buildBloc(FakeVehicleRepository()),
       act: (bloc) => bloc.add(const DocumentsStarted('missing')),
@@ -79,8 +101,6 @@ void main() {
   });
 
   group('DocumentsBloc saving', () {
-    late FakeVehicleRepository fake;
-
     setUp(() => fake = repository());
 
     blocTest<DocumentsBloc, DocumentsState>(

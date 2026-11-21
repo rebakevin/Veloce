@@ -27,4 +27,13 @@ void main() {
     expect(cubit.activeCount, 0);
     expect(cubit.state.minPrice, isNull);
   });
+
+  test('flags a minimum price above the maximum', () {
+    final cubit = FiltersCubit()
+      ..minPriceChanged(200000)
+      ..maxPriceChanged(100000);
+    expect(cubit.state.hasValidPriceRange, isFalse);
+    cubit.maxPriceChanged(250000);
+    expect(cubit.state.hasValidPriceRange, isTrue);
+  });
 }

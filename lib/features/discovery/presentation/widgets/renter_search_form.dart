@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'package:get_it/get_it.dart';
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/widgets/date_range_field.dart';
 
@@ -21,7 +22,7 @@ class RenterSearchForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
+    final today = GetIt.I<Clock>().now();
     final firstDate = DateTime(today.year, today.month, today.day);
     final dates = state.start == null || state.end == null
         ? null

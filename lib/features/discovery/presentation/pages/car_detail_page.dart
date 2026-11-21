@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import 'package:veloce/core/formatting/formatters.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
@@ -314,7 +313,6 @@ class _Rules extends StatelessWidget {
           icon: const Icon(Icons.reviews_outlined),
           label: const Text('Read car reviews'),
         ),
-        if (vehicle.rulesFileUrl == null) const SizedBox.shrink(),
         if (vehicle.fuelRule.isEmpty && vehicle.smoking.isEmpty)
           Text(
             'Ask the owner about any extra rules before pickup.',

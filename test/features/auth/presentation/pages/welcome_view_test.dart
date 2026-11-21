@@ -58,4 +58,28 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a 320x568 phone shows the buttons without overflow', (
+    tester,
+  ) async {
+    await pumpWelcome(tester, const Size(320, 568));
+
+    expect(find.text('Create an account'), findsOneWidget);
+    expect(find.text('Log in'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a short landscape phone scrolls without overflow', (
+    tester,
+  ) async {
+    await pumpWelcome(tester, const Size(568, 320));
+
+    await tester.scrollUntilVisible(
+      find.text('Log in'),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Log in'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

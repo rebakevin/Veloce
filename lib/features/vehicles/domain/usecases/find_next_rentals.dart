@@ -22,9 +22,12 @@ class FindNextRentals {
   Future<Map<String, Booking>> call(List<Vehicle> vehicles) async {
     final now = _clock.now();
     final today = DateTime(now.year, now.month, now.day);
+    final results = await Future.wait([
+      for (final vehicle in vehicles) _vehicles.bookingsOf(vehicle.id),
+    ]);
     final next = <String, Booking>{};
-    for (final vehicle in vehicles) {
-      final result = await _vehicles.bookingsOf(vehicle.id);
+    for (var i = 0; i < vehicles.length; i++) {
+      final result = results[i];
       if (result is! Success<List<Booking>>) continue;
       final open =
           result.value
@@ -37,7 +40,7 @@ class FindNextRentals {
               )
               .toList()
             ..sort((a, b) => a.startDate.compareTo(b.startDate));
-      if (open.isNotEmpty) next[vehicle.id] = open.first;
+      if (open.isNotEmpty) next[vehicles[i].id] = open.first;
     }
     return next;
   }

@@ -8,6 +8,7 @@ import 'package:veloce/core/widgets/status_chip.dart';
 
 import '../../domain/entities/wizard_draft.dart';
 import '../../domain/rules/wizard_step_rules.dart';
+import 'video_picker.dart';
 
 class MediaStep extends StatelessWidget {
   const MediaStep({
@@ -16,17 +17,25 @@ class MediaStep extends StatelessWidget {
     required this.onChanged,
     super.key,
     this.picker = const ImagePickerPhotoPicker(),
+    this.videoPicker = const ImagePickerVideoPicker(),
   });
 
   final WizardDraft draft;
   final Map<WizardField, String> errors;
   final ValueChanged<WizardDraft> onChanged;
   final PhotoPicker picker;
+  final VideoPicker videoPicker;
 
   Future<void> _add(BuildContext context) async {
     final photo = await picker.pick(context);
     if (photo == null) return;
     onChanged(draft.copyWith(photos: [...draft.photos, photo]));
+  }
+
+  Future<void> _addVideo() async {
+    final video = await videoPicker.pick();
+    if (video == null) return;
+    onChanged(draft.copyWith(video: video));
   }
 
   void _remove(int index) {
@@ -63,7 +72,8 @@ class MediaStep extends StatelessWidget {
       children: [
         const Text(
           'Add ${WizardStepRules.minPhotos} to ${WizardStepRules.maxPhotos} '
-          'photos. Tap a photo to make it the main one.',
+          'photos. Tap a photo to make it the main one and use the arrows '
+          'to reorder.',
         ),
         const SizedBox(height: AppSpacing.md),
         GridView.count(
@@ -88,10 +98,35 @@ class MediaStep extends StatelessWidget {
                       onRemove: () => _remove(i),
                     ),
                   ),
+                  Positioned(
+                    right: AppSpacing.sm,
+                    bottom: AppSpacing.sm,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton.filledTonal(
+                          tooltip: 'Move photo ${i + 1} earlier',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: draft.canMovePhoto(i, -1)
+                              ? () => onChanged(draft.movePhoto(i, -1))
+                              : null,
+                        ),
+                        IconButton.filledTonal(
+                          tooltip: 'Move photo ${i + 1} later',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.arrow_forward),
+                          onPressed: draft.canMovePhoto(i, 1)
+                              ? () => onChanged(draft.movePhoto(i, 1))
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ),
                   if (i == draft.primaryIndex)
                     const Positioned(
                       left: AppSpacing.sm,
-                      bottom: AppSpacing.sm,
+                      top: AppSpacing.sm,
                       child: StatusChip(
                         label: 'Main photo',
                         tone: StatusTone.active,
@@ -103,6 +138,30 @@ class MediaStep extends StatelessWidget {
               ImagePickerTile(label: 'Add photo', onTap: () => _add(context)),
           ],
         ),
+        const SizedBox(height: AppSpacing.lg),
+        const Text('Video (optional)', style: AppTextStyles.caption),
+        const SizedBox(height: AppSpacing.sm),
+        OutlinedButton.icon(
+          onPressed: _addVideo,
+          icon: const Icon(Icons.videocam_outlined),
+          label: Text(
+            draft.video == null && draft.existingVideoUrl == null
+                ? 'Add a short video'
+                : 'Replace video',
+          ),
+        ),
+        if (draft.video == null && draft.existingVideoUrl != null)
+          const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.sm),
+            child: Text('This car already has a video.'),
+          ),
+        if (draft.video != null || draft.existingVideoUrl != null)
+          TextButton(
+            onPressed: () => onChanged(
+              draft.copyWith(clearVideo: true, clearExistingVideo: true),
+            ),
+            child: const Text('Remove video'),
+          ),
         if (error != null)
           Padding(
             padding: const EdgeInsets.only(top: AppSpacing.sm),

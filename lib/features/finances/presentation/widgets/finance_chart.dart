@@ -15,16 +15,19 @@ class FinanceChart extends StatelessWidget {
   const FinanceChart({
     required this.transactions,
     required this.period,
+    required this.now,
     super.key,
   });
 
   final List<FinanceTransaction> transactions;
   final FinancePeriod period;
 
+  /// Reference date of the period, from the injected clock.
+  final DateTime now;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final now = DateTime.now();
 
     final isMonth = period == FinancePeriod.thisMonth;
     final int bucketCount = isMonth

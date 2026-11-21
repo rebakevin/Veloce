@@ -7,9 +7,18 @@ abstract final class DocumentRules {
     DocumentKind.medical,
   ];
 
+  /// Whether a paper expiring on [expiry] is still valid at [now]. Compared by
+  /// calendar day, so a paper is valid through its expiry day (the same rule
+  /// search applies to `docsValidUntil`).
+  static bool isValidOn(DateTime expiry, DateTime now) {
+    final expiryDay = DateTime(expiry.year, expiry.month, expiry.day);
+    final today = DateTime(now.year, now.month, now.day);
+    return !expiryDay.isBefore(today);
+  }
+
   static String? expiry(DateTime? value, {required DateTime now}) {
     if (value == null) return 'Choose the expiry date.';
-    if (!value.isAfter(now)) return 'This document has expired.';
+    if (!isValidOn(value, now)) return 'This document has expired.';
     return null;
   }
 

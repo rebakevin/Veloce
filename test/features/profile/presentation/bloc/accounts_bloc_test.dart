@@ -67,7 +67,10 @@ void main() {
   );
 
   blocTest<AccountsBloc, AccountsState>(
-    'lists accounts and marks the current one',
+    'lists accounts and marks the current one, refreshing its stored name',
+    setUp: () =>
+        when(() => link())
+            .thenAnswer((_) async => const Result.success(renter)),
     build: build,
     act: (bloc) => bloc.add(const AccountsStarted()),
     expect: () => [const AccountsLoading(), loaded],
@@ -75,7 +78,7 @@ void main() {
       final state = bloc.state as AccountsLoaded;
       expect(state.isCurrent(renter), isTrue);
       expect(state.isCurrent(owner), isFalse);
-      verifyNever(() => link(password: any(named: 'password')));
+      verify(() => link()).called(1);
     },
   );
 

@@ -5,6 +5,7 @@ import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/domain/services/momo_gateway.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/auth/auth.dart';
 import 'package:veloce/features/booking/domain/usecases/pay_booking.dart';
 
 import '../../../support/builders.dart';
@@ -17,11 +18,28 @@ class _FixedClock implements Clock {
 
 void main() {
   late MockBookingRepository repository;
+  late MockAuthSession session;
   late PayBooking pay;
 
   setUp(() {
     repository = MockBookingRepository();
-    pay = PayBooking(repository, _FixedClock());
+    session = MockAuthSession();
+    when(() => session.isEmailVerified).thenReturn(true);
+    pay = PayBooking(repository, _FixedClock(), EmailVerificationGate(session));
+  });
+
+  test('rejects payment while the email is unverified', () async {
+    when(() => session.isEmailVerified).thenReturn(false);
+
+    final result = await pay(
+      bookingView(status: BookingStatus.approved),
+      momoNumber: '788123456',
+    );
+
+    expect((result as Failure<MomoReceipt>).failure, isA<ValidationFailure>());
+    verifyNever(
+      () => repository.pay(any(), momoNumber: any(named: 'momoNumber')),
+    );
   });
 
   test('rejects a booking that is not approved', () async {

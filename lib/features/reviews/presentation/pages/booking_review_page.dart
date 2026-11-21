@@ -35,13 +35,16 @@ class BookingReviewPage extends StatelessWidget {
     return BlocProvider<ReviewBloc>(
       create: (_) =>
           GetIt.instance<ReviewBloc>()..add(ReviewStarted(bookingId)),
-      child: const BookingReviewView(),
+      child: BookingReviewView(bookingId: bookingId),
     );
   }
 }
 
 class BookingReviewView extends StatefulWidget {
-  const BookingReviewView({super.key});
+  const BookingReviewView({this.bookingId, super.key});
+
+  /// Used by the retry button of the load error view.
+  final String? bookingId;
 
   @override
   State<BookingReviewView> createState() => _BookingReviewViewState();
@@ -103,9 +106,9 @@ class _BookingReviewViewState extends State<BookingReviewView> {
               message:
                   state.failure?.message ?? 'Could not load rental details.',
               onRetry: () {
-                final booking = state.booking;
-                if (booking != null) {
-                  context.read<ReviewBloc>().add(ReviewStarted(booking.id));
+                final id = widget.bookingId;
+                if (id != null) {
+                  context.read<ReviewBloc>().add(ReviewStarted(id));
                 }
               },
             ),

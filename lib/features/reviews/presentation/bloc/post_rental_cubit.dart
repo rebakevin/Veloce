@@ -140,17 +140,16 @@ class PostRentalCubit extends Cubit<PostRentalState> {
       renterReview = renterRes.valueOrNull;
     }
 
-    if (isClosed) return;
-    emit(
-      PostRentalLoaded(
-        booking: booking,
-        isRenter: isRenter,
-        vehicle: vehicle,
-        otherUser: otherUser,
-        ownerReview: ownerReview,
-        vehicleReview: vehicleReview,
-        renterReview: renterReview,
-      ),
+    final loaded = PostRentalLoaded(
+      booking: booking,
+      isRenter: isRenter,
+      vehicle: vehicle,
+      otherUser: otherUser,
+      ownerReview: ownerReview,
+      vehicleReview: vehicleReview,
+      renterReview: renterReview,
     );
+    if (isClosed) return;
+    emit(loaded);
   }
 }

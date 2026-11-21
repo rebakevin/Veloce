@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'package:get_it/get_it.dart';
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/formatting/formatters.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
@@ -36,7 +37,7 @@ class AvailabilityCalendar extends StatelessWidget {
       for (final block in detail.blocks)
         if (to == null || block.startDate.isBefore(to)) block,
     ];
-    final today = rules.day(DateTime.now());
+    final today = rules.day(GetIt.I<Clock>().now());
     final first = from == null
         ? today
         : (rules.day(from).isBefore(today) ? today : rules.day(from));
@@ -82,7 +83,12 @@ class AvailabilityCalendar extends StatelessWidget {
                 first: first,
                 last: last,
                 value: range,
-                selectable: (day, _, _) => _selectable(day, first, last),
+                selectable: (day, start, end) => _selectable(
+                  day,
+                  first,
+                  last,
+                  isReturnDay: start != null && end == null,
+                ),
                 onChanged: onChanged,
               ),
             if (blocked.isNotEmpty) ...[
@@ -112,14 +118,22 @@ class AvailabilityCalendar extends StatelessWidget {
     );
   }
 
-  bool _selectable(DateTime day, DateTime first, DateTime last) {
+  /// A pickup day needs the night after it free; a return day needs the night
+  /// before it free, so a return on the day another booking starts is allowed.
+  bool _selectable(
+    DateTime day,
+    DateTime first,
+    DateTime last, {
+    required bool isReturnDay,
+  }) {
     final value = rules.day(day);
     if (value.isBefore(first) || value.isAfter(last)) return false;
+    final night = isReturnDay ? value.subtract(const Duration(days: 1)) : value;
     return detail.blocks.every(
       (block) => !rules.blockOverlaps(
         block,
-        value,
-        value.add(const Duration(days: 1)),
+        night,
+        night.add(const Duration(days: 1)),
       ),
     );
   }

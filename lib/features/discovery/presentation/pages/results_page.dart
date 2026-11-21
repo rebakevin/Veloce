@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
@@ -79,7 +79,7 @@ class _ResultsBodyState extends State<_ResultsBody> {
 
   SearchQuery _fallbackQuery() {
     final state = GetIt.instance<SearchCubit>().state;
-    final now = DateTime.now();
+    final now = GetIt.I<Clock>().now();
     final today = DateTime(now.year, now.month, now.day);
     return SearchQuery(
       area: state.area,

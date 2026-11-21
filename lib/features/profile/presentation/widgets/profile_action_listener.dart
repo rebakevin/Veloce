@@ -13,12 +13,16 @@ class ProfileActionListener extends StatelessWidget {
     required this.kind,
     required this.successMessage,
     required this.child,
+    this.onSuccess,
     super.key,
   });
 
   final ProfileActionKind kind;
   final String successMessage;
   final Widget child;
+
+  /// Runs once on success, before the screen is closed.
+  final VoidCallback? onSuccess;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +34,7 @@ class ProfileActionListener extends StatelessWidget {
           !(previous is ProfileLoaded && previous.action == current.action),
       listener: (context, state) {
         GetIt.instance<AppMessenger>().success(successMessage);
+        onSuccess?.call();
         context.read<ProfileBloc>().add(const ProfileActionAcknowledged());
         if (context.canPop()) context.pop();
       },

@@ -3,7 +3,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
+import 'package:veloce/core/domain/entities/repair_expense.dart';
+import 'package:veloce/core/error/app_failure.dart';
+import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/handover/presentation/bloc/repair_expense_cubit.dart';
 import 'package:veloce/features/handover/presentation/bloc/repair_expense_state.dart';
 
@@ -13,13 +15,15 @@ void main() {
   late MockRepairExpenseRepository repository;
   late StreamController<List<RepairExpense>> expenses;
 
-  const expense = RepairExpense(
+  final expense = RepairExpense(
     id: 'e1',
     bookingId: 'booking-1',
+    vehicleId: 'car-1',
     ownerId: 'owner-1',
     amount: 15000,
     description: 'Door repaint',
     receiptUrl: 'https://example.com/receipt.jpg',
+    createdAt: DateTime(2026, 11, 9),
   );
 
   setUp(() {
@@ -35,20 +39,22 @@ void main() {
   void stubSave() {
     when(
       () => repository.saveExpense(
-        expenseId: any(named: 'expenseId'),
+        existing: any(named: 'existing'),
         bookingId: any(named: 'bookingId'),
+        vehicleId: any(named: 'vehicleId'),
         ownerId: any(named: 'ownerId'),
         amount: any(named: 'amount'),
         description: any(named: 'description'),
         receiptBytes: any(named: 'receiptBytes'),
-        existingReceiptUrl: any(named: 'existingReceiptUrl'),
+        receiptExtension: any(named: 'receiptExtension'),
       ),
-    ).thenAnswer((_) async {});
+    ).thenAnswer((_) async => Result.success(expense));
   }
 
   RepairExpenseCubit createCubit() {
     final cubit = RepairExpenseCubit(
       bookingId: 'booking-1',
+      vehicleId: 'car-1',
       ownerId: 'owner-1',
       repository: repository,
     );
@@ -108,13 +114,14 @@ void main() {
 
         verify(
           () => repository.saveExpense(
-            expenseId: null,
+            existing: null,
             bookingId: 'booking-1',
+            vehicleId: 'car-1',
             ownerId: 'owner-1',
             amount: 15000,
             description: 'Door repaint',
             receiptBytes: receipt,
-            existingReceiptUrl: null,
+            receiptExtension: 'jpg',
           ),
         ).called(1);
         expect(cubit.state.notice, 'Repair expense saved.');
@@ -131,13 +138,14 @@ void main() {
 
       verify(
         () => repository.saveExpense(
-          expenseId: 'e1',
+          existing: expense,
           bookingId: 'booking-1',
+          vehicleId: 'car-1',
           ownerId: 'owner-1',
           amount: 16000,
           description: 'Door repaint',
           receiptBytes: null,
-          existingReceiptUrl: 'https://example.com/receipt.jpg',
+          receiptExtension: 'jpg',
         ),
       ).called(1);
       expect(cubit.state.editing, isNull);
@@ -146,20 +154,23 @@ void main() {
     test('a failed save keeps the form and shows the error', () async {
       when(
         () => repository.saveExpense(
-          expenseId: any(named: 'expenseId'),
+          existing: any(named: 'existing'),
           bookingId: any(named: 'bookingId'),
+          vehicleId: any(named: 'vehicleId'),
           ownerId: any(named: 'ownerId'),
           amount: any(named: 'amount'),
           description: any(named: 'description'),
           receiptBytes: any(named: 'receiptBytes'),
-          existingReceiptUrl: any(named: 'existingReceiptUrl'),
+          receiptExtension: any(named: 'receiptExtension'),
         ),
-      ).thenThrow(StateError('offline'));
+      ).thenAnswer(
+        (_) async => const Result.failure(NetworkFailure('Offline.')),
+      );
       final cubit = createCubit()..receiptPicked(name: 'r.jpg', bytes: receipt);
 
       await cubit.save(amountText: '100', description: 'Door');
 
-      expect(cubit.state.errorMessage, startsWith('Could not save expense:'));
+      expect(cubit.state.errorMessage, 'Offline.');
       expect(cubit.state.isSaving, false);
       expect(cubit.state.hasNewReceipt, true);
     });
@@ -167,7 +178,8 @@ void main() {
 
   group('delete', () {
     test('deletes and reports it', () async {
-      when(() => repository.deleteExpense(expense)).thenAnswer((_) async {});
+      when(() => repository.deleteExpense(expense))
+          .thenAnswer((_) async => const Result<void>.success(null));
       final cubit = createCubit();
 
       await cubit.delete(expense);
@@ -176,7 +188,8 @@ void main() {
     });
 
     test('clears the form when the edited expense is deleted', () async {
-      when(() => repository.deleteExpense(expense)).thenAnswer((_) async {});
+      when(() => repository.deleteExpense(expense))
+          .thenAnswer((_) async => const Result<void>.success(null));
       final cubit = createCubit()..startEditing(expense);
 
       await cubit.delete(expense);
@@ -185,12 +198,14 @@ void main() {
     });
 
     test('reports a failed delete', () async {
-      when(() => repository.deleteExpense(expense)).thenThrow(StateError('x'));
+      when(() => repository.deleteExpense(expense)).thenAnswer(
+        (_) async => const Result.failure(NetworkFailure('Offline.')),
+      );
       final cubit = createCubit();
 
       await cubit.delete(expense);
 
-      expect(cubit.state.notice, startsWith('Could not delete expense:'));
+      expect(cubit.state.notice, 'Offline.');
     });
   });
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
@@ -37,6 +39,14 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
   final ExpireBookings _expireBookings;
   final AuthSession _session;
 
+  StreamSubscription<Result<List<BookingView>>>? _subscription;
+
+  @override
+  Future<void> close() async {
+    await _subscription?.cancel();
+    return super.close();
+  }
+
   Future<void> _onStarted(
     ActivityStarted event,
     Emitter<ActivityState> emit,
@@ -51,15 +61,13 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
       return;
     }
     emit(const ActivityLoading());
-    final expired = await _expireBookings();
-    if (expired case Failure<int>(:final failure)) {
-      emit(ActivityFailure(failure));
-      return;
-    }
+    // A failed sweep (logged by the repository's callers) never blocks the
+    // list: expiry is also applied lazily to what the list shows.
+    await _expireBookings();
     if (isClosed) return;
-    await emit.onEach<Result<List<BookingView>>>(
-      _repository.watchMyBookings(),
-      onData: (result) => add(_BookingsChanged(result)),
+    await _subscription?.cancel();
+    _subscription = _repository.watchMyBookings().listen(
+      (result) => add(_BookingsChanged(result)),
     );
   }
 
@@ -115,8 +123,12 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     final result = await _cancelBooking(event.view, reason: event.reason);
     if (isClosed) return;
 
+    // The bookings stream may have emitted while the cancel ran: build on the
+    // latest state, not on the copy taken before the await.
+    final latest = state;
+    if (latest is! ActivityLoaded) return;
     emit(
-      current.copyWith(
+      latest.copyWith(
         action: switch (result) {
           Success<void>() => const ActivityAction(
             kind: ActivityActionKind.cancel,

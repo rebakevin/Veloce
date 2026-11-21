@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-
 import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/enums/transmission.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
@@ -22,6 +21,13 @@ class VehicleFilters extends Equatable {
   final VehicleType? type;
   final Transmission? transmission;
   final int? minSeats;
+
+  /// False when both prices are set and the minimum is above the maximum.
+  bool get hasValidPriceRange {
+    final min = minPrice;
+    final max = maxPrice;
+    return min == null || max == null || min <= max;
+  }
 
   int get activeCount => [
     minPrice,
@@ -54,6 +60,7 @@ class VehicleFilters extends Equatable {
     );
   }
 
+  /// Price filters compare the base daily price, not a long-rental tier rate.
   bool matches(Vehicle vehicle) {
     final min = minPrice;
     final max = maxPrice;

@@ -34,6 +34,12 @@ class BookingTimeline extends StatelessWidget {
     BookingStatus.expired => 1,
   };
 
+  /// A declined, cancelled or expired booking stopped; no step is "next".
+  bool get _hasEnded =>
+      status == BookingStatus.declined ||
+      status == BookingStatus.cancelled ||
+      status == BookingStatus.expired;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -54,7 +60,8 @@ class BookingTimeline extends StatelessWidget {
         ),
         itemBuilder: (context, index) {
           final isDone = index < completed;
-          final isCurrent = index == completed && completed < _steps.length;
+          final isCurrent =
+              !_hasEnded && index == completed && completed < _steps.length;
           final background = isDone
               ? colors.brand
               : isCurrent

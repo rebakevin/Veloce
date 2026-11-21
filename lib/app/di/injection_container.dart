@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,8 +8,6 @@ import 'package:veloce/features/auth/auth.dart';
 import 'package:veloce/features/booking/booking.dart';
 import 'package:veloce/features/discovery/discovery.dart';
 import 'package:veloce/features/finances/finances.dart';
-import 'package:veloce/features/handover/data/firestore_repair_expense_repository.dart';
-import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
 import 'package:veloce/features/handover/handover.dart';
 import 'package:veloce/features/notifications/notifications.dart';
 import 'package:veloce/features/profile/profile.dart';
@@ -35,13 +32,6 @@ void configureDependencies(
   registerDiscovery(getIt);
   registerBooking(getIt);
   registerHandover(getIt);
-
-  getIt.registerLazySingleton<RepairExpenseRepository>(
-    () => FirestoreRepairExpenseRepository(
-      firestore: getIt<FirebaseFirestore>(),
-      storage: FirebaseStorage.instance,
-    ),
-  );
 
   registerFinances(getIt);
   registerReviews(getIt);

@@ -8,6 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/checklist_kind.dart';
+import 'package:veloce/core/domain/enums/checklist_side.dart';
 import 'package:veloce/core/domain/enums/media_type.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/domain/services/clock.dart';
@@ -27,12 +28,27 @@ class _MockAuthSession extends Mock implements AuthSession {}
 void main() {
   final getIt = GetIt.I;
 
+  setUpAll(() {
+    registerFallbackValue(ChecklistKind.pickup);
+    registerFallbackValue(ChecklistSide.owner);
+  });
+
   setUp(() {
     final lookup = _MockBookingLookup();
     when(() => lookup.watch('booking-1')).thenAnswer(
       (_) => Stream.value(
         Result.success(aBooking(status: BookingStatus.confirmed)),
       ),
+    );
+    final repository = MockHandoverRepository();
+    when(
+      () => repository.loadChecklist(
+        bookingId: any(named: 'bookingId'),
+        kind: any(named: 'kind'),
+        side: any(named: 'side'),
+      ),
+    ).thenAnswer(
+      (_) async => const Result.success(SavedChecklist(entries: [], media: [])),
     );
     final session = _MockAuthSession();
     when(() => session.currentUserId).thenReturn('owner-1');
@@ -42,7 +58,7 @@ void main() {
       ..registerSingleton<AuthSession>(session)
       ..registerSingleton<MediaStorage>(FakeMediaStorage())
       ..registerSingleton<Clock>(FixedClock())
-      ..registerSingleton<HandoverRepository>(MockHandoverRepository());
+      ..registerSingleton<HandoverRepository>(repository);
   });
 
   tearDown(getIt.reset);

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'package:veloce/core/constants/firestore_fields.dart';
 import 'package:veloce/core/constants/firestore_paths.dart';
 import 'package:veloce/core/data/models/calendar_block_model.dart';
@@ -11,6 +10,7 @@ import 'package:veloce/core/data/models/vehicle_photo_model.dart';
 import 'package:veloce/core/data/services/failure_mapper.dart';
 import 'package:veloce/core/domain/entities/calendar_block.dart';
 import 'package:veloce/core/domain/entities/user_account.dart';
+import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/entities/vehicle_photo.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
@@ -27,6 +27,10 @@ import '../domain/services/availability_rules.dart';
 
 /// Firestore implementation of the §4.5 search: one indexed query, then the
 /// client-side filters and availability checks Firestore cannot combine.
+///
+/// Query shape (the index must match): collection `vehicles`,
+/// `status == published`, `docsValidUntil >= today`, plus `neighbourhood ==
+/// area` when an area is chosen. No `orderBy`; sorting is client-side.
 class FirestoreSearchRepository implements SearchRepository {
   FirestoreSearchRepository({
     required this._firestore,
@@ -62,22 +66,19 @@ class FirestoreSearchRepository implements SearchRepository {
       }
 
       final snapshot = await request.get().timeout(_timeout);
-      final cards = <VehicleCardData>[];
+      final candidates = <Vehicle>[];
       for (final doc in snapshot.docs) {
         final vehicle = VehicleModel.fromMap(doc.id, doc.data());
         if (vehicle.ownerId == _session.currentUserId) continue;
         if (!rules.isWithinWindow(vehicle, query.start, query.end)) continue;
         if (query.typeChip != null && vehicle.type != query.typeChip) continue;
         if (!filters.matches(vehicle)) continue;
-
-        final blocks = await _blocksFor(vehicle.id, query.start, query.end);
-        if (!rules.isFree(blocks, query.start, query.end)) continue;
-
-        final photos = await _photos(vehicle.id);
-        cards.add(
-          VehicleCardData(vehicle: vehicle, photoUrl: _primaryPhotoUrl(photos)),
-        );
+        candidates.add(vehicle);
       }
+      final results = await Future.wait(
+        candidates.map((vehicle) => _cardIfFree(vehicle, query)),
+      );
+      final cards = results.nonNulls.toList();
       cards.sort(
         (a, b) => a.vehicle.dailyPrice.compareTo(b.vehicle.dailyPrice),
       );
@@ -85,6 +86,19 @@ class FirestoreSearchRepository implements SearchRepository {
     } on Object catch (error, stackTrace) {
       return Result.failure(mapToFailure(error, stackTrace));
     }
+  }
+
+  Future<VehicleCardData?> _cardIfFree(
+    Vehicle vehicle,
+    SearchQuery query,
+  ) async {
+    final blocks = await _blocksFor(vehicle.id, query.start, query.end);
+    if (!rules.isFree(blocks, query.start, query.end)) return null;
+    final photos = await _photos(vehicle.id);
+    return VehicleCardData(
+      vehicle: vehicle,
+      photoUrl: _primaryPhotoUrl(photos),
+    );
   }
 
   @override

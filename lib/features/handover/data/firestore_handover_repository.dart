@@ -3,6 +3,8 @@ import 'package:veloce/core/constants/firestore_fields.dart';
 import 'package:veloce/core/constants/firestore_paths.dart';
 import 'package:veloce/core/data/models/booking_model.dart';
 import 'package:veloce/core/data/models/caution_claim_model.dart';
+import 'package:veloce/core/data/models/checklist_entry_model.dart';
+import 'package:veloce/core/data/models/checklist_media_model.dart';
 import 'package:veloce/core/data/services/failure_mapper.dart';
 import 'package:veloce/core/data/services/firestore_transaction_write.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
@@ -33,7 +35,9 @@ import 'package:veloce/core/error/result.dart';
 import '../domain/repositories/handover_repository.dart';
 import '../domain/services/caution_settlement_calculator.dart';
 import '../domain/services/claim_amount_policy.dart';
+import '../domain/services/late_fee_calculator.dart';
 import '../domain/services/pickup_release_calculator.dart';
+import 'completion_writer.dart';
 
 /// Saves handover checklists and manages pickup, return and caution claims.
 class FirestoreHandoverRepository implements HandoverRepository {
@@ -58,6 +62,9 @@ class FirestoreHandoverRepository implements HandoverRepository {
   final LedgerWriter _ledger;
   final AuditLogger _audit;
   final NotificationWriter _notifications;
+
+  CompletionWriter get _completion =>
+      CompletionWriter(ledger: _ledger, notifications: _notifications);
 
   String _claimPath(String bookingId) =>
       '${FirestorePaths.cautionClaims}/$bookingId';
@@ -152,6 +159,55 @@ class FirestoreHandoverRepository implements HandoverRepository {
       await write.commit().timeout(_timeout);
 
       return const Result.success(null);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<SavedChecklist>> loadChecklist({
+    required String bookingId,
+    required ChecklistKind kind,
+    required ChecklistSide side,
+  }) async {
+    if (_session.currentUserId == null) {
+      return const Result.failure(
+        PermissionFailure('Sign in to load the checklist.'),
+      );
+    }
+
+    try {
+      final bookingPath = FirestorePaths.booking(bookingId);
+
+      Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> docs(
+        String collection,
+      ) async {
+        final snapshot = await _firestore
+            .collection('$bookingPath/$collection')
+            .where(FirestoreFields.kind, isEqualTo: kind.key)
+            .where(FirestoreFields.side, isEqualTo: side.key)
+            .get()
+            .timeout(_timeout);
+        return snapshot.docs;
+      }
+
+      final (entries, media) = await (
+        docs(FirestorePaths.checklistEntries),
+        docs(FirestorePaths.checklistMedia),
+      ).wait;
+
+      return Result.success(
+        SavedChecklist(
+          entries: [
+            for (final doc in entries)
+              ChecklistEntryModel.fromMap(doc.id, doc.data()),
+          ],
+          media: [
+            for (final doc in media)
+              ChecklistMediaModel.fromMap(doc.id, doc.data()),
+          ],
+        ),
+      );
     } on Object catch (error, stackTrace) {
       return Result.failure(mapToFailure(error, stackTrace));
     }
@@ -335,6 +391,17 @@ class FirestoreHandoverRepository implements HandoverRepository {
                 newState: BookingStatus.active.key,
               );
             } else {
+              _notifications.send(
+                write,
+                userId: actor == BookingActor.renter
+                    ? booking.ownerId
+                    : booking.renterId,
+                type: NotificationType.pickupConfirmed,
+                title: 'Pickup confirmation waiting',
+                text: 'The other party confirmed pickup. Confirm yours to start the rental.',
+                bookingId: booking.id,
+              );
+
               _audit.record(
                 write,
                 actorId: userId,
@@ -430,6 +497,11 @@ class FirestoreHandoverRepository implements HandoverRepository {
             }
 
             final now = _clock.now();
+
+            // The renter may book again once the rental enters its return.
+            if (lockSnapshot.exists) {
+              transaction.delete(lockRef);
+            }
 
             final updatedBooking = booking.copyWith(
               status: BookingStatus.returning,
@@ -550,17 +622,13 @@ class FirestoreHandoverRepository implements HandoverRepository {
                 ? await transaction.get(lockRef)
                 : null;
 
-            if (lockSnapshot != null && lockSnapshot.exists) {
-              final lockData = lockSnapshot.data();
-
-              if (lockData == null ||
-                  lockData[FirestoreFields.bookingId] != booking.id) {
-                return const Result<Booking>.failure(
-                  ValidationFailure(
-                    'The renter lock belongs to another booking.',
-                  ),
-                );
-              }
+            // Normally released in startReturn; this covers returns started
+            // before that change. A lock held by a newer booking is not ours
+            // to release, so it is left alone.
+            if (lockSnapshot != null &&
+                lockSnapshot.exists &&
+                lockSnapshot.data()?[FirestoreFields.bookingId] == booking.id) {
+              transaction.delete(lockRef);
             }
 
             final updates = <String, dynamic>{
@@ -770,7 +838,7 @@ class FirestoreHandoverRepository implements HandoverRepository {
             _notifications.send(
               write,
               userId: booking.renterId,
-              type: NotificationType.returnConfirmed,
+              type: NotificationType.claimChanged,
               title: 'Caution fee claim submitted',
               text: 'The owner submitted a claim. Please review it.',
               bookingId: booking.id,
@@ -889,7 +957,7 @@ class FirestoreHandoverRepository implements HandoverRepository {
               _notifications.send(
                 write,
                 userId: booking.ownerId,
-                type: NotificationType.returnConfirmed,
+                type: NotificationType.claimChanged,
                 title: 'Caution claim disputed',
                 text: 'The renter has disputed your caution fee claim.',
                 bookingId: booking.id,
@@ -932,6 +1000,9 @@ class FirestoreHandoverRepository implements HandoverRepository {
               returnedAt: returnedAt,
               claimAmount: claim.currentAmount,
               lateFeeWaived: booking.lateFeeWaived,
+              ownerAdjustedFee: LateFeeCalculator.ownerAdjustedFeeOf(
+                booking.lateFee,
+              ),
             );
 
             if (settlementResult case Failure<CautionSettlement>(
@@ -944,7 +1015,6 @@ class FirestoreHandoverRepository implements HandoverRepository {
                 (settlementResult as Success<CautionSettlement>).value;
             final lateDays = settlement.lateDays;
             final lateFee = settlement.lateFee;
-            final refundAmount = settlement.refund;
 
             final updatedBooking = booking.copyWith(
               status: BookingStatus.completed,
@@ -961,41 +1031,12 @@ class FirestoreHandoverRepository implements HandoverRepository {
 
             write.set(claimRef.path, CautionClaimModel.toMap(settledClaim));
 
-            if (claim.currentAmount > 0) {
-              _ledger.record(
-                write,
-                booking: updatedBooking,
-                type: TransactionType.claimDeduction,
-                amount: claim.currentAmount,
-                from: Party.veloce,
-                to: Party.owner,
-                reference: booking.id,
-              );
-            }
-
-            if (lateFee > 0) {
-              _ledger.record(
-                write,
-                booking: updatedBooking,
-                type: TransactionType.lateFee,
-                amount: lateFee,
-                from: Party.veloce,
-                to: Party.owner,
-                reference: booking.id,
-              );
-            }
-
-            if (refundAmount > 0) {
-              _ledger.record(
-                write,
-                booking: updatedBooking,
-                type: TransactionType.refund,
-                amount: refundAmount,
-                from: Party.veloce,
-                to: Party.renter,
-                reference: booking.id,
-              );
-            }
+            _completion.write(
+              write,
+              completed: updatedBooking,
+              settlement: settlement,
+              path: CompletionPath.agreedClaim,
+            );
 
             transaction.update(bookingRef, {
               FirestoreFields.status: BookingStatus.completed.key,
@@ -1004,24 +1045,6 @@ class FirestoreHandoverRepository implements HandoverRepository {
               FirestoreFields.completedAt: Timestamp.fromDate(now),
               FirestoreFields.updatedAt: Timestamp.fromDate(now),
             });
-
-            _notifications.send(
-              write,
-              userId: booking.renterId,
-              type: NotificationType.returnConfirmed,
-              title: 'Caution claim settled',
-              text: 'You agreed to the claim. The booking is complete.',
-              bookingId: booking.id,
-            );
-
-            _notifications.send(
-              write,
-              userId: booking.ownerId,
-              type: NotificationType.returnConfirmed,
-              title: 'Caution claim accepted',
-              text: 'The renter agreed to your claim. Settlement is complete.',
-              bookingId: booking.id,
-            );
 
             _audit.record(
               write,
@@ -1146,7 +1169,7 @@ class FirestoreHandoverRepository implements HandoverRepository {
             _notifications.send(
               write,
               userId: booking.renterId,
-              type: NotificationType.returnConfirmed,
+              type: NotificationType.claimChanged,
               title: 'Caution claim revised',
               text: 'The owner has revised the claim. Please review it again.',
               bookingId: booking.id,
@@ -1250,6 +1273,9 @@ class FirestoreHandoverRepository implements HandoverRepository {
               dueAt: booking.endDate,
               returnedAt: returnedAt,
               lateFeeWaived: booking.lateFeeWaived,
+              ownerAdjustedFee: LateFeeCalculator.ownerAdjustedFeeOf(
+                booking.lateFee,
+              ),
             );
 
             if (settlementResult case Failure<CautionSettlement>(
@@ -1262,7 +1288,6 @@ class FirestoreHandoverRepository implements HandoverRepository {
                 (settlementResult as Success<CautionSettlement>).value;
             final lateDays = settlement.lateDays;
             final lateFee = settlement.lateFee;
-            final refundAmount = settlement.refund;
 
             final updatedBooking = booking.copyWith(
               status: BookingStatus.completed,
@@ -1281,29 +1306,12 @@ class FirestoreHandoverRepository implements HandoverRepository {
 
             write.set(claimRef.path, CautionClaimModel.toMap(refundedClaim));
 
-            if (lateFee > 0) {
-              _ledger.record(
-                write,
-                booking: updatedBooking,
-                type: TransactionType.lateFee,
-                amount: lateFee,
-                from: Party.veloce,
-                to: Party.owner,
-                reference: booking.id,
-              );
-            }
-
-            if (refundAmount > 0) {
-              _ledger.record(
-                write,
-                booking: updatedBooking,
-                type: TransactionType.refund,
-                amount: refundAmount,
-                from: Party.veloce,
-                to: Party.renter,
-                reference: booking.id,
-              );
-            }
+            _completion.write(
+              write,
+              completed: updatedBooking,
+              settlement: settlement,
+              path: CompletionPath.refund,
+            );
 
             transaction.update(bookingRef, {
               FirestoreFields.status: BookingStatus.completed.key,
@@ -1312,24 +1320,6 @@ class FirestoreHandoverRepository implements HandoverRepository {
               FirestoreFields.completedAt: Timestamp.fromDate(now),
               FirestoreFields.updatedAt: Timestamp.fromDate(now),
             });
-
-            _notifications.send(
-              write,
-              userId: booking.renterId,
-              type: NotificationType.returnConfirmed,
-              title: 'Caution fee refunded',
-              text: 'The owner has refunded the caution fee. Your booking is complete.',
-              bookingId: booking.id,
-            );
-
-            _notifications.send(
-              write,
-              userId: booking.ownerId,
-              type: NotificationType.returnConfirmed,
-              title: 'Caution fee settlement complete',
-              text: 'The caution fee refund has been recorded.',
-              bookingId: booking.id,
-            );
 
             _audit.record(
               write,
@@ -1543,36 +1533,6 @@ class FirestoreHandoverRepository implements HandoverRepository {
               );
             }
 
-            final lockRef = _firestore.doc(
-              '${FirestorePaths.renterLocks}/${booking.renterId}',
-            );
-
-            final vehicleRef = _firestore.doc(
-              FirestorePaths.vehicle(booking.vehicleId),
-            );
-
-            final lockSnapshot = await transaction.get(lockRef);
-            final vehicleSnapshot = await transaction.get(vehicleRef);
-
-            if (lockSnapshot.exists) {
-              final lockData = lockSnapshot.data();
-
-              if (lockData == null ||
-                  lockData[FirestoreFields.bookingId] != booking.id) {
-                return const Result<Booking>.failure(
-                  ValidationFailure(
-                    'The renter lock belongs to another booking.',
-                  ),
-                );
-              }
-            }
-
-            if (!vehicleSnapshot.exists) {
-              return const Result<Booking>.failure(
-                NotFoundFailure('Vehicle not found.'),
-              );
-            }
-
             final now = _clock.now();
 
             final settlementResult = CautionSettlementCalculator.forRefund(
@@ -1581,6 +1541,9 @@ class FirestoreHandoverRepository implements HandoverRepository {
               dueAt: booking.endDate,
               returnedAt: booking.returnedAt!,
               lateFeeWaived: booking.lateFeeWaived,
+              ownerAdjustedFee: LateFeeCalculator.ownerAdjustedFeeOf(
+                booking.lateFee,
+              ),
             );
 
             if (settlementResult case Failure<CautionSettlement>(
@@ -1593,7 +1556,6 @@ class FirestoreHandoverRepository implements HandoverRepository {
                 (settlementResult as Success<CautionSettlement>).value;
             final lateDays = settlement.lateDays;
             final lateFee = settlement.lateFee;
-            final refundAmount = settlement.refund;
 
             final updatedBooking = booking.copyWith(
               status: BookingStatus.completed,
@@ -1606,29 +1568,12 @@ class FirestoreHandoverRepository implements HandoverRepository {
 
             final write = FirestoreTransactionWrite(_firestore, transaction);
 
-            if (lateFee > 0) {
-              _ledger.record(
-                write,
-                booking: updatedBooking,
-                type: TransactionType.lateFee,
-                amount: lateFee,
-                from: Party.veloce,
-                to: Party.owner,
-                reference: booking.id,
-              );
-            }
-
-            if (refundAmount > 0) {
-              _ledger.record(
-                write,
-                booking: updatedBooking,
-                type: TransactionType.refund,
-                amount: refundAmount,
-                from: Party.veloce,
-                to: Party.renter,
-                reference: booking.id,
-              );
-            }
+            _completion.write(
+              write,
+              completed: updatedBooking,
+              settlement: settlement,
+              path: CompletionPath.noIssue,
+            );
 
             transaction.update(bookingRef, {
               FirestoreFields.status: BookingStatus.completed.key,
@@ -1638,32 +1583,6 @@ class FirestoreHandoverRepository implements HandoverRepository {
               FirestoreFields.completedAt: Timestamp.fromDate(now),
               FirestoreFields.updatedAt: Timestamp.fromDate(now),
             });
-
-            if (lockSnapshot.exists) {
-              transaction.delete(lockRef);
-            }
-
-            transaction.update(vehicleRef, {
-              FirestoreFields.completedCount: FieldValue.increment(1),
-            });
-
-            _notifications.send(
-              write,
-              userId: booking.renterId,
-              type: NotificationType.returnConfirmed,
-              title: 'Caution fee refunded',
-              text: 'You acknowledged the settlement. Your booking is now complete.',
-              bookingId: booking.id,
-            );
-
-            _notifications.send(
-              write,
-              userId: booking.ownerId,
-              type: NotificationType.returnConfirmed,
-              title: 'Rental completed',
-              text: 'The renter acknowledged the settlement. The booking is complete.',
-              bookingId: booking.id,
-            );
 
             _audit.record(
               write,
@@ -1675,6 +1594,104 @@ class FirestoreHandoverRepository implements HandoverRepository {
             );
 
             return Result.success(updatedBooking);
+          })
+          .timeout(_timeout);
+    } on Object catch (error, stackTrace) {
+      return Result.failure(mapToFailure(error, stackTrace));
+    }
+  }
+
+  @override
+  Future<Result<Booking>> adjustLateFee({
+    required String bookingId,
+    required String userId,
+    bool waived = false,
+    int? reducedFee,
+  }) async {
+    if (_session.currentUserId != userId) {
+      return const Result.failure(
+        PermissionFailure('Sign in to change the late fee.'),
+      );
+    }
+
+    if (waived && reducedFee != null) {
+      return const Result.failure(
+        ValidationFailure('Choose either waive or reduce.'),
+      );
+    }
+
+    if (reducedFee != null && reducedFee <= 0) {
+      return const Result.failure(
+        ValidationFailure('Enter a reduced fee above 0, or waive the fee.'),
+      );
+    }
+
+    try {
+      final bookingRef = _firestore.doc(FirestorePaths.booking(bookingId));
+
+      return await _firestore
+          .runTransaction<Result<Booking>>((transaction) async {
+            final snapshot = await transaction.get(bookingRef);
+
+            if (!snapshot.exists || snapshot.data() == null) {
+              return const Result<Booking>.failure(
+                NotFoundFailure('Booking not found.'),
+              );
+            }
+
+            final booking = BookingModel.fromMap(snapshot.id, snapshot.data()!);
+
+            if (booking.ownerId != userId) {
+              return const Result<Booking>.failure(
+                PermissionFailure('Only the owner can change the late fee.'),
+              );
+            }
+
+            if (booking.status != BookingStatus.returning ||
+                booking.returnedAt == null) {
+              return const Result<Booking>.failure(
+                ValidationFailure(
+                  'The late fee can only be changed during the return.',
+                ),
+              );
+            }
+
+            if (reducedFee != null) {
+              final lateDays = LateFeeCalculator.calculateLateDays(
+                dueAt: booking.endDate,
+                returnedAt: booking.returnedAt!,
+              );
+              final calculated = LateFeeCalculator.calculateLateFee(
+                rentalFee: booking.rentalFee,
+                lateDays: lateDays,
+                cautionFee: booking.cautionFee,
+              );
+
+              if (reducedFee > calculated) {
+                return Result<Booking>.failure(
+                  ValidationFailure(
+                    'The reduced fee cannot exceed the late fee ($calculated RWF).',
+                  ),
+                );
+              }
+            }
+
+            final now = _clock.now();
+            final storedFee = reducedFee ?? 0;
+
+            transaction.update(bookingRef, {
+              FirestoreFields.lateFeeWaived: waived,
+              FirestoreFields.lateFee: storedFee,
+              FirestoreFields.updatedAt: Timestamp.fromDate(now),
+            });
+
+            return Result.success(
+              booking.copyWith(
+                lateFeeWaived: waived,
+                lateFee: storedFee,
+                updatedAt: now,
+              ),
+            );
           })
           .timeout(_timeout);
     } on Object catch (error, stackTrace) {

@@ -5,6 +5,7 @@ import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
 
 import '../repositories/vehicle_repository.dart';
+import '../rules/document_rules.dart';
 
 class SetStatus {
   const SetStatus(this._vehicles, this._clock);
@@ -27,6 +28,7 @@ class SetStatus {
 
   bool _documentsValid(Vehicle vehicle) {
     final validUntil = vehicle.docsValidUntil;
-    return validUntil != null && validUntil.isAfter(_clock.now());
+    return validUntil != null &&
+        DocumentRules.isValidOn(validUntil, _clock.now());
   }
 }

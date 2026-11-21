@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -5,6 +7,7 @@ import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/booking/domain/entities/booking_view.dart';
 import 'package:veloce/features/booking/presentation/bloc/activity_bloc.dart';
 
 import '../../support/booking_test_data.dart';
@@ -92,17 +95,44 @@ void main() {
   );
 
   blocTest<ActivityBloc, ActivityState>(
-    'an expiry sweep failure is shown',
+    'an expiry sweep failure does not block the list',
     setUp: () {
       when(() => expireBookings())
-          .thenAnswer((_) async => const Result.failure(NetworkFailure()));
+          .thenAnswer((_) async => const Result.failure(ConflictFailure('x')));
+      when(() => repository.watchMyBookings())
+          .thenAnswer((_) => Stream.value(Result.success([pending])));
     },
     build: build,
     act: (bloc) => bloc.add(const ActivityStarted()),
-    expect: () => [
-      const ActivityLoading(),
-      const ActivityFailure(NetworkFailure()),
-    ],
+    expect: () => [const ActivityLoading(), isA<ActivityLoaded>()],
+  );
+
+  blocTest<ActivityBloc, ActivityState>(
+    'a bookings update during a cancel is kept, not overwritten',
+    setUp: () {
+      final controller = StreamController<Result<List<BookingView>>>();
+      addTearDown(controller.close);
+      when(() => repository.watchMyBookings())
+          .thenAnswer((_) => controller.stream);
+      when(() => cancelBooking(pending, reason: null)).thenAnswer((_) async {
+        controller.add(Result.success([cancelled]));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        return const Result.success(null);
+      });
+      controller.add(Result.success([pending]));
+    },
+    build: build,
+    act: (bloc) async {
+      bloc.add(const ActivityStarted());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      bloc.add(ActivityCancelRequested(pending));
+    },
+    wait: const Duration(milliseconds: 50),
+    verify: (bloc) {
+      final state = bloc.state as ActivityLoaded;
+      expect(state.bookings, [cancelled]);
+      expect(state.action.status, ActivityActionStatus.success);
+    },
   );
 
   blocTest<ActivityBloc, ActivityState>(
