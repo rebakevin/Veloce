@@ -89,7 +89,9 @@ class Vehicle extends Equatable {
     String? smoking,
     List<String>? extras,
     String? rulesFileUrl,
+    bool clearRulesFileUrl = false,
     String? videoUrl,
+    bool clearVideoUrl = false,
     VehicleStatus? status,
     DateTime? availableFrom,
     DateTime? availableTo,
@@ -118,8 +120,10 @@ class Vehicle extends Equatable {
       fuelRule: fuelRule ?? this.fuelRule,
       smoking: smoking ?? this.smoking,
       extras: extras ?? this.extras,
-      rulesFileUrl: rulesFileUrl ?? this.rulesFileUrl,
-      videoUrl: videoUrl ?? this.videoUrl,
+      rulesFileUrl: clearRulesFileUrl
+          ? null
+          : rulesFileUrl ?? this.rulesFileUrl,
+      videoUrl: clearVideoUrl ? null : videoUrl ?? this.videoUrl,
       status: status ?? this.status,
       availableFrom: availableFrom ?? this.availableFrom,
       availableTo: availableTo ?? this.availableTo,
