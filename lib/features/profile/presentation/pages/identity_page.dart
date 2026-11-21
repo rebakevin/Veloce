@@ -15,6 +15,7 @@ import 'package:veloce/core/widgets/primary_button.dart';
 import '../../domain/entities/identity_submission.dart';
 import '../bloc/profile_bloc.dart';
 import '../widgets/action_message_banner.dart';
+import '../widgets/form_card.dart';
 import '../widgets/profile_action_listener.dart';
 import '../widgets/profile_loaded_builder.dart';
 
@@ -108,23 +109,26 @@ class _IdentityFormState extends State<_IdentityForm> {
             style: AppTextStyles.bodyLarge,
           ),
           const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            label: 'National ID number',
-            hint: FieldHints.nationalId,
-            controller: _number,
-            keyboardType: TextInputType.number,
-            validator: Validators.nationalId,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          DocumentPhotoField(
-            label: 'National ID photo',
-            initialPhoto: _photo.value,
-            onChanged: (photo) => _photo.value = photo,
-            picker: widget.picker,
-            existingUrl: identity?.photoUrl,
-            validator: (photo) => photo == null && identity == null
-                ? 'Add a photo of your National ID.'
-                : null,
+          FormCard(
+            children: [
+              AppTextField(
+                label: 'National ID number',
+                hint: FieldHints.nationalId,
+                controller: _number,
+                keyboardType: TextInputType.number,
+                validator: Validators.nationalId,
+              ),
+              DocumentPhotoField(
+                label: 'National ID photo',
+                initialPhoto: _photo.value,
+                onChanged: (photo) => _photo.value = photo,
+                picker: widget.picker,
+                existingUrl: identity?.photoUrl,
+                validator: (photo) => photo == null && identity == null
+                    ? 'Add a photo of your National ID.'
+                    : null,
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.lg),
           if (submitting)

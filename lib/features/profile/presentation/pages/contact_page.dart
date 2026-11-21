@@ -43,13 +43,37 @@ class ContactPage extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           Card(
-            margin: EdgeInsets.zero,
-            child: ListTile(
-              minTileHeight: AppSizes.iconControl,
-              leading: Icon(Icons.mail_outline, color: context.colors.brand),
-              title: const Text(AppConstants.supportEmail),
-              subtitle: const Text('Tap to write an email'),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
               onTap: _write,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Support email',
+                      style: AppTextStyles.caption.copyWith(
+                        color: context.colors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      AppConstants.supportEmail,
+                      style: AppTextStyles.heading.copyWith(
+                        color: context.colors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Tap to write an email',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: context.colors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

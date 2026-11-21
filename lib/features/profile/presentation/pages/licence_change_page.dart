@@ -16,6 +16,7 @@ import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../../domain/entities/licence_submission.dart';
 import '../bloc/profile_bloc.dart';
+import '../widgets/form_card.dart';
 import '../widgets/profile_loaded_builder.dart';
 
 /// `/profile/licence/change` (step 2 of 3): number, expiry and photo. Sending
@@ -97,32 +98,35 @@ class _LicenceFormState extends State<_LicenceForm> {
         padding: Responsive.pagePadding(context)
             .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
         children: [
-          AppTextField(
-            label: 'Licence number',
-            hint: FieldHints.licenceNumber,
-            controller: _number,
-            textInputAction: TextInputAction.next,
-            validator: Validators.licenceNumber,
+          FormCard(
+            children: [
+              AppTextField(
+                label: 'Licence number',
+                hint: FieldHints.licenceNumber,
+                controller: _number,
+                textInputAction: TextInputAction.next,
+                validator: Validators.licenceNumber,
+              ),
+              DatePickerFormField(
+                label: 'Expiry date',
+                value: _expiry,
+                firstDate: now,
+                lastDate: DateTime(now.year + 20),
+                validator: (value) => Validators.licenceExpiry(value, now: now),
+              ),
+              DocumentPhotoField(
+                label: 'Licence photo',
+                initialPhoto: _photo.value,
+                onChanged: (photo) => _photo.value = photo,
+                picker: widget.picker,
+                existingUrl: licence?.photoUrl,
+                validator: (photo) => photo == null && licence == null
+                    ? 'Add a photo of your licence.'
+                    : null,
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          DatePickerFormField(
-            label: 'Expiry date',
-            value: _expiry,
-            firstDate: now,
-            lastDate: DateTime(now.year + 20),
-            validator: (value) => Validators.licenceExpiry(value, now: now),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          DocumentPhotoField(
-            label: 'Licence photo',
-            initialPhoto: _photo.value,
-            onChanged: (photo) => _photo.value = photo,
-            picker: widget.picker,
-            existingUrl: licence?.photoUrl,
-            validator: (photo) => photo == null && licence == null
-                ? 'Add a photo of your licence.'
-                : null,
-          ),
           const SizedBox(height: AppSpacing.xl),
           PrimaryButton(label: 'Verify licence', onPressed: _submit),
         ],
