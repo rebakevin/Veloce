@@ -15,6 +15,7 @@ android/key.properties
 android/*.jks
 android/*.keystore
 **/*service-account*.json
+**/*firebase-adminsdk*.json
 node_modules/
 
 # Personal downloads (never commit)
