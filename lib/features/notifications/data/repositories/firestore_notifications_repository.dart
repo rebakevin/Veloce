@@ -19,6 +19,16 @@ class FirestoreNotificationsRepository implements NotificationsRepository {
   final FirebaseFirestore _firestore;
   final AtomicWriteFactory _writes;
 
+  /// Firestore allows 500 writes per batch; stay well under it.
+  static const int _batchSize = 400;
+
+  static Iterable<List<T>> _chunks<T>(List<T> items) sync* {
+    for (var i = 0; i < items.length; i += _batchSize) {
+      final end = i + _batchSize;
+      yield items.sublist(i, end > items.length ? items.length : end);
+    }
+  }
+
   @override
   Stream<List<AppNotification>> watchNotifications(String userId) {
     return _firestore
@@ -76,13 +86,18 @@ class FirestoreNotificationsRepository implements NotificationsRepository {
         return const Result.success(null);
       }
 
-      final batch = _writes.begin();
-      for (final doc in snapshot.docs) {
-        batch.update('${FirestorePaths.notifications}/${doc.id}', {
-          FirestoreFields.read: true,
-        });
-      }
-      await batch.commit();
+      await Future.wait([
+        for (final chunk in _chunks(snapshot.docs))
+          () {
+            final batch = _writes.begin();
+            for (final doc in chunk) {
+              batch.update('${FirestorePaths.notifications}/${doc.id}', {
+                FirestoreFields.read: true,
+              });
+            }
+            return batch.commit();
+          }(),
+      ]);
       return const Result.success(null);
     } catch (e, st) {
       return Result.failure(mapToFailure(e, st));
@@ -114,11 +129,16 @@ class FirestoreNotificationsRepository implements NotificationsRepository {
         return const Result.success(null);
       }
 
-      final batch = _writes.begin();
-      for (final doc in snapshot.docs) {
-        batch.delete('${FirestorePaths.notifications}/${doc.id}');
-      }
-      await batch.commit();
+      await Future.wait([
+        for (final chunk in _chunks(snapshot.docs))
+          () {
+            final batch = _writes.begin();
+            for (final doc in chunk) {
+              batch.delete('${FirestorePaths.notifications}/${doc.id}');
+            }
+            return batch.commit();
+          }(),
+      ]);
       return const Result.success(null);
     } catch (e, st) {
       return Result.failure(mapToFailure(e, st));
