@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:veloce/core/constants/firestore_fields.dart';
 import 'package:veloce/core/constants/firestore_paths.dart';
@@ -9,8 +7,8 @@ import 'package:veloce/core/data/models/vehicle_model.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/data/services/failure_mapper.dart';
 import 'package:veloce/core/data/services/vehicle_lookup.dart';
+import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
-import 'package:veloce/core/domain/enums/transaction_type.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/error/result.dart';
 
@@ -19,8 +17,9 @@ import '../../domain/entities/finance_summary.dart';
 import '../../domain/entities/finance_transaction.dart';
 import '../../domain/entities/renter_payment_item.dart';
 import '../../domain/enums/finance_period.dart';
+import '../../domain/enums/renter_payment_kind.dart';
 import '../../domain/repositories/finances_repository.dart';
-import '../../domain/services/repair_loss_allocator.dart';
+import '../../domain/services/owner_finance_calculator.dart';
 
 /// Firestore implementation of [FinancesRepository].
 class FirestoreFinancesRepository implements FinancesRepository {
@@ -35,8 +34,6 @@ class FirestoreFinancesRepository implements FinancesRepository {
   final VehicleLookup _vehicleLookup;
   final BookingLookup _bookingLookup;
   final Clock _clock;
-
-  static const int _platformFeeAmount = 2000;
 
   (DateTime start, DateTime end) _getPeriodRange(FinancePeriod period) {
     final now = _clock.now();
@@ -87,84 +84,15 @@ class FirestoreFinancesRepository implements FinancesRepository {
           .map((doc) => RepairExpenseModel.fromMap(doc.id, doc.data()))
           .toList();
 
-      // 3. Map claim deductions by bookingId
-      final Map<String, int> claimDeductionsByBooking = {};
-      for (final tx in allTransactions) {
-        if (tx.type == TransactionType.claimDeduction) {
-          claimDeductionsByBooking[tx.bookingId] =
-              (claimDeductionsByBooking[tx.bookingId] ?? 0) + tx.amount;
-        }
-      }
-
+      // 3. Earned and loss entries of the selected period
       final (periodStart, periodEnd) = _getPeriodRange(period);
-      final rawTransactions = <FinanceTransaction>[];
-
-      // 4. Process Earned entries in selected period
-      for (final tx in allTransactions) {
-        if (tx.at.isBefore(periodStart) || !tx.at.isBefore(periodEnd)) {
-          continue;
-        }
-
-        if (tx.type == TransactionType.release) {
-          final earnedAmount = max(0, tx.amount - _platformFeeAmount);
-          rawTransactions.add(
-            FinanceTransaction(
-              id: tx.id,
-              bookingId: tx.bookingId,
-              vehicleId: tx.vehicleId,
-              type: FinanceEntryType.earned,
-              amount: earnedAmount,
-              date: tx.at,
-            ),
-          );
-        } else if (tx.type == TransactionType.lateFee) {
-          rawTransactions.add(
-            FinanceTransaction(
-              id: tx.id,
-              bookingId: tx.bookingId,
-              vehicleId: tx.vehicleId,
-              type: FinanceEntryType.earned,
-              amount: tx.amount,
-              date: tx.at,
-            ),
-          );
-        }
-      }
-
-      // 5. Process Loss entries in selected period. The deduction of a booking
-      // is offset once across all its repairs, so every repair is allocated
-      // first and the period filter comes after.
-      final lossByRepair = RepairLossAllocator.allocate(
+      final rawTransactions = OwnerFinanceCalculator.build(
+        ledger: allTransactions,
         repairs: allRepairExpenses,
-        deductionByBooking: claimDeductionsByBooking,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        vehicleId: vehicleId,
       );
-      for (final repair in allRepairExpenses) {
-        if (vehicleId != null && repair.vehicleId != vehicleId) {
-          continue;
-        }
-
-        if (repair.createdAt.isBefore(periodStart) ||
-            !repair.createdAt.isBefore(periodEnd)) {
-          continue;
-        }
-
-        final loss = lossByRepair[repair.id] ?? 0;
-        if (loss > 0) {
-          rawTransactions.add(
-            FinanceTransaction(
-              id: repair.id,
-              bookingId: repair.bookingId,
-              vehicleId: repair.vehicleId,
-              type: FinanceEntryType.loss,
-              amount: loss,
-              date: repair.createdAt,
-            ),
-          );
-        }
-      }
-
-      // 6. Sort newest first
-      rawTransactions.sort((a, b) => b.date.compareTo(a.date));
 
       // 7. Enrich transactions with vehicle details
       final enrichedTransactions = <FinanceTransaction>[];
@@ -224,7 +152,10 @@ class FirestoreFinancesRepository implements FinancesRepository {
               )
               .fold<int>(0, (total, t) => total + t.amount);
 
-          final share = totalEarned > 0 ? (carEarned / totalEarned) : 0.0;
+          final share = OwnerFinanceCalculator.share(
+            carEarned: carEarned,
+            totalEarned: totalEarned,
+          );
 
           carShares.add(
             CarFinanceShare(
@@ -265,18 +196,31 @@ class FirestoreFinancesRepository implements FinancesRepository {
           .map((doc) => LedgerEntryModel.fromMap(doc.id, doc.data()))
           .toList();
 
+      final bookings = <String, Booking?>{};
+      final vehicles = <String, Vehicle?>{};
       final items = <RenterPaymentItem>[];
       for (final entry in entries) {
-        final bookingRes = await _bookingLookup.byId(entry.bookingId);
-        final booking = bookingRes.valueOrNull;
+        // Release, platform fee and payout rows are owner-side bookkeeping.
+        final kind = RenterPaymentKind.classify(entry);
+        if (kind == null) continue;
 
-        final vehicleRes = await _vehicleLookup.byId(entry.vehicleId);
-        final vehicle = vehicleRes.valueOrNull;
+        if (!bookings.containsKey(entry.bookingId)) {
+          bookings[entry.bookingId] = (await _bookingLookup.byId(
+            entry.bookingId,
+          )).valueOrNull;
+        }
+        if (!vehicles.containsKey(entry.vehicleId)) {
+          vehicles[entry.vehicleId] = (await _vehicleLookup.byId(
+            entry.vehicleId,
+          )).valueOrNull;
+        }
+        final vehicle = vehicles[entry.vehicleId];
 
         items.add(
           RenterPaymentItem(
             entry: entry,
-            bookingReference: booking?.reference,
+            kind: kind,
+            bookingReference: bookings[entry.bookingId]?.reference,
             vehicleName: vehicle != null
                 ? '${vehicle.make} ${vehicle.model}'
                 : null,

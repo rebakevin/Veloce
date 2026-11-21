@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-import 'package:veloce/core/domain/enums/transaction_type.dart';
+import 'package:veloce/core/domain/enums/transaction_status.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/formatting/formatters.dart';
 import 'package:veloce/core/layout/responsive.dart';
@@ -17,6 +17,7 @@ import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
 
 import '../../domain/entities/renter_payment_item.dart';
+import '../../domain/enums/renter_payment_kind.dart';
 import '../../domain/repositories/finances_repository.dart';
 import '../bloc/renter_payments_cubit.dart';
 
@@ -87,13 +88,15 @@ class _PaymentItemTile extends StatelessWidget {
     final colors = context.colors;
     final entry = item.entry;
 
-    final (label, tone) = switch (entry.type) {
-      TransactionType.charge => ('Payment', StatusTone.active),
-      TransactionType.refund => ('Refund', StatusTone.info),
-      TransactionType.claimDeduction => ('Claim deduction', StatusTone.caution),
-      TransactionType.lateFee => ('Late fee', StatusTone.danger),
-      _ => (entry.type.label, StatusTone.neutral),
+    final kind = item.kind;
+    final tone = switch (kind) {
+      RenterPaymentKind.payment => StatusTone.active,
+      RenterPaymentKind.cautionRefund ||
+      RenterPaymentKind.cancellationRefund => StatusTone.info,
+      RenterPaymentKind.claimDeduction => StatusTone.caution,
+      RenterPaymentKind.lateFee => StatusTone.danger,
     };
+    final sign = kind.isCredit ? '+' : '-';
 
     return Material(
       color: colors.surface,
@@ -113,7 +116,19 @@ class _PaymentItemTile extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  StatusChip(label: label, tone: tone),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      StatusChip(label: kind.label, tone: tone),
+                      const SizedBox(width: AppSpacing.xs),
+                      StatusChip(
+                        label: entry.status.label,
+                        tone: entry.status == TransactionStatus.success
+                            ? StatusTone.neutral
+                            : StatusTone.danger,
+                      ),
+                    ],
+                  ),
                   Text(
                     Formatters.date(entry.at),
                     style: AppTextStyles.caption.copyWith(color: colors.muted),
@@ -148,7 +163,7 @@ class _PaymentItemTile extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    Formatters.rwf(entry.amount),
+                    '$sign${Formatters.rwf(entry.amount)}',
                     style: AppTextStyles.cardTitle.copyWith(
                       color: colors.ink,
                       fontWeight: FontWeight.w800,

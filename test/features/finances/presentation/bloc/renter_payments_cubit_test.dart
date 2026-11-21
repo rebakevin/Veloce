@@ -9,6 +9,7 @@ import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/finances/domain/entities/renter_payment_item.dart';
+import 'package:veloce/features/finances/domain/enums/renter_payment_kind.dart';
 import 'package:veloce/features/finances/domain/repositories/finances_repository.dart';
 import 'package:veloce/features/finances/presentation/bloc/renter_payments_cubit.dart';
 
@@ -22,6 +23,7 @@ void main() {
 
   final testDate = DateTime(2026, 11, 10);
   final item = RenterPaymentItem(
+    kind: RenterPaymentKind.payment,
     entry: LedgerEntry(
       id: 'tx-1',
       bookingId: 'b-1',

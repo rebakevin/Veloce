@@ -100,6 +100,23 @@ void main() {
     );
 
     blocTest<FinancesBloc, FinancesState>(
+      'FinancesStarted opens on the period it is given',
+      build: buildBloc,
+      act: (bloc) =>
+          bloc.add(const FinancesStarted(period: FinancePeriod.thisYear)),
+      verify: (bloc) {
+        expect(bloc.state.period, FinancePeriod.thisYear);
+        verify(
+          () => repository.getOwnerFinances(
+            ownerId: 'owner-1',
+            period: FinancePeriod.thisYear,
+            vehicleId: null,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<FinancesBloc, FinancesState>(
       'FinancesPeriodChanged loads summary for the new period',
       build: buildBloc,
       act: (bloc) =>

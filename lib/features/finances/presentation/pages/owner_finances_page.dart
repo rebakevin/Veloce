@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/core/data/services/vehicle_lookup.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
@@ -48,6 +49,10 @@ class OwnerFinancesPage extends StatelessWidget {
     );
   }
 }
+
+DateTime _now() => GetIt.instance.isRegistered<Clock>()
+    ? GetIt.instance<Clock>().now()
+    : DateTime.now();
 
 class _OwnerFinancesView extends StatelessWidget {
   const _OwnerFinancesView();
@@ -166,22 +171,41 @@ class _OwnerFinancesView extends StatelessWidget {
 
                   // Chart or Table view
                   if (state.viewMode == FinanceViewMode.chart) ...[
-                    FinanceChart(
-                      transactions: state.summary?.transactions ?? [],
-                      period: state.period,
-                    ),
+                    if ((state.summary?.transactions ?? []).isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'No transactions in this period.',
+                          style: AppTextStyles.body.copyWith(
+                            color: colors.muted,
+                          ),
+                        ),
+                      )
+                    else
+                      FinanceChart(
+                        transactions: state.summary!.transactions,
+                        period: state.period,
+                        now: _now(),
+                      ),
                   ] else ...[
                     FinanceTransactionsTable(
                       transactions: state.summary?.transactions ?? [],
                       previewLimit: 5,
                       onViewAll: () {
-                        if (state.vehicleId != null) {
-                          context.push(
-                            RouteNames.ownerCarTransactions(state.vehicleId!),
-                          );
-                        } else {
-                          context.push(RouteNames.ownerTransactions);
-                        }
+                        final base = state.vehicleId != null
+                            ? RouteNames.ownerCarTransactions(state.vehicleId!)
+                            : RouteNames.ownerTransactions;
+                        // The list keeps the period selected here.
+                        context.push(
+                          Uri.parse(base)
+                              .replace(
+                                queryParameters: {
+                                  FinancePeriod.queryKey: state.period.name,
+                                },
+                              )
+                              .toString(),
+                        );
                       },
                     ),
                   ],

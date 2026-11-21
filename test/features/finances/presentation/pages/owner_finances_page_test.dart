@@ -117,4 +117,30 @@ void main() {
     expect(find.textContaining('+ RWF 180,000'), findsOneWidget);
     expect(find.textContaining('- RWF 30,000'), findsOneWidget);
   });
+
+  testWidgets('chart view shows an empty state without transactions', (
+    tester,
+  ) async {
+    when(
+      () => repository.getOwnerFinances(
+        ownerId: 'owner-1',
+        period: any(named: 'period'),
+        vehicleId: any(named: 'vehicleId'),
+      ),
+    ).thenAnswer(
+      (_) async => const Result.success(
+        FinanceSummary(
+          totalEarned: 0,
+          totalLosses: 0,
+          transactions: [],
+          carShares: [],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(buildWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.text('No transactions in this period.'), findsOneWidget);
+  });
 }
