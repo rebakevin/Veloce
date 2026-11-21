@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
-import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
 import 'package:veloce/core/widgets/error_view.dart';
 import 'package:veloce/core/widgets/loading_view.dart';
@@ -19,6 +19,7 @@ import '../widgets/pricing_step.dart';
 import '../widgets/review_step.dart';
 import '../widgets/rules_step.dart';
 import '../widgets/specs_step.dart';
+import '../widgets/wizard_progress.dart';
 
 class CarWizardPage extends StatelessWidget {
   /// Set to edit that car; the route also sends `WizardEditStarted` to the bloc.
@@ -27,7 +28,7 @@ class CarWizardPage extends StatelessWidget {
   final String? editVehicleId;
 
   static const Map<WizardStep, String> _titles = {
-    WizardStep.media: 'Photos',
+    WizardStep.media: 'Media',
     WizardStep.details: 'Vehicle details',
     WizardStep.specs: 'Specifications',
     WizardStep.pricing: 'Pricing',
@@ -35,6 +36,11 @@ class CarWizardPage extends StatelessWidget {
     WizardStep.documents: 'Documents',
     WizardStep.review: 'Review and publish',
   };
+
+  Widget _stepBody(WizardStep step, Widget body) {
+    if (step == WizardStep.review) return body;
+    return WizardStepCard(title: _titles[step]!, child: body);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,10 +91,6 @@ class CarWizardPage extends StatelessWidget {
                   : () => bloc.add(const WizardBackPressed()),
             ),
             title: Text(editing ? 'Edit car' : 'List a car'),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(4),
-              child: LinearProgressIndicator(value: stepNumber / total),
-            ),
           ),
           body: Column(
             children: [
@@ -98,19 +100,15 @@ class CarWizardPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Step $stepNumber of $total',
-                        style: AppTextStyles.label,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        editing && state.step == WizardStep.review
+                      WizardProgress(
+                        step: stepNumber,
+                        total: total,
+                        title: editing && state.step == WizardStep.review
                             ? 'Review and save'
                             : _titles[state.step]!,
-                        style: AppTextStyles.cardTitle,
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      switch (state.step) {
+                      _stepBody(state.step, switch (state.step) {
                         WizardStep.media => MediaStep(
                           draft: state.draft,
                           errors: state.errors,
@@ -145,53 +143,61 @@ class CarWizardPage extends StatelessWidget {
                               bloc.add(WizardDocumentVerifyRequested(kind)),
                         ),
                         WizardStep.review => ReviewStep(draft: state.draft),
-                      },
+                      }),
                     ],
                   ),
                 ),
               ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Row(
-                    children: [
-                      if (!state.isFirstStep) ...[
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: context.colors.surface,
+                  border: Border(top: BorderSide(color: context.colors.sand)),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Row(
+                      children: [
+                        if (!state.isFirstStep) ...[
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: state.isBusy
+                                  ? null
+                                  : () => bloc.add(const WizardBackPressed()),
+                              child: const Text('Back'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                        ],
                         Expanded(
-                          child: OutlinedButton(
+                          child: FilledButton(
                             onPressed: state.isBusy
                                 ? null
-                                : () => bloc.add(const WizardBackPressed()),
-                            child: const Text('Back'),
+                                : () => bloc.add(
+                                    state.isLastStep
+                                        ? const WizardPublishPressed()
+                                        : const WizardNextPressed(),
+                                  ),
+                            child:
+                                state.submission == WizardSubmission.publishing
+                                ? const SizedBox.square(
+                                    dimension: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    state.isLastStep
+                                        ? (editing
+                                              ? 'Save changes'
+                                              : 'Publish car')
+                                        : 'Continue',
+                                  ),
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.md),
                       ],
-                      Expanded(
-                        flex: 2,
-                        child: FilledButton(
-                          onPressed: state.isBusy
-                              ? null
-                              : () => bloc.add(
-                                  state.isLastStep
-                                      ? const WizardPublishPressed()
-                                      : const WizardNextPressed(),
-                                ),
-                          child: state.submission == WizardSubmission.publishing
-                              ? const SizedBox.square(
-                                  dimension: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  state.isLastStep
-                                      ? (editing ? 'Save changes' : 'Publish')
-                                      : 'Next',
-                                ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),

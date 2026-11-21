@@ -72,8 +72,7 @@ class MediaStep extends StatelessWidget {
       children: [
         const Text(
           'Add ${WizardStepRules.minPhotos} to ${WizardStepRules.maxPhotos} '
-          'photos. Tap a photo to make it the main one and use the arrows '
-          'to reorder.',
+          'photos. The primary photo is the one renters see first.',
         ),
         const SizedBox(height: AppSpacing.md),
         GridView.count(
@@ -98,37 +97,21 @@ class MediaStep extends StatelessWidget {
                       onRemove: () => _remove(i),
                     ),
                   ),
-                  Positioned(
-                    right: AppSpacing.sm,
-                    bottom: AppSpacing.sm,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton.filledTonal(
-                          tooltip: 'Move photo ${i + 1} earlier',
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: draft.canMovePhoto(i, -1)
-                              ? () => onChanged(draft.movePhoto(i, -1))
-                              : null,
-                        ),
-                        IconButton.filledTonal(
-                          tooltip: 'Move photo ${i + 1} later',
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.arrow_forward),
-                          onPressed: draft.canMovePhoto(i, 1)
-                              ? () => onChanged(draft.movePhoto(i, 1))
-                              : null,
-                        ),
-                      ],
+                  if (i != draft.primaryIndex)
+                    Positioned(
+                      right: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                      child: _MakePrimaryButton(
+                        onPressed: () =>
+                            onChanged(draft.copyWith(primaryIndex: i)),
+                      ),
                     ),
-                  ),
                   if (i == draft.primaryIndex)
                     const Positioned(
                       left: AppSpacing.sm,
                       top: AppSpacing.sm,
                       child: StatusChip(
-                        label: 'Main photo',
+                        label: 'Primary',
                         tone: StatusTone.active,
                       ),
                     ),
@@ -173,6 +156,35 @@ class MediaStep extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _MakePrimaryButton extends StatelessWidget {
+  const _MakePrimaryButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.surface,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Text(
+            'Make primary',
+            style: AppTextStyles.label.copyWith(color: colors.ink),
+          ),
+        ),
+      ),
     );
   }
 }

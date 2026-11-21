@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
-import 'package:veloce/core/theme/app_text_styles.dart';
 
 import '../../domain/entities/wizard_draft.dart';
 import '../../domain/rules/wizard_step_rules.dart';
+import 'choice_chips.dart';
 import 'draft_text_field.dart';
 
 class DetailsStep extends StatelessWidget {
@@ -14,6 +14,19 @@ class DetailsStep extends StatelessWidget {
     required this.onChanged,
     super.key,
   });
+
+  static const List<String> _neighbourhoods = [
+    'Kacyiru',
+    'Nyarutarama',
+    'Kimironko',
+    'Remera',
+    'Kicukiro',
+    'Nyamirambo',
+    'Gisozi',
+    'Kimihurura',
+    'Kibagabaga',
+    'Kabeza',
+  ];
 
   final WizardDraft draft;
   final Map<WizardField, String> errors;
@@ -61,38 +74,36 @@ class DetailsStep extends StatelessWidget {
               onChanged(draft.copyWith(year: parseWhole(value))),
         ),
         const SizedBox(height: AppSpacing.lg),
-        const Text('Car type', style: AppTextStyles.caption),
-        const SizedBox(height: AppSpacing.sm),
-        DropdownButtonFormField<VehicleType>(
-          initialValue: draft.type,
-          decoration: InputDecoration(
-            hintText: 'Choose a type',
-            errorText: errors[WizardField.type],
-          ),
-          items: [
-            for (final type in VehicleType.values)
-              DropdownMenuItem(value: type, child: Text(type.label)),
-          ],
-          onChanged: (value) {
-            if (value != null) onChanged(draft.copyWith(type: value));
-          },
+        ChoiceChipGroup<VehicleType>(
+          label: 'Vehicle type',
+          options: VehicleType.values,
+          selected: draft.type,
+          labelOf: (type) => type.label,
+          errorText: errors[WizardField.type],
+          onSelected: (type) => onChanged(draft.copyWith(type: type)),
         ),
         const SizedBox(height: AppSpacing.lg),
         DraftTextField(
-          label: 'Pickup neighbourhood',
-          hint: 'Kimironko',
-          initialValue: draft.neighbourhood,
-          errorText: errors[WizardField.neighbourhood],
-          onChanged: (value) => onChanged(draft.copyWith(neighbourhood: value)),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        DraftTextField(
-          label: 'Description',
-          hint: 'Tell renters what makes this car a good pick',
+          label: 'Description (optional)',
+          hint: 'Anything renters should know',
           initialValue: draft.description,
           errorText: errors[WizardField.description],
           maxLines: 3,
           onChanged: (value) => onChanged(draft.copyWith(description: value)),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        ChoiceChipGroup<String>(
+          label: 'Pickup neighbourhood',
+          options: [
+            ..._neighbourhoods,
+            if (draft.neighbourhood.isNotEmpty &&
+                !_neighbourhoods.contains(draft.neighbourhood))
+              draft.neighbourhood,
+          ],
+          selected: draft.neighbourhood,
+          labelOf: (name) => name,
+          errorText: errors[WizardField.neighbourhood],
+          onSelected: (name) => onChanged(draft.copyWith(neighbourhood: name)),
         ),
       ],
     );

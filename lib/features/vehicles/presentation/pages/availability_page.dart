@@ -93,17 +93,33 @@ class _Editor extends StatelessWidget {
           'Renters can book this car only inside one date range.',
           style: AppTextStyles.bodySmall,
         ),
-        const SizedBox(height: AppSpacing.xl),
-        DateRangeField(
-          label: 'Available dates',
-          value: from == null || to == null
-              ? null
-              : DateTimeRange(start: from, end: to),
-          firstDate: earliest,
-          lastDate: latest,
-          errorText: problem,
-          onChanged: (range) =>
-              bloc.add(AvailabilityRangeChanged(range.start, range.end)),
+        const SizedBox(height: AppSpacing.lg),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'When can renters book this car?',
+                  style: AppTextStyles.cardTitle,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                DateRangeField(
+                  label: 'Available dates',
+                  value: from == null || to == null
+                      ? null
+                      : DateTimeRange(start: from, end: to),
+                  firstDate: earliest,
+                  lastDate: latest,
+                  errorText: problem,
+                  onChanged: (range) => bloc.add(
+                    AvailabilityRangeChanged(range.start, range.end),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: AppSpacing.xl),
         const SectionHeader(title: 'Booked days'),
