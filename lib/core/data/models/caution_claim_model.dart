@@ -31,6 +31,7 @@ abstract final class CautionClaimModel {
   }
 
   static Map<String, dynamic> toMap(CautionClaim entity) => {
+    FirestoreFields.bookingId: entity.bookingId,
     FirestoreFields.originalAmount: entity.originalAmount,
     FirestoreFields.currentAmount: entity.currentAmount,
     FirestoreFields.reason: entity.reason,
