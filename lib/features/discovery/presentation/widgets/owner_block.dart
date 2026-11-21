@@ -17,41 +17,73 @@ class OwnerBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Row(
-            children: [
-              UserAvatar(
-                name: owner.name,
-                photoUrl: owner.photoUrl,
-                radius: 26,
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: Text(
+            'Owner',
+            style: AppTextStyles.bodyLarge.copyWith(
+              color: colors.ink,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Semantics(
+          button: true,
+          label: 'View owner profile',
+          child: Material(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Row(
                   children: [
-                    const Text('Owner', style: AppTextStyles.caption),
-                    Text(owner.name, style: AppTextStyles.cardTitle),
-                    const SizedBox(height: 2),
-                    RatingStars(
-                      rating: owner.ratingAvg,
-                      count: owner.ratingCount,
+                    UserAvatar(
+                      name: owner.name,
+                      photoUrl: owner.photoUrl,
+                      radius: 26,
                     ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            owner.name,
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: colors.ink,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          RatingStars(
+                            rating: owner.ratingAvg,
+                            count: owner.ratingCount,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            'Contact details unlock after you pay',
+                            style: AppTextStyles.label.copyWith(
+                              color: colors.muted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: colors.brand),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: colors.brandDeep),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

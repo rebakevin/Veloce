@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/domain/entities/booking.dart';
 import '../../../../core/error/result.dart';
 import '../../../../core/formatting/formatters.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/services/caution_settlement_calculator.dart';
 import '../../domain/services/late_fee_calculator.dart';
 
@@ -38,27 +40,27 @@ class SettlementBreakdown extends StatelessWidget {
 
     return switch (settlement) {
       Failure<CautionSettlement>(:final failure) => Text(failure.message),
-      Success<CautionSettlement>(:final value) => Column(
-        children: [
-          _row('Caution fee', Formatters.rwf(booking.cautionFee)),
-          _row('Late days', '${value.lateDays} days'),
-          _row(
-            'Late fee',
-            booking.lateFeeWaived ? 'Waived' : Formatters.rwf(value.lateFee),
-          ),
-          if (value.claimDeduction > 0)
-            _row('Claim', Formatters.rwf(value.claimDeduction)),
-          const Divider(height: 28),
-          _row('Caution refund', Formatters.rwf(value.refund), bold: true),
-        ],
+      Success<CautionSettlement>(:final value) => _Card(
+        child: Column(
+          children: [
+            _row('Caution fee', Formatters.rwf(booking.cautionFee)),
+            _row('Late days', '${value.lateDays} days'),
+            _row(
+              'Late fee',
+              booking.lateFeeWaived ? 'Waived' : Formatters.rwf(value.lateFee),
+            ),
+            if (value.claimDeduction > 0)
+              _row('Claim', Formatters.rwf(value.claimDeduction)),
+            const Divider(height: AppSpacing.xl),
+            _row('Caution refund', Formatters.rwf(value.refund), bold: true),
+          ],
+        ),
       ),
     };
   }
 
   Widget _row(String label, String value, {bool bold = false}) {
-    final style = TextStyle(
-      fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-    );
+    final style = bold ? AppTextStyles.cardTitle : AppTextStyles.body;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -68,6 +70,22 @@ class SettlementBreakdown extends StatelessWidget {
           Text(label, style: style),
           Text(value, style: style),
         ],
+      ),
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  const _Card({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: child,
       ),
     );
   }

@@ -8,11 +8,15 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     super.key,
     this.isLoading = false,
+    this.icon,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
+
+  /// Optional icon shown before the label.
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +27,16 @@ class PrimaryButton extends StatelessWidget {
               dimension: 22,
               child: CircularProgressIndicator(strokeWidth: 2.5),
             )
-          : Text(label),
+          : icon == null
+          ? Text(label)
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 20),
+                const SizedBox(width: 8),
+                Text(label),
+              ],
+            ),
     );
   }
 }

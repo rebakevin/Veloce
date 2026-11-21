@@ -54,13 +54,18 @@ class _Progress extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       liveRegion: true,
-      child: const Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: AppSpacing.lg),
-          Text('Verifying your licence...', style: AppTextStyles.bodyLarge),
-        ],
+      child: const Card(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: AppSpacing.lg),
+              Text('Verifying your licence...', style: AppTextStyles.title),
+            ],
+          ),
+        ),
       ),
     );
   }

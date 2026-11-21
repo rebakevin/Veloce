@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -40,6 +41,10 @@ class VeloceApp extends StatelessWidget {
             themeMode: themeMode,
             scaffoldMessengerKey: getIt<AppMessenger>().key,
             routerConfig: router,
+            builder: kDebugMode
+                ? (context, child) =>
+                      DevToolsOverlay(router: router, child: child!)
+                : null,
           ),
         ),
       ),

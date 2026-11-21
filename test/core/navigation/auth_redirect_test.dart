@@ -19,17 +19,19 @@ void main() {
     );
   });
 
-  test('dev tool pages stay open to everyone', () {
-    for (final location in [RouteNames.devLogin, RouteNames.devRoutes]) {
-      expect(
-        authRedirect(userId: null, role: null, location: location),
-        isNull,
-      );
-      expect(
-        authRedirect(userId: 'u', role: UserRole.renter, location: location),
-        isNull,
-      );
-    }
+  test('the dev routes page stays open to everyone', () {
+    expect(
+      authRedirect(userId: null, role: null, location: RouteNames.devRoutes),
+      isNull,
+    );
+    expect(
+      authRedirect(
+        userId: 'u',
+        role: UserRole.renter,
+        location: RouteNames.devRoutes,
+      ),
+      isNull,
+    );
   });
 
   test('signed-in users leave auth pages for their own home', () {
@@ -96,13 +98,6 @@ void main() {
         role: UserRole.renter,
         location: RouteNames.registerWelcome,
       ),
-      isNull,
-    );
-  });
-
-  test('dev login is always reachable', () {
-    expect(
-      authRedirect(userId: null, role: null, location: RouteNames.devLogin),
       isNull,
     );
   });

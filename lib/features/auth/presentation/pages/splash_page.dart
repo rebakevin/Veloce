@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:veloce/core/data/services/preferences_service.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
+import 'package:veloce/core/widgets/brand_mark.dart';
 import 'package:veloce/core/widgets/error_view.dart';
 
 import '../auth_destination.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/auth_scaffold.dart';
-import '../widgets/brand_mark.dart';
 
 /// First screen. Shows the brand while the session is restored, then leaves
 /// for the destination [authDestination] picks.
@@ -64,6 +63,7 @@ class _SplashBrand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AuthScaffold(
+      centered: true,
       child: Column(
         children: [
           SizedBox(height: AppSpacing.xl * 3),

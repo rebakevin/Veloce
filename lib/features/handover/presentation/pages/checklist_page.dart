@@ -15,6 +15,8 @@ import '../../../../core/domain/services/auth_session.dart';
 import '../../../../core/domain/services/clock.dart';
 import '../../../../core/domain/services/media_storage.dart';
 import '../../../../core/error/result.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/page_app_bar.dart';
 import '../../domain/repositories/handover_repository.dart';
 import '../bloc/checklist_cubit.dart';
 import '../bloc/checklist_state.dart';
@@ -41,16 +43,16 @@ class ChecklistPage extends StatelessWidget {
         }
 
         if (snapshot.hasError || !snapshot.hasData) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Checklist')),
-            body: const Center(child: Text('Could not load this booking.')),
+          return const Scaffold(
+            appBar: PageAppBar(title: 'Checklist'),
+            body: Center(child: Text('Could not load this booking.')),
           );
         }
 
         return snapshot.data!.when(
           success: (booking) => _buildChecklist(context, booking),
           failure: (failure) => Scaffold(
-            appBar: AppBar(title: const Text('Checklist')),
+            appBar: const PageAppBar(title: 'Checklist'),
             body: Center(child: Text(failure.message)),
           ),
         );
@@ -63,11 +65,9 @@ class ChecklistPage extends StatelessWidget {
 
     if (userId == null ||
         (userId != booking.ownerId && userId != booking.renterId)) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Checklist')),
-        body: const Center(
-          child: Text('You do not have access to this booking.'),
-        ),
+      return const Scaffold(
+        appBar: PageAppBar(title: 'Checklist'),
+        body: Center(child: Text('You do not have access to this booking.')),
       );
     }
 
@@ -163,8 +163,8 @@ class _ChecklistContent extends StatelessWidget {
     final isPickup = kind == ChecklistKind.pickup;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isPickup ? 'Pickup checklist' : 'Return checklist'),
+      appBar: PageAppBar(
+        title: isPickup ? 'Pickup checklist' : 'Return checklist',
       ),
       body: BlocConsumer<ChecklistCubit, ChecklistState>(
         listenWhen: (previous, current) =>
@@ -192,94 +192,96 @@ class _ChecklistContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-              Text(
-                'Vehicle inspection',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              ...cubit.checklistItems.map(
-                (item) => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(item),
-                  value: state.checkedItems.contains(item),
-                  onChanged: (_) => cubit.toggleItem(item),
-                ),
-              ),
-              const Divider(height: 32),
-              Text(
-                'Vehicle photos',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Upload at least one photo before submitting. '
-                'You can remove photos before confirmation.',
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
+              _SectionCard(
+                title: 'Vehicle inspection',
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: state.isUploading || state.isSaving
-                        ? null
-                        : () => _pickPhoto(context, ImageSource.camera),
-                    icon: const Icon(Icons.photo_camera),
-                    label: const Text('Take photo'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: state.isUploading || state.isSaving
-                        ? null
-                        : () => _pickPhoto(context, ImageSource.gallery),
-                    icon: const Icon(Icons.add_a_photo),
-                    label: const Text('Choose photo'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: state.isUploading || state.isSaving
-                        ? null
-                        : () => _recordVideo(context),
-                    icon: const Icon(Icons.videocam),
-                    label: const Text('Record video (optional)'),
+                  ...cubit.checklistItems.map(
+                    (item) => CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item),
+                      value: state.checkedItems.contains(item),
+                      onChanged: (_) => cubit.toggleItem(item),
+                    ),
                   ),
                 ],
               ),
-              if (state.isUploading) ...[
-                const SizedBox(height: 12),
-                const LinearProgressIndicator(),
-              ],
-              if (state.errorMessage != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  state.errorMessage!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-                TextButton(
-                  onPressed: cubit.retryUpload,
-                  child: const Text('Retry upload'),
-                ),
-              ],
-              const SizedBox(height: 12),
-              ...state.media.map(
-                (media) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    media.mediaType == MediaType.video
-                        ? Icons.videocam
-                        : Icons.image,
+              const SizedBox(height: 14),
+              _SectionCard(
+                title: 'Vehicle photos',
+                children: [
+                  const Text(
+                    'Upload at least one photo before submitting. '
+                    'You can remove photos before confirmation.',
                   ),
-                  title: Text(media.mediaType.label),
-                  subtitle: Text(
-                    media.url,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: state.isUploading || state.isSaving
+                            ? null
+                            : () => _pickPhoto(context, ImageSource.camera),
+                        icon: const Icon(Icons.photo_camera),
+                        label: const Text('Take photo'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: state.isUploading || state.isSaving
+                            ? null
+                            : () => _pickPhoto(context, ImageSource.gallery),
+                        icon: const Icon(Icons.add_a_photo),
+                        label: const Text('Choose photo'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: state.isUploading || state.isSaving
+                            ? null
+                            : () => _recordVideo(context),
+                        icon: const Icon(Icons.videocam),
+                        label: const Text('Record video (optional)'),
+                      ),
+                    ],
                   ),
-                  trailing: IconButton(
-                    tooltip: 'Remove media',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: state.isSaving
-                        ? null
-                        : () => cubit.removeMedia(media.id),
+                  if (state.isUploading) ...[
+                    const SizedBox(height: 12),
+                    const LinearProgressIndicator(),
+                  ],
+                  if (state.errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      state.errorMessage!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: cubit.retryUpload,
+                      child: const Text('Retry upload'),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  ...state.media.map(
+                    (media) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        media.mediaType == MediaType.video
+                            ? Icons.videocam
+                            : Icons.image,
+                      ),
+                      title: Text(media.mediaType.label),
+                      subtitle: Text(
+                        media.url,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: IconButton(
+                        tooltip: 'Remove media',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: state.isSaving
+                            ? null
+                            : () => cubit.removeMedia(media.id),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 20),
               Text(
@@ -304,6 +306,30 @@ class _ChecklistContent extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.sm),
+            ...children,
+          ],
+        ),
       ),
     );
   }

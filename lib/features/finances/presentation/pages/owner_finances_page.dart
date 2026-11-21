@@ -13,6 +13,7 @@ import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/error_view.dart';
 import 'package:veloce/core/widgets/loading_view.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
+import 'package:veloce/core/widgets/pill_segmented.dart';
 
 import '../../domain/enums/finance_period.dart';
 import '../../domain/enums/finance_view_mode.dart';
@@ -89,8 +90,7 @@ class _OwnerFinancesView extends StatelessWidget {
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
                         color: colors.surface,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                        border: Border.all(color: colors.line),
+                        borderRadius: BorderRadius.circular(AppRadius.xl),
                       ),
                       child: Row(
                         children: [
@@ -119,23 +119,12 @@ class _OwnerFinancesView extends StatelessWidget {
                   ],
 
                   // Period toggle: This month / This year
-                  SegmentedButton<FinancePeriod>(
-                    segments: const [
-                      ButtonSegment(
-                        value: FinancePeriod.thisMonth,
-                        label: Text('This month'),
-                      ),
-                      ButtonSegment(
-                        value: FinancePeriod.thisYear,
-                        label: Text('This year'),
-                      ),
-                    ],
-                    selected: {state.period},
-                    onSelectionChanged: (selected) {
-                      context.read<FinancesBloc>().add(
-                        FinancesPeriodChanged(selected.first),
-                      );
-                    },
+                  PillSegmented(
+                    labels: const ['This month', 'This year'],
+                    selected: FinancePeriod.values.indexOf(state.period),
+                    onSelected: (index) => context.read<FinancesBloc>().add(
+                      FinancesPeriodChanged(FinancePeriod.values[index]),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
 
@@ -147,25 +136,12 @@ class _OwnerFinancesView extends StatelessWidget {
                   const SizedBox(height: AppSpacing.lg),
 
                   // View toggle: Chart / Table
-                  SegmentedButton<FinanceViewMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: FinanceViewMode.chart,
-                        icon: Icon(Icons.bar_chart),
-                        label: Text('Chart'),
-                      ),
-                      ButtonSegment(
-                        value: FinanceViewMode.table,
-                        icon: Icon(Icons.table_chart_outlined),
-                        label: Text('Table'),
-                      ),
-                    ],
-                    selected: {state.viewMode},
-                    onSelectionChanged: (selected) {
-                      context.read<FinancesBloc>().add(
-                        FinancesViewModeChanged(selected.first),
-                      );
-                    },
+                  PillSegmented(
+                    labels: const ['Chart', 'Table'],
+                    selected: FinanceViewMode.values.indexOf(state.viewMode),
+                    onSelected: (index) => context.read<FinancesBloc>().add(
+                      FinancesViewModeChanged(FinanceViewMode.values[index]),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
 

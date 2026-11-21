@@ -17,6 +17,7 @@ import 'package:veloce/core/widgets/primary_button.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
 
 import '../bloc/booking_detail_bloc.dart';
+import '../widgets/booking_card.dart';
 
 /// Rental agreement with its nine sections and the renter's acknowledgement.
 class AgreementPage extends StatelessWidget {
@@ -113,7 +114,7 @@ class _AgreementBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         Text(
           'Rental agreement · ${booking.reference}',
-          style: AppTextStyles.title,
+          style: AppTextStyles.title.copyWith(color: colors.ink),
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
@@ -122,120 +123,118 @@ class _AgreementBody extends StatelessWidget {
           style: AppTextStyles.body.copyWith(color: colors.muted),
         ),
         const SizedBox(height: AppSpacing.xl),
-        _AgreementSection(
-          number: 1,
-          title: 'Parties',
-          body:
-              'Renter: ${view.renter.name}. Car owner: ${view.owner.name}. '
-              'Both parties are identified by their Veloce account.',
-        ),
-        _AgreementSection(
-          number: 2,
-          title: 'Vehicle',
-          body:
-              '${vehicle.make} ${vehicle.model} (${vehicle.year}), plate '
-              '${vehicle.plate}. The renter confirms the car matches the '
-              'listing at handover.',
-        ),
-        _AgreementSection(
-          number: 3,
-          title: 'Rental period',
-          body:
-              'From ${Formatters.date(booking.startDate)} to '
-              '${Formatters.date(booking.endDate)}: ${booking.days} '
-              'charged day${booking.days == 1 ? '' : 's'}. The return day is '
-              'not charged.',
-        ),
-        _AgreementSection(
-          number: 4,
-          title: 'Rental fee and caution',
-          body:
-              'Rental fee: ${Formatters.rwf(booking.rentalFee)}. Refundable '
-              'caution fee: ${Formatters.rwf(booking.cautionFee)}. Total '
-              'payable: ${Formatters.rwf(booking.totalPayable)}.',
-        ),
-        _AgreementSection(
-          number: 5,
-          title: 'Payment',
-          body:
-              'Veloce holds the full amount. The rental fee is released to the '
-              'owner only after both sides confirm pickup, minus the '
-              '${Formatters.rwf(booking.platformFee)} platform fee. The caution '
-              'fee is settled after the return.',
-        ),
-        _AgreementSection(
-          number: 6,
-          title: 'Fuel, smoking and extras',
-          body:
-              '${vehicle.fuelRule}. ${vehicle.smoking}. '
-              '${vehicle.extras.isEmpty ? 'No extra items are included.' : 'Included: ${vehicle.extras.join(', ')}.'}',
-        ),
-        const _AgreementSection(
-          number: 7,
-          title: 'Late return',
-          body:
-              'A late return costs 30% of the rental fee per late day, '
-              'compounding. The late fee and any damage claim cannot exceed '
-              'the caution fee. Anything above that is settled outside the app.',
-        ),
-        const _AgreementSection(
-          number: 8,
-          title: 'Cancellation',
-          body:
-              'Either side can cancel until both sides confirm pickup. The '
-              'renter is refunded everything paid, with no platform fee. After '
-              'both confirm pickup there is no cancellation.',
-        ),
-        const _AgreementSection(
-          number: 9,
-          title: 'Contact and handover',
-          body:
-              'Phone, email and the exact meeting point unlock for both sides '
-              'after payment. Identity documents and the owner payout number '
-              'are never shown. For help, contact ${AppConstants.supportEmail}.',
+        BookingCard(
+          child: Column(
+            children: [
+              _AgreementSection(
+                number: 1,
+                title: 'Parties',
+                body:
+                    'Renter: ${view.renter.name}. Car owner: ${view.owner.name}. '
+                    'Both parties are identified by their Veloce account.',
+              ),
+              _AgreementSection(
+                number: 2,
+                title: 'Vehicle',
+                body:
+                    '${vehicle.make} ${vehicle.model} (${vehicle.year}), plate '
+                    '${vehicle.plate}. The renter confirms the car matches the '
+                    'listing at handover.',
+              ),
+              _AgreementSection(
+                number: 3,
+                title: 'Rental period',
+                body:
+                    'From ${Formatters.date(booking.startDate)} to '
+                    '${Formatters.date(booking.endDate)}: ${booking.days} '
+                    'charged day${booking.days == 1 ? '' : 's'}. The return day is '
+                    'not charged.',
+              ),
+              _AgreementSection(
+                number: 4,
+                title: 'Rental fee and caution',
+                body:
+                    'Rental fee: ${Formatters.rwf(booking.rentalFee)}. Refundable '
+                    'caution fee: ${Formatters.rwf(booking.cautionFee)}. Total '
+                    'payable: ${Formatters.rwf(booking.totalPayable)}.',
+              ),
+              _AgreementSection(
+                number: 5,
+                title: 'Payment',
+                body:
+                    'Veloce holds the full amount. The rental fee is released to the '
+                    'owner only after both sides confirm pickup, minus the '
+                    '${Formatters.rwf(booking.platformFee)} platform fee. The caution '
+                    'fee is settled after the return.',
+              ),
+              _AgreementSection(
+                number: 6,
+                title: 'Fuel, smoking and extras',
+                body:
+                    '${vehicle.fuelRule}. ${vehicle.smoking}. '
+                    '${vehicle.extras.isEmpty ? 'No extra items are included.' : 'Included: ${vehicle.extras.join(', ')}.'}',
+              ),
+              const _AgreementSection(
+                number: 7,
+                title: 'Late return',
+                body:
+                    'A late return costs 30% of the rental fee per late day, '
+                    'compounding. The late fee and any damage claim cannot exceed '
+                    'the caution fee. Anything above that is settled outside the app.',
+              ),
+              const _AgreementSection(
+                number: 8,
+                title: 'Cancellation',
+                body:
+                    'Either side can cancel until both sides confirm pickup. The '
+                    'renter is refunded everything paid, with no platform fee. After '
+                    'both confirm pickup there is no cancellation.',
+              ),
+              const _AgreementSection(
+                number: 9,
+                title: 'Contact and handover',
+                body:
+                    'Phone, email and the exact meeting point unlock for both sides '
+                    'after payment. Identity documents and the owner payout number '
+                    'are never shown. For help, contact ${AppConstants.supportEmail}.',
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: colors.line),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ackAt == null
-                      ? 'Agreement not accepted yet'
-                      : 'Accepted on ${Formatters.dateTime(ackAt)}',
-                  style: AppTextStyles.cardTitle,
+        BookingCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                ackAt == null
+                    ? 'Agreement not accepted yet'
+                    : 'Accepted on ${Formatters.dateTime(ackAt)}',
+                style: AppTextStyles.cardTitle,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                role == UserRole.owner
+                    ? 'The renter accepts the agreement before pickup.'
+                    : canAck
+                    ? 'Accept the agreement to continue with this rental.'
+                    : 'The agreement can be accepted after approval and '
+                          'before pickup.',
+                style: AppTextStyles.body,
+              ),
+              if (canAck) ...[
+                const SizedBox(height: AppSpacing.lg),
+                PrimaryButton(
+                  label: 'Accept agreement',
+                  isLoading: state.action.isSubmitting,
+                  onPressed: state.action.isSubmitting
+                      ? null
+                      : () => context.read<BookingDetailBloc>().add(
+                          const BookingDetailAgreementAcknowledged(),
+                        ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  role == UserRole.owner
-                      ? 'The renter accepts the agreement before pickup.'
-                      : canAck
-                      ? 'Accept the agreement to continue with this rental.'
-                      : 'The agreement can be accepted after approval and '
-                            'before pickup.',
-                  style: AppTextStyles.body,
-                ),
-                if (canAck) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  PrimaryButton(
-                    label: 'Accept agreement',
-                    isLoading: state.action.isSubmitting,
-                    onPressed: state.action.isSubmitting
-                        ? null
-                        : () => context.read<BookingDetailBloc>().add(
-                            const BookingDetailAgreementAcknowledged(),
-                          ),
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
         ),
         if (state.action.status == BookingDetailActionStatus.failure) ...[
@@ -265,15 +264,22 @@ class _AgreementSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$number. $title', style: AppTextStyles.cardTitle),
-          const SizedBox(height: AppSpacing.xs),
-          Text(body, style: AppTextStyles.body),
-          const SizedBox(height: AppSpacing.md),
-          Divider(color: colors.sand),
+          Text(
+            '$number. $title',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: colors.brand,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            body,
+            style: AppTextStyles.bodySmall.copyWith(color: colors.inkSoft),
+          ),
         ],
       ),
     );

@@ -18,6 +18,8 @@ import 'package:veloce/core/widgets/primary_button.dart';
 import '../../domain/entities/booking_request_draft.dart';
 import '../bloc/request_bloc.dart';
 import '../widgets/booking_terms.dart';
+import '../widgets/info_card.dart';
+import '../widgets/label_value_row.dart';
 
 /// Review step before the booking request is written.
 class BookingReviewPage extends StatelessWidget {
@@ -96,44 +98,108 @@ class _ReviewBody extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(AppSpacing.gutter),
             children: [
-              Text(
-                '${vehicle.make} ${vehicle.model} · ${vehicle.year}',
-                style: AppTextStyles.title,
+              InfoCard(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${vehicle.make} ${vehicle.model} · ${vehicle.year}',
+                      style: AppTextStyles.cardTitle.copyWith(
+                        color: colors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      vehicle.neighbourhood,
+                      style: AppTextStyles.caption.copyWith(
+                        color: colors.muted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                vehicle.neighbourhood,
-                style: AppTextStyles.bodySmall.copyWith(color: colors.muted),
+              const SizedBox(height: AppSpacing.md + 2),
+              InfoCard(
+                child: Column(
+                  spacing: AppSpacing.md - 2,
+                  children: [
+                    LabelValueRow(
+                      label: 'Pickup',
+                      value: Formatters.date(draft.start),
+                    ),
+                    LabelValueRow(
+                      label: 'Return',
+                      value: Formatters.date(draft.end),
+                    ),
+                    LabelValueRow(
+                      label: 'Location',
+                      value: '${vehicle.neighbourhood}, Kigali',
+                    ),
+                    LabelValueRow(
+                      label: 'Duration',
+                      value:
+                          '${draft.quote.days} day${draft.quote.days == 1 ? '' : 's'}',
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              _Row(label: 'Pickup', value: Formatters.date(draft.start)),
-              _Row(label: 'Return', value: Formatters.date(draft.end)),
-              _Row(
-                label: 'Rental days',
-                value:
-                    '${draft.quote.days} day${draft.quote.days == 1 ? '' : 's'}',
+              const SizedBox(height: AppSpacing.md + 2),
+              InfoCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cost',
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: colors.ink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    PriceBreakdown(quote: draft.quote),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              PriceBreakdown(quote: draft.quote),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md + 2),
+              if (vehicle.rulesFileUrl != null) ...[
+                InfoCard(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Owner’s rental instructions',
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            color: colors.ink,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => unawaited(
+                          launchUrl(
+                            Uri.parse(vehicle.rulesFileUrl!),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, AppSizes.iconControl),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg,
+                          ),
+                        ),
+                        child: const Text('Download'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md + 2),
+              ],
               BookingTerms(
                 accepted: editing.termsAccepted,
                 onChanged: (value) =>
                     context.read<RequestBloc>().add(RequestTermsChanged(value)),
               ),
-              if (vehicle.rulesFileUrl != null)
-                TextButton.icon(
-                  onPressed: () {
-                    unawaited(
-                      launchUrl(
-                        Uri.parse(vehicle.rulesFileUrl!),
-                        mode: LaunchMode.externalApplication,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('Open rental instructions PDF'),
-                ),
               TextButton.icon(
                 onPressed: () => context.push(RouteNames.user(vehicle.ownerId)),
                 icon: const Icon(Icons.person_outline),
@@ -161,33 +227,6 @@ class _ReviewBody extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: context.colors.muted,
-              ),
-            ),
-          ),
-          Text(value, style: AppTextStyles.bodySmall),
-        ],
-      ),
     );
   }
 }

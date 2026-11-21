@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/app/owner_home/owner_home_page.dart';
@@ -55,10 +54,7 @@ const ShellAction _ownerSideAction = ShellAction(
 GoRouter createAppRouter(AuthSession session, {String? initialLocation}) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    // Debug builds open the seeded-account picker until Phase 1 adds real login.
-    initialLocation:
-        initialLocation ??
-        (kDebugMode ? RouteNames.devLogin : RouteNames.splash),
+    initialLocation: initialLocation ?? RouteNames.splash,
     refreshListenable: RouterRefreshListenable(session.changes),
     redirect: (context, state) => authRedirect(
       userId: session.currentUserId,

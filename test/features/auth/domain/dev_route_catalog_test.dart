@@ -29,7 +29,6 @@ void main() {
   test('dev tools are left out, duplicates collapse, result is sorted', () {
     final entries = DevRouteCatalog.fromPatterns([
       RouteNames.renterHome,
-      RouteNames.devLogin,
       RouteNames.devRoutes,
       RouteNames.renterHome,
       RouteNames.login,

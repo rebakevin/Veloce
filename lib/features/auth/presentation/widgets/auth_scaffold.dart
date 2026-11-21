@@ -4,9 +4,16 @@ import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/widgets/app_back_button.dart';
 
 /// Page frame shared by the auth screens: safe area, side gutter, a centred
-/// column that scrolls (so landscape and large text never overflow).
+/// column that scrolls (so landscape and large text never overflow). Content
+/// starts at the top; set [centered] for a lone message such as the splash.
 class AuthScaffold extends StatelessWidget {
-  const AuthScaffold({required this.child, super.key, this.title, this.onBack});
+  const AuthScaffold({
+    required this.child,
+    super.key,
+    this.title,
+    this.onBack,
+    this.centered = false,
+  });
 
   static const double maxContentWidth = 480;
 
@@ -15,6 +22,9 @@ class AuthScaffold extends StatelessWidget {
 
   /// Shows a back button in the app bar when set.
   final VoidCallback? onBack;
+
+  /// Centres the content vertically instead of starting at the top.
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +38,8 @@ class AuthScaffold extends StatelessWidget {
                   : AppBackButton(onPressed: onBack!),
             ),
       body: SafeArea(
-        child: Center(
+        child: Align(
+          alignment: centered ? Alignment.center : Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: maxContentWidth),
             child: SingleChildScrollView(

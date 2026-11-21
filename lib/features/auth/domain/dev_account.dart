@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import 'package:veloce/core/domain/enums/user_role.dart';
 
-/// A seeded account for the debug-only `/dev-login` page.
+/// A seeded account for the debug-only dev tools.
 class DevAccount extends Equatable {
   const DevAccount({
     required this.name,

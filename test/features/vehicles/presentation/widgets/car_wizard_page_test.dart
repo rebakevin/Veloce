@@ -39,11 +39,11 @@ void main() {
     );
     expect(find.text('Add 3 to 6 photos.'), findsNothing);
 
-    await tester.tap(find.text('Next'));
+    await tester.tap(find.text('Continue'));
     await tester.pump();
 
     expect(find.text('Add 3 to 6 photos.'), findsOneWidget);
-    expect(find.text('Step 1 of 7'), findsOneWidget);
+    expect(find.text('Step 1 of 7 · Media'), findsOneWidget);
     expect(find.text('Vehicle details'), findsNothing);
   });
 }

@@ -9,6 +9,7 @@ import 'package:veloce/core/theme/app_spacing.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/register_bloc.dart';
 import '../widgets/auth_scaffold.dart';
+import '../widgets/auth_top_bar.dart';
 import '../widgets/google_sign_up_button.dart';
 import '../widgets/or_divider.dart';
 import '../widgets/role_card.dart';
@@ -39,24 +40,20 @@ class RegisterRolePage extends StatelessWidget {
         if (!didPop) _back(context, isGoogle: isGoogle);
       },
       child: AuthScaffold(
-        title: 'Create account',
-        onBack: () => _back(context, isGoogle: isGoogle),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Google first: its role step comes after the account is chosen.
-            if (!isGoogle) ...[
-              const GoogleSignUpButton(),
-              const SizedBox(height: AppSpacing.lg),
-              const OrDivider(),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-            StepHeader(
+            AuthTopBar(
+              onBack: () => _back(context, isGoogle: isGoogle),
               step: 1,
               total: isGoogle ? 2 : 3,
+            ),
+            const SizedBox(height: AppSpacing.lg + 2),
+            const StepHeader(
               title: 'How will you use Veloce?',
               subtitle: 'Pick one. You cannot change it later.',
             ),
+            const SizedBox(height: AppSpacing.lg),
             RoleCard(
               icon: Icons.key_outlined,
               title: UserRole.renter.label,
@@ -71,12 +68,16 @@ class RegisterRolePage extends StatelessWidget {
               description: 'I want to earn by renting out my car.',
               onTap: () => bloc.add(const RegisterRoleSelected(UserRole.owner)),
             ),
-            if (isGoogle) ...[
-              const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.lg),
+            if (isGoogle)
               TextButton(
                 onPressed: () => _back(context, isGoogle: true),
                 child: const Text('Use a different account'),
-              ),
+              )
+            else ...[
+              const OrDivider(),
+              const SizedBox(height: AppSpacing.lg),
+              const GoogleSignUpButton(),
             ],
           ],
         ),

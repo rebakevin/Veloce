@@ -18,35 +18,55 @@ class AboutPage extends StatelessWidget {
       appBar: const PageAppBar(title: 'About'),
       body: ListView(
         padding: Responsive.pagePadding(context)
-            .copyWith(top: AppSpacing.xl, bottom: AppSpacing.xl),
+            .copyWith(top: AppSpacing.sm, bottom: AppSpacing.xl),
         children: [
-          Icon(
-            Icons.directions_car_filled,
-            size: 64,
-            color: context.colors.brand,
+          const _AboutCard(
+            title: 'Veloce',
+            titleStyle: AppTextStyles.title,
+            body:
+                'Veloce is a peer-to-peer car rental app for Rwanda. Car '
+                'owners list their vehicles and renters book them for the '
+                'days they need, with a refundable caution held through MTN '
+                'MoMo and a photo checklist at pickup and return so both '
+                'sides are protected.',
           ),
           const SizedBox(height: AppSpacing.md),
-          const Text(
-            'Veloce',
-            style: AppTextStyles.display,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          const Text(
+          Text(
             versionText,
-            style: AppTextStyles.caption,
+            style: AppTextStyles.caption.copyWith(color: context.colors.muted),
             textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          const Text(
-            'Veloce is a peer-to-peer car rental app for Rwanda. Car owners '
-            'list their vehicles and renters book them for the days they '
-            'need, with a refundable caution held through MTN MoMo and a '
-            'photo checklist at pickup and return so both sides are '
-            'protected.',
-            style: AppTextStyles.bodyLarge,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AboutCard extends StatelessWidget {
+  const _AboutCard({
+    required this.title,
+    required this.body,
+    this.titleStyle = AppTextStyles.cardTitle,
+  });
+
+  final String title;
+  final String body;
+  final TextStyle titleStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: titleStyle.copyWith(color: colors.ink)),
+            const SizedBox(height: AppSpacing.sm),
+            Text(body, style: AppTextStyles.body.copyWith(color: colors.body)),
+          ],
+        ),
       ),
     );
   }

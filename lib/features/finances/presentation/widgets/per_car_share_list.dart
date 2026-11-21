@@ -26,15 +26,14 @@ class PerCarShareList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Cars performance',
+          'By car',
           style: AppTextStyles.cardTitle.copyWith(color: colors.ink),
         ),
         const SizedBox(height: AppSpacing.sm),
         Container(
           decoration: BoxDecoration(
             color: colors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: colors.line),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
           child: Column(
             children: [
@@ -63,7 +62,7 @@ class _CarShareRow extends StatelessWidget {
 
     return InkWell(
       onTap: () => context.push(RouteNames.ownerCarFinances(vehicle.id)),
-      borderRadius: BorderRadius.circular(AppRadius.sm),
+      borderRadius: BorderRadius.circular(AppRadius.xl),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:veloce/core/navigation/navigator_keys.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 
-import 'presentation/pages/dev_login_page.dart';
 import 'presentation/pages/dev_routes_page.dart';
 import 'presentation/pages/forgot_password_page.dart';
 import 'presentation/pages/login_page.dart';
@@ -62,15 +61,10 @@ List<RouteBase> authRoutes() => [
     path: RouteNames.verifyEmail,
     builder: (context, state) => const VerifyEmailPage(),
   ),
-  if (kDebugMode) ...[
-    GoRoute(
-      path: RouteNames.devLogin,
-      builder: (context, state) => const DevLoginPage(),
-    ),
+  if (kDebugMode)
     GoRoute(
       parentNavigatorKey: rootNavigatorKey,
       path: RouteNames.devRoutes,
       builder: (context, state) => const DevRoutesPage(),
     ),
-  ],
 ];

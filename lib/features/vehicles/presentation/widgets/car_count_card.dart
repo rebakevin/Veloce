@@ -28,10 +28,9 @@ class _CarCountView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Material(
-      color: colors.paper,
+      color: colors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: BorderSide(color: colors.line),
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -55,8 +54,8 @@ class _CarCountView extends StatelessWidget {
                   ),
                 ),
                 if (state is CarCountLoaded)
-                  Text('${state.published}', style: AppTextStyles.cardTitle),
-                const Icon(Icons.chevron_right),
+                  Text('${state.published}', style: AppTextStyles.heading),
+                Icon(Icons.chevron_right, color: colors.brand),
               ],
             ),
           ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
 import 'package:veloce/core/domain/services/clock.dart';
+import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
-import 'package:veloce/core/widgets/date_range_field.dart';
+import 'package:veloce/core/theme/app_text_styles.dart';
 
 import '../../domain/entities/search_options.dart';
 import '../bloc/search_state.dart';
@@ -20,26 +22,109 @@ class RenterSearchForm extends StatelessWidget {
   final ValueChanged<String?> onAreaChanged;
   final void Function(DateTime start, DateTime end) onDatesChanged;
 
-  @override
-  Widget build(BuildContext context) {
+  Future<void> _pick(BuildContext context, DateTimeRange? current) async {
     final today = GetIt.I<Clock>().now();
     final firstDate = DateTime(today.year, today.month, today.day);
-    final dates = state.start == null || state.end == null
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: firstDate,
+      lastDate: firstDate.add(const Duration(days: 365)),
+      initialDateRange: current,
+    );
+    if (picked != null) onDatesChanged(picked.start, picked.end);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final start = state.start;
+    final end = state.end;
+    final dates = start == null || end == null
         ? null
-        : DateTimeRange(start: state.start!, end: state.end!);
+        : DateTimeRange(start: start, end: end);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _AreaField(value: state.area, onChanged: onAreaChanged),
         const SizedBox(height: AppSpacing.md),
-        DateRangeField(
-          label: 'Pickup and return dates',
-          value: dates,
-          firstDate: firstDate,
-          lastDate: firstDate.add(const Duration(days: 365)),
-          onChanged: (range) => onDatesChanged(range.start, range.end),
+        Row(
+          children: [
+            Expanded(
+              child: _DateTile(
+                label: 'Pickup',
+                date: start,
+                onTap: () => _pick(context, dates),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm + 2),
+            Expanded(
+              child: _DateTile(
+                label: 'Return',
+                date: end,
+                onTap: () => _pick(context, dates),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+}
+
+class _DateTile extends StatelessWidget {
+  const _DateTile({
+    required this.label,
+    required this.date,
+    required this.onTap,
+  });
+
+  static final DateFormat _format = DateFormat('EEE d MMM');
+
+  final String label;
+  final DateTime? date;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final date = this.date;
+    return Semantics(
+      button: true,
+      label: '$label date',
+      child: Material(
+        color: colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(color: colors.line, width: 1.5),
+        ),
+        child: InkWell(
+          customBorder: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          onTap: onTap,
+          child: SizedBox(
+            height: 60,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md + 2,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: AppTextStyles.label.copyWith(color: colors.muted),
+                  ),
+                  Text(
+                    date == null ? 'Choose' : _format.format(date),
+                    style: AppTextStyles.button.copyWith(color: colors.ink),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -56,16 +141,26 @@ class _AreaField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Where are you going?'),
-        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Pickup area in Kigali',
+          style: AppTextStyles.caption.copyWith(
+            color: context.colors.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm - 2),
         InputDecorator(
           decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.place_outlined),
+            contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               isExpanded: true,
               value: selected,
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: context.colors.ink,
+                fontWeight: FontWeight.w600,
+              ),
               items: [
                 for (final area in [
                   SearchOptions.anywhere,

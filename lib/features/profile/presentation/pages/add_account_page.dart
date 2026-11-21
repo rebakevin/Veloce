@@ -77,9 +77,14 @@ class AddAccountView extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               if (loaded.isWorking) const LinearProgressIndicator(),
-              AccountSignInForm(
-                onSignedIn: (password) => context.read<AccountsBloc>().add(
-                  AccountsAddRequested(password: password),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: AccountSignInForm(
+                    onSignedIn: (password) => context.read<AccountsBloc>().add(
+                      AccountsAddRequested(password: password),
+                    ),
+                  ),
                 ),
               ),
             ],

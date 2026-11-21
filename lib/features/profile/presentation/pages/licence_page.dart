@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:veloce/core/formatting/formatters.dart';
 import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/empty_state.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
@@ -38,25 +40,41 @@ class LicencePage extends StatelessWidget {
                 .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
             children: [
               Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    ListTile(
-                      title: Text(licence.number),
-                      subtitle: const Text('Licence number'),
-                      trailing: StatusChip(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              licence.number,
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1,
+                                color: context.colors.ink,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Expires ${Formatters.date(licence.expiry)}',
+                              style: AppTextStyles.caption.copyWith(
+                                color: context.colors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      StatusChip(
                         label: licence.active ? 'Active' : 'Inactive',
                         tone: licence.active
                             ? StatusTone.active
                             : StatusTone.caution,
                       ),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      title: Text(Formatters.date(licence.expiry)),
-                      subtitle: const Text('Expires'),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),

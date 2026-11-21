@@ -26,7 +26,7 @@ class ActivityPage extends StatelessWidget {
   const ActivityPage({
     super.key,
     this.vehicleId,
-    this.title = 'My activity',
+    this.title = 'My Activity',
     this.standalone = false,
   });
 
@@ -52,7 +52,7 @@ class ActivityView extends StatelessWidget {
   const ActivityView({
     super.key,
     this.vehicleId,
-    this.title = 'My activity',
+    this.title = 'My Activity',
     this.standalone = false,
   });
 
@@ -65,7 +65,15 @@ class ActivityView extends StatelessWidget {
     return Scaffold(
       appBar: standalone
           ? PageAppBar(title: title)
-          : AppBar(title: Text(title)),
+          : AppBar(
+              toolbarHeight: AppSizes.listRow,
+              centerTitle: false,
+              title: Text(title),
+              titleTextStyle: AppTextStyles.display.copyWith(
+                color: context.colors.ink,
+                fontSize: 32,
+              ),
+            ),
       body: BlocConsumer<ActivityBloc, ActivityState>(
         listenWhen: (previous, current) {
           if (current is! ActivityLoaded) return false;
@@ -227,7 +235,7 @@ class _ActivityBody extends StatelessWidget {
     bool destructive = false,
   }) {
     final style = const ButtonStyle(
-      minimumSize: WidgetStatePropertyAll(Size(0, 40)),
+      minimumSize: WidgetStatePropertyAll(Size(0, 44)),
       padding: WidgetStatePropertyAll(
         EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       ),
@@ -284,7 +292,10 @@ class _OwnerGroup extends StatelessWidget {
             Expanded(
               child: Text(
                 '${group.vehicle.make} ${group.vehicle.model} · ${group.vehicle.plate}',
-                style: AppTextStyles.cardTitle,
+                style: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colors.ink,
+                ),
               ),
             ),
             Text(
@@ -303,7 +314,7 @@ class _OwnerGroup extends StatelessWidget {
               if (view.effectiveStatus == BookingStatus.pending)
                 FilledButton(
                   style: const ButtonStyle(
-                    minimumSize: WidgetStatePropertyAll(Size(0, 40)),
+                    minimumSize: WidgetStatePropertyAll(Size(0, 44)),
                     padding: WidgetStatePropertyAll(
                       EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                     ),
@@ -340,7 +351,8 @@ class _ActivityTabs extends StatelessWidget {
           if (index > 0) const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: _TabButton(
-              label: '${tabs[index].$2} ${tabs[index].$3}',
+              label: tabs[index].$2,
+              count: tabs[index].$3,
               selected: state.tab == tabs[index].$1,
               onPressed: () => context.read<ActivityBloc>().add(
                 ActivityTabChanged(tabs[index].$1),
@@ -356,18 +368,68 @@ class _ActivityTabs extends StatelessWidget {
 class _TabButton extends StatelessWidget {
   const _TabButton({
     required this.label,
+    required this.count,
     required this.selected,
     required this.onPressed,
   });
 
   final String label;
+  final int count;
   final bool selected;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return selected
-        ? FilledButton(onPressed: onPressed, child: Text(label))
-        : OutlinedButton(onPressed: onPressed, child: Text(label));
+    final colors = context.colors;
+    final foreground = selected ? colors.onBrand : colors.ink;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? colors.brand : colors.surface,
+        shape: StadiumBorder(
+          side: selected
+              ? BorderSide.none
+              : BorderSide(color: colors.line, width: 1.5),
+        ),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            height: AppSizes.iconControl,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: AppTextStyles.button.copyWith(color: foreground),
+                ),
+                if (count > 0) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: selected ? colors.onBrand : colors.brand,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        '$count',
+                        style: AppTextStyles.label.copyWith(
+                          color: selected ? colors.brand : colors.onBrand,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -35,33 +35,37 @@ class SettingsView extends StatelessWidget {
               .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
           children: [
             const SectionHeader(title: 'Theme'),
-            SegmentedButton<ThemeMode>(
-              segments: const [
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  label: Text('Light'),
-                  icon: Icon(Icons.light_mode_outlined),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      label: Text('Light'),
+                      icon: Icon(Icons.light_mode_outlined),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      label: Text('Dark'),
+                      icon: Icon(Icons.dark_mode_outlined),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      label: Text('System'),
+                      icon: Icon(Icons.phone_android_outlined),
+                    ),
+                  ],
+                  selected: {state.themeMode},
+                  onSelectionChanged: (selection) => context
+                      .read<SettingsCubit>()
+                      .selectThemeMode(selection.first),
                 ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  label: Text('Dark'),
-                  icon: Icon(Icons.dark_mode_outlined),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  label: Text('System'),
-                  icon: Icon(Icons.phone_android_outlined),
-                ),
-              ],
-              selected: {state.themeMode},
-              onSelectionChanged: (selection) => context
-                  .read<SettingsCubit>()
-                  .selectThemeMode(selection.first),
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
             const SectionHeader(title: 'Notifications'),
             Card(
-              margin: EdgeInsets.zero,
               child: SwitchListTile(
                 title: const Text('Push notifications'),
                 subtitle: const Text('Booking updates and reminders'),

@@ -8,6 +8,7 @@ import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
 
 import '../../domain/entities/booking_view.dart';
+import 'booking_thumb.dart';
 
 /// One booking row for both My Activity screens.
 class BookingListCard extends StatelessWidget {
@@ -30,66 +31,73 @@ class BookingListCard extends StatelessWidget {
     final booking = view.booking;
     final vehicle = view.vehicle;
     final counterpart = view.counterpartFor(role);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: colors.line),
-      ),
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.card),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              const BookingThumb(),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${vehicle.make} ${vehicle.model}',
+                      style: AppTextStyles.cardTitle.copyWith(
+                        color: colors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '${Formatters.dateRange(booking.startDate, booking.endDate)}'
+                      ' · ${counterpart.name}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: colors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: StatusChip.booking(view.effectiveStatus),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
                       children: [
-                        Text(
-                          '${vehicle.make} ${vehicle.model}',
-                          style: AppTextStyles.cardTitle,
-                        ),
-                        Text(
-                          vehicle.plate,
-                          style: AppTextStyles.label.copyWith(
-                            color: colors.muted,
+                        Expanded(
+                          child: Text(
+                            '${Formatters.rwf(booking.totalPayable)}'
+                            ' · ${booking.reference}',
+                            style: AppTextStyles.caption.copyWith(
+                              color: colors.ink,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          size: 20,
+                          color: colors.brand,
                         ),
                       ],
                     ),
-                  ),
-                  StatusChip.booking(view.effectiveStatus),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                Formatters.dateRange(booking.startDate, booking.endDate),
-                style: AppTextStyles.body,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '${booking.reference} · ${counterpart.name}',
-                style: AppTextStyles.caption.copyWith(color: colors.muted),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                Formatters.rwf(booking.totalPayable),
-                style: AppTextStyles.bodyLarge,
-              ),
-              if (actions.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: actions,
+                    if (actions.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: actions,
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
             ],
           ),
         ),

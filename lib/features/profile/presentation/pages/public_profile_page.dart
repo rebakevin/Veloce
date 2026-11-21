@@ -60,7 +60,7 @@ class PublicProfileView extends StatelessWidget {
                 .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
             children: [
               _Summary(profile: profile),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.lg),
               OwnerCarsSection(ownerId: userId),
               const SizedBox(height: AppSpacing.lg),
               ReviewsPreviewSection(userId: userId),
@@ -80,27 +80,36 @@ class _Summary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rentals = profile.completedCount;
-    return Column(
-      children: [
-        UserAvatar(name: profile.name, photoUrl: profile.photoUrl, radius: 44),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          profile.name,
-          style: AppTextStyles.title,
-          textAlign: TextAlign.center,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          children: [
+            UserAvatar(
+              name: profile.name,
+              photoUrl: profile.photoUrl,
+              radius: 44,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              profile.name,
+              style: AppTextStyles.title,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            RatingStars(rating: profile.ratingAvg, count: profile.ratingCount),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              rentals == 1 ? '1 past rental' : '$rentals past rentals',
+              style: AppTextStyles.bodyLarge,
+            ),
+            if (profile.isFirstTime) ...[
+              const SizedBox(height: AppSpacing.sm),
+              const StatusChip(label: 'First-time user', tone: StatusTone.info),
+            ],
+          ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        RatingStars(rating: profile.ratingAvg, count: profile.ratingCount),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          rentals == 1 ? '1 past rental' : '$rentals past rentals',
-          style: AppTextStyles.bodyLarge,
-        ),
-        if (profile.isFirstTime) ...[
-          const SizedBox(height: AppSpacing.sm),
-          const StatusChip(label: 'First-time user', tone: StatusTone.info),
-        ],
-      ],
+      ),
     );
   }
 }

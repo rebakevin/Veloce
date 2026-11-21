@@ -44,25 +44,24 @@ class OnboardingSlide extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.sm,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 56,
-            backgroundColor: colors.brandWash,
-            child: Icon(data.icon, size: 56, color: colors.brand),
-          ),
-          const SizedBox(height: AppSpacing.xl),
+          Icon(data.icon, size: 28, color: colors.brand),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             data.title,
-            style: AppTextStyles.display.copyWith(fontSize: 28),
+            style: AppTextStyles.title.copyWith(color: colors.ink),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             data.body,
-            style: AppTextStyles.bodyLarge,
+            style: AppTextStyles.body.copyWith(color: colors.muted),
             textAlign: TextAlign.center,
           ),
         ],

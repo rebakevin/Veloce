@@ -124,8 +124,7 @@ class _SlotCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: colors.line),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),

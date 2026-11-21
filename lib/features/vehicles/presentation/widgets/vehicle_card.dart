@@ -4,6 +4,7 @@ import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/formatting/formatters.dart';
+import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
@@ -48,66 +49,85 @@ class VehicleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (photoUrl != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: CachedNetworkImage(
-                      imageUrl: photoUrl!,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) =>
-                          const Icon(Icons.directions_car_outlined),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CarPhoto(photoUrl: photoUrl, plate: vehicle.plate),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md + 2,
+                AppSpacing.lg,
+                AppSpacing.sm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(vehicle.plate, style: AppTextStyles.cardTitle),
-                        Text(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Expanded(
+                        child: Text(
                           '${vehicle.make} ${vehicle.model} · ${vehicle.year}',
+                          style: AppTextStyles.cardTitle.copyWith(
+                            color: colors.ink,
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        '${Formatters.rwf(vehicle.dailyPrice)}/day',
+                        style: AppTextStyles.cardTitle.copyWith(
+                          color: colors.brand,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Flexible(
-                    child: StatusChip(
-                      label: docsExpired
-                          ? 'Paused: documents expired'
-                          : vehicle.status.label,
-                      tone: _isPublished && !docsExpired
-                          ? StatusTone.active
-                          : StatusTone.caution,
-                    ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm - 2,
+                    runSpacing: AppSpacing.sm - 2,
+                    children: [
+                      StatusChip(
+                        label: docsExpired
+                            ? 'Paused: documents expired'
+                            : vehicle.status.label,
+                        tone: _isPublished && !docsExpired
+                            ? StatusTone.active
+                            : StatusTone.caution,
+                      ),
+                      _InfoPill(label: _availability),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          nextRental == null
+                              ? 'No upcoming rental'
+                              : 'Next rental: ${Formatters.dateRange(nextRental!.startDate, nextRental!.endDate)}',
+                          style: AppTextStyles.caption.copyWith(
+                            color: colors.muted,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: colors.brand),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text('${Formatters.rwf(vehicle.dailyPrice)} per day'),
-              Text(_availability),
-              Text(
-                nextRental == null
-                    ? 'No upcoming rental'
-                    : 'Next rental: ${Formatters.dateRange(nextRental!.startDate, nextRental!.endDate)}',
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: AppSpacing.sm,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: Wrap(
+                spacing: AppSpacing.xs,
                 children: [
                   TextButton(onPressed: onEdit, child: const Text('Edit')),
                   TextButton(
@@ -125,8 +145,80 @@ class VehicleCard extends StatelessWidget {
                   TextButton(onPressed: onRemove, child: const Text('Remove')),
                 ],
               ),
-            ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Photo on top of the card with the plate as a caption, as in the design.
+class _CarPhoto extends StatelessWidget {
+  const _CarPhoto({required this.photoUrl, required this.plate});
+
+  final String? photoUrl;
+  final String plate;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(
+            color: colors.sand,
+            child: photoUrl == null
+                ? Icon(Icons.directions_car_outlined, color: colors.muted)
+                : CachedNetworkImage(
+                    imageUrl: photoUrl!,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) =>
+                        const Icon(Icons.directions_car_outlined),
+                  ),
           ),
+          Positioned(
+            left: AppSpacing.md,
+            bottom: AppSpacing.sm + 2,
+            child: Text(
+              plate,
+              style: AppTextStyles.plate.copyWith(
+                color: colors.inkSoft,
+                fontSize: 11,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.ground,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md - 2,
+          vertical: AppSpacing.xs,
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.label.copyWith(color: colors.ink),
         ),
       ),
     );

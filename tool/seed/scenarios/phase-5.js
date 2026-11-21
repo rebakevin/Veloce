@@ -57,7 +57,7 @@ module.exports = {
         reference: b.reference, vehicleId: b.car, renterId: b.renter, ownerId: b.ownerId,
         startDate: ts(day(b.start)), endDate: ts(day(b.start + b.days)), days: b.days,
         dailyRateApplied: b.q.rate, rentalFee: b.q.rentalFee, cautionFee: b.q.caution,
-        platformFee: ctx.PLATFORM_FEE, totalPayable: b.q.total, status: b.status, reason: null,
+        platformFee: ctx.PLATFORM_FEE, totalPayable: b.q.total, status: b.status === 'returning' ? 'return' : b.status, reason: null,
         payDeadline: null, expiresAt: null, agreementAckAt: ts(day(b.start - 2)),
         ownerPickupConfirmedAt: handedOver ? ts(day(b.start, 9)) : null,
         renterPickupConfirmedAt: handedOver ? ts(day(b.start, 10)) : null,

@@ -9,8 +9,10 @@ import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
+import 'package:veloce/core/widgets/brand_mark.dart';
 import 'package:veloce/core/widgets/empty_state.dart';
 import 'package:veloce/core/widgets/error_view.dart';
+import 'package:veloce/core/widgets/pill_segmented.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 import 'package:veloce/features/auth/auth.dart';
 
@@ -20,6 +22,7 @@ import '../../domain/entities/vehicle_card_data.dart';
 import '../../domain/entities/vehicle_filters.dart';
 import '../../domain/usecases/search_vehicles.dart';
 import '../bloc/favourites_bloc.dart';
+import '../bloc/home_tab_cubit.dart';
 import '../bloc/results_bloc.dart';
 import '../bloc/search_cubit.dart';
 import '../bloc/search_state.dart';
@@ -48,6 +51,7 @@ class _HomeBody extends StatefulWidget {
 
 class _HomeBodyState extends State<_HomeBody> {
   late final ResultsBloc _results;
+  final HomeTabCubit _tab = HomeTabCubit();
 
   @override
   void initState() {
@@ -63,7 +67,15 @@ class _HomeBodyState extends State<_HomeBody> {
   @override
   void dispose() {
     _results.close();
+    unawaited(_tab.close());
     super.dispose();
+  }
+
+  /// The mock opens with today to three days later, so the tiles show them
+  /// before the renter picks anything.
+  static SearchState _withDefaultDates(SearchState state) {
+    final query = _queryFor(state);
+    return state.copyWith(start: query.start, end: query.end);
   }
 
   static SearchQuery _queryFor(SearchState state) {
@@ -79,8 +91,11 @@ class _HomeBodyState extends State<_HomeBody> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<ResultsBloc>.value(
-      value: _results,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<ResultsBloc>.value(value: _results),
+        BlocProvider<HomeTabCubit>.value(value: _tab),
+      ],
       child: BlocListener<SearchCubit, SearchState>(
         listenWhen: (previous, current) =>
             previous.area != current.area ||
@@ -89,29 +104,32 @@ class _HomeBodyState extends State<_HomeBody> {
             previous.typeChip != current.typeChip,
         listener: (context, state) =>
             _results.add(ResultsQueryChanged(_queryFor(state))),
-        child: DefaultTabController(
-          length: 2,
-          child: Scaffold(
-            appBar: AppBar(title: const Text('Veloce')),
-            body: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        child: Scaffold(
+          body: SafeArea(
+            child: CustomScrollView(
+              slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.gutter,
-                      AppSpacing.md,
-                      AppSpacing.gutter,
+                      AppSpacing.gutter + AppSpacing.xs,
+                      AppSpacing.sm,
+                      AppSpacing.gutter + AppSpacing.xs,
                       0,
                     ),
-                    child: _Header(onSearch: () => unawaited(_search())),
+                    child: BlocBuilder<HomeTabCubit, int>(
+                      builder: (context, tab) => _Header(
+                        tab: tab,
+                        onTab: context.read<HomeTabCubit>().select,
+                        onSearch: () => unawaited(_search()),
+                      ),
+                    ),
                   ),
                 ),
-                const SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _TabHeader(),
+                BlocBuilder<HomeTabCubit, int>(
+                  builder: (context, tab) =>
+                      tab == 0 ? const _ExploreTab() : const _SavedTab(),
                 ),
               ],
-              body: const TabBarView(children: [_ExploreTab(), _SavedTab()]),
             ),
           ),
         ),
@@ -121,8 +139,7 @@ class _HomeBodyState extends State<_HomeBody> {
 
   Future<void> _search() async {
     final search = context.read<SearchCubit>();
-    final query = search.state.query;
-    if (query == null) return;
+    final query = _queryFor(search.state);
     await search.savePreferences();
     if (!mounted) return;
     unawaited(context.push(RouteNames.renterResults, extra: query));
@@ -130,8 +147,14 @@ class _HomeBodyState extends State<_HomeBody> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.onSearch});
+  const _Header({
+    required this.tab,
+    required this.onTab,
+    required this.onSearch,
+  });
 
+  final int tab;
+  final ValueChanged<int> onTab;
   final VoidCallback onSearch;
 
   @override
@@ -142,59 +165,81 @@ class _Header extends StatelessWidget {
     final firstName = name
         .split(RegExp(r'\s+'))
         .firstWhere((part) => part.isNotEmpty, orElse: () => 'there');
+    final saved = context.select<FavouritesBloc, int>(
+      (bloc) => bloc.state.favouriteIds.length,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Hi, $firstName', style: AppTextStyles.display),
-        const SizedBox(height: AppSpacing.xs),
+        const Center(child: BrandMark()),
+        const SizedBox(height: AppSpacing.lg + 2),
         Text(
-          'Find the right car for your next trip around Kigali.',
-          style: AppTextStyles.body.copyWith(color: colors.muted),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.card),
+          'Muraho, $firstName',
+          style: AppTextStyles.body.copyWith(
+            color: colors.muted,
+            fontWeight: FontWeight.w600,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              children: [
-                BlocBuilder<SearchCubit, SearchState>(
-                  builder: (context, state) => RenterSearchForm(
-                    state: state,
-                    onAreaChanged: (area) =>
-                        context.read<SearchCubit>().areaChanged(area),
-                    onDatesChanged: (start, end) =>
-                        context.read<SearchCubit>().datesChanged(start, end),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                BlocBuilder<SearchCubit, SearchState>(
-                  builder: (context, state) => Align(
-                    alignment: Alignment.centerLeft,
-                    child: HomeTypeChips(
-                      selected: state.typeChip,
-                      onSelected: (type) =>
-                          context.read<SearchCubit>().typeChipChanged(type),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                BlocBuilder<SearchCubit, SearchState>(
-                  builder: (context, state) => PrimaryButton(
-                    label: 'Search cars',
-                    onPressed: state.query == null ? null : onSearch,
-                  ),
+        ),
+        const Text('Where to next?', style: AppTextStyles.display),
+        const SizedBox(height: AppSpacing.lg + 2),
+        PillSegmented(
+          labels: ['Explore', saved == 0 ? 'Saved' : 'Saved ($saved)'],
+          selected: tab,
+          onSelected: onTab,
+        ),
+        if (tab == 0) ...[
+          const SizedBox(height: AppSpacing.lg + 2),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.sheet),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0F1A1814),
+                  blurRadius: 24,
+                  offset: Offset(0, 6),
                 ),
               ],
             ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                children: [
+                  BlocBuilder<SearchCubit, SearchState>(
+                    builder: (context, state) => RenterSearchForm(
+                      state: _HomeBodyState._withDefaultDates(state),
+                      onAreaChanged: (area) =>
+                          context.read<SearchCubit>().areaChanged(area),
+                      onDatesChanged: (start, end) =>
+                          context.read<SearchCubit>().datesChanged(start, end),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  PrimaryButton(
+                    label: 'Search cars',
+                    icon: Icons.search_rounded,
+                    onPressed: onSearch,
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        const Text('Explore cars', style: AppTextStyles.heading),
-        const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.lg - 2),
+          BlocBuilder<SearchCubit, SearchState>(
+            builder: (context, state) => HomeTypeChips(
+              selected: state.typeChip,
+              onSelected: (type) =>
+                  context.read<SearchCubit>().typeChipChanged(type),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg + 2),
+          Text(
+            'Available for your dates',
+            style: AppTextStyles.heading.copyWith(color: colors.ink),
+          ),
+          const SizedBox(height: AppSpacing.md - 2),
+        ] else
+          const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
@@ -208,17 +253,21 @@ class _ExploreTab extends StatelessWidget {
     return BlocBuilder<ResultsBloc, ResultsState>(
       builder: (context, state) => switch (state) {
         ResultsLoading() => const _CardListSkeleton(),
-        ResultsEmpty() => const EmptyState(
-          icon: Icons.search_off_outlined,
-          title: 'No cars match those dates',
-          message: 'Try another area or a different date range.',
+        ResultsEmpty() => const _SliverMessage(
+          EmptyState(
+            icon: Icons.search_off_outlined,
+            title: 'No cars match those dates',
+            message: 'Try another area or a different date range.',
+          ),
         ),
-        ResultsFailure(:final error) => ErrorView(
-          message: error.message,
-          onRetry: () =>
-              context.read<ResultsBloc>().add(const ResultsRefreshed()),
+        ResultsFailure(:final error) => _SliverMessage(
+          ErrorView(
+            message: error.message,
+            onRetry: () =>
+                context.read<ResultsBloc>().add(const ResultsRefreshed()),
+          ),
         ),
-        ResultsLoaded(:final cars, :final query) => _ResultsList(
+        ResultsLoaded(:final cars, :final query) => _CarSliver(
           cars: cars,
           query: query,
           showHowItWorks: true,
@@ -236,15 +285,19 @@ class _SavedTab extends StatelessWidget {
     return BlocBuilder<FavouritesBloc, FavouritesState>(
       builder: (context, state) => switch (state) {
         FavouritesLoading() => const _CardListSkeleton(),
-        FavouritesFailure(:final error) => ErrorView(
-          message: error.message,
-          onRetry: () =>
-              context.read<FavouritesBloc>().add(const FavouritesStarted()),
+        FavouritesFailure(:final error) => _SliverMessage(
+          ErrorView(
+            message: error.message,
+            onRetry: () =>
+                context.read<FavouritesBloc>().add(const FavouritesStarted()),
+          ),
         ),
-        FavouritesLoaded(:final cars) when cars.isEmpty => const EmptyState(
-          icon: Icons.favorite_border_rounded,
-          title: 'No saved cars yet',
-          message: 'Tap a heart on a car to save it here.',
+        FavouritesLoaded(:final cars) when cars.isEmpty => const _SliverMessage(
+          EmptyState(
+            icon: Icons.favorite_border_rounded,
+            title: 'Nothing saved yet',
+            message: 'Tap a heart on a car to save it here.',
+          ),
         ),
         FavouritesLoaded(:final cars) => _SavedList(cars: cars),
       },
@@ -252,8 +305,21 @@ class _SavedTab extends StatelessWidget {
   }
 }
 
-class _ResultsList extends StatelessWidget {
-  const _ResultsList({
+class _SliverMessage extends StatelessWidget {
+  const _SliverMessage(this.child);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      SliverFillRemaining(hasScrollBody: false, child: child);
+}
+
+/// Bottom space so the last card clears the floating tab bar.
+const double _tabBarClearance = 120;
+
+class _CarSliver extends StatelessWidget {
+  const _CarSliver({
     required this.cars,
     required this.query,
     this.showHowItWorks = false,
@@ -266,25 +332,32 @@ class _ResultsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FavouritesBloc, FavouritesState>(
-      builder: (context, favourites) => ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.gutter),
-        itemCount: cars.length + (showHowItWorks ? 1 : 0),
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
-        itemBuilder: (context, index) {
-          if (index == cars.length) return const _HowItWorks();
-          final car = cars[index];
-          return CarCard(
-            car: car,
-            isFavourite: favourites.contains(car.vehicle.id),
-            onFavourite: () => context.read<FavouritesBloc>().add(
-              FavouriteToggled(car.vehicle.id),
-            ),
-            onTap: () => context.push(
-              RouteNames.car(car.vehicle.id),
-              extra: CarDetailArgs(start: query.start, end: query.end),
-            ),
-          );
-        },
+      builder: (context, favourites) => SliverPadding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter + AppSpacing.xs,
+          0,
+          AppSpacing.gutter + AppSpacing.xs,
+          _tabBarClearance,
+        ),
+        sliver: SliverList.separated(
+          itemCount: cars.length + (showHowItWorks ? 1 : 0),
+          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+          itemBuilder: (context, index) {
+            if (index == cars.length) return const _HowItWorks();
+            final car = cars[index];
+            return CarCard(
+              car: car,
+              isFavourite: favourites.contains(car.vehicle.id),
+              onFavourite: () => context.read<FavouritesBloc>().add(
+                FavouriteToggled(car.vehicle.id),
+              ),
+              onTap: () => context.push(
+                RouteNames.car(car.vehicle.id),
+                extra: CarDetailArgs(start: query.start, end: query.end),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -302,24 +375,31 @@ class _SavedList extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final start = query?.start ?? today;
     final end = query?.end ?? today.add(const Duration(days: 3));
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppSpacing.gutter),
-      itemCount: cars.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
-      itemBuilder: (context, index) {
-        final car = cars[index];
-        return CarCard(
-          car: car,
-          isFavourite: true,
-          onFavourite: () => context.read<FavouritesBloc>().add(
-            FavouriteToggled(car.vehicle.id),
-          ),
-          onTap: () => context.push(
-            RouteNames.car(car.vehicle.id),
-            extra: CarDetailArgs(start: start, end: end),
-          ),
-        );
-      },
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter + AppSpacing.xs,
+        0,
+        AppSpacing.gutter + AppSpacing.xs,
+        _tabBarClearance,
+      ),
+      sliver: SliverList.separated(
+        itemCount: cars.length,
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+        itemBuilder: (context, index) {
+          final car = cars[index];
+          return CarCard(
+            car: car,
+            isFavourite: true,
+            onFavourite: () => context.read<FavouritesBloc>().add(
+              FavouriteToggled(car.vehicle.id),
+            ),
+            onTap: () => context.push(
+              RouteNames.car(car.vehicle.id),
+              extra: CarDetailArgs(start: start, end: end),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -329,11 +409,18 @@ class _CardListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppSpacing.gutter),
-      itemCount: 3,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
-      itemBuilder: (_, _) => const CarCardSkeleton(),
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter + AppSpacing.xs,
+        0,
+        AppSpacing.gutter + AppSpacing.xs,
+        _tabBarClearance,
+      ),
+      sliver: SliverList.separated(
+        itemCount: 3,
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+        itemBuilder: (_, _) => const CarCardSkeleton(),
+      ),
     );
   }
 }
@@ -374,41 +461,4 @@ class _HowItWorks extends StatelessWidget {
       ),
     );
   }
-}
-
-class _TabHeader extends SliverPersistentHeaderDelegate {
-  const _TabHeader();
-
-  @override
-  double get minExtent => kTextTabBarHeight;
-
-  @override
-  double get maxExtent => kTextTabBarHeight;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: BlocBuilder<FavouritesBloc, FavouritesState>(
-        buildWhen: (previous, current) =>
-            previous.favouriteIds.length != current.favouriteIds.length,
-        builder: (context, state) {
-          final count = state.favouriteIds.length;
-          return TabBar(
-            tabs: [
-              const Tab(text: 'Explore'),
-              Tab(text: count == 0 ? 'Saved' : 'Saved ($count)'),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_TabHeader oldDelegate) => false;
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
+import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
 import 'package:veloce/core/widgets/empty_state.dart';
 import 'package:veloce/core/widgets/error_view.dart';
@@ -20,11 +21,6 @@ class MyCarsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('My cars')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(RouteNames.ownerCarNew),
-        icon: const Icon(Icons.add),
-        label: const Text('List a car'),
-      ),
       body: BlocConsumer<MyCarsBloc, MyCarsState>(
         listener: (context, state) {
           if (state is MyCarsLoaded && state.notice != null) {
@@ -63,24 +59,19 @@ class MyCarsPage extends StatelessWidget {
               },
               child: ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                  96,
-                ),
-                itemCount: vehicles.length,
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                itemCount: vehicles.length + 1,
                 itemBuilder: (context, index) {
-                  final vehicle = vehicles[index];
+                  if (index == 0) return const _ListCarButton();
+                  final vehicle = vehicles[index - 1];
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.lg - 2),
                     child: VehicleCard(
                       vehicle: vehicle,
                       nextRental: nextRentals[vehicle.id],
                       photoUrl: primaryPhotos[vehicle.id],
                       docsExpired: expiredIds.contains(vehicle.id),
-                      onOpen: () =>
-                          context.push(RouteNames.ownerCar(vehicle.id)),
+                      onOpen: () => context.push(RouteNames.car(vehicle.id)),
                       onEdit: () =>
                           context.push(RouteNames.ownerCarEdit(vehicle.id)),
                       onAvailability: () => context.push(
@@ -99,6 +90,32 @@ class MyCarsPage extends StatelessWidget {
               ),
             ),
         },
+      ),
+    );
+  }
+}
+
+/// Compact "List a car" pill above the list, right-aligned as in the design.
+class _ListCarButton extends StatelessWidget {
+  const _ListCarButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg - 2),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: FilledButton(
+          onPressed: () => context.push(RouteNames.ownerCarNew),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, AppSizes.iconControl),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg + 2),
+            textStyle: AppTextStyles.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          child: const Text('List a car'),
+        ),
       ),
     );
   }

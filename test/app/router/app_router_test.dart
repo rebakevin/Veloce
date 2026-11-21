@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +7,6 @@ import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/navigation/auth_redirect.dart';
 import 'package:veloce/core/navigation/route_names.dart';
-import 'package:veloce/core/widgets/placeholder_links.dart';
 import 'package:veloce/features/auth/domain/dev_route_catalog.dart';
 import 'package:veloce/features/auth/presentation/pages/dev_routes_page.dart';
 
@@ -87,9 +85,7 @@ void main() {
     }
   });
 
-  testWidgets('every route opens and every link on it reaches a route', (
-    tester,
-  ) async {
+  testWidgets('every route opens', (tester) async {
     final probe = createAppRouter(_FakeSession(UserRole.owner));
     final entries = DevRouteCatalog.fromPatterns(
       DevRoutesPage.patterns(probe.configuration.routes),
@@ -97,7 +93,6 @@ void main() {
     expect(entries.length, greaterThan(55));
 
     final failures = <String>[];
-    var tapped = 0;
     for (final entry in entries) {
       final role = _isAuthPage(entry.path)
           ? null
@@ -105,48 +100,8 @@ void main() {
       final router = await _pumpApp(tester, role, initialLocation: entry.path);
       if (router.state.matchedLocation != entry.path) {
         failures.add('${entry.path} opened ${router.state.matchedLocation}');
-        continue;
-      }
-
-      final linkCount = find
-          .descendant(
-            of: find.byType(PlaceholderLinks),
-            matching: find.byType(ListTile),
-          )
-          .evaluate()
-          .length;
-      for (var i = 0; i < linkCount; i++) {
-        router.go(entry.path);
-        await tester.pumpAndSettle();
-        // Re-evaluate after navigation: scroll-driven or state-driven rebuilds
-        // can change the visible tile count; skip gracefully if the tile is gone.
-        final liveTiles = find
-            .descendant(
-              of: find.byType(PlaceholderLinks),
-              matching: find.byType(ListTile),
-            )
-            .evaluate();
-        if (i >= liveTiles.length) continue;
-        final tile = find
-            .descendant(
-              of: find.byType(PlaceholderLinks),
-              matching: find.byType(ListTile),
-            )
-            .at(i);
-        final label = (tester.widget<ListTile>(tile).title! as Text).data;
-        await tester.ensureVisible(tile);
-        await tester.tap(tile);
-        tapped++;
-        await tester.pumpAndSettle();
-        if (router.state.error != null) {
-          failures.add('${entry.path} -> "$label" is not a route');
-        }
       }
     }
     expect(failures, isEmpty);
-    // Real screens (Phase 4 booking pages) no longer show PlaceholderLinks, so
-    // the number of tappable placeholder links drops as phases land. The route
-    // count above still checks that every path is registered.
-    expect(tapped, greaterThan(0));
   });
 }

@@ -74,7 +74,7 @@ class PostRentalView extends StatelessWidget {
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
                   color: colors.cautionWash,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
                   border: Border.all(
                     color: colors.cautionInk.withValues(alpha: 0.3),
                   ),

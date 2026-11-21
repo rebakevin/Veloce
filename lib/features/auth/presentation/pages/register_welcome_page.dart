@@ -8,6 +8,7 @@ import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/error_view.dart';
 import 'package:veloce/core/widgets/loading_view.dart';
+import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../auth_destination.dart';
 import '../bloc/auth_bloc.dart';
@@ -75,15 +76,26 @@ class _Done extends StatelessWidget {
     final colors = context.colors;
     return AuthScaffold(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: AppSpacing.xl),
-          Icon(Icons.check_circle_outline, size: 80, color: colors.brand),
           const SizedBox(height: AppSpacing.lg),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.brandTint,
+              shape: BoxShape.circle,
+            ),
+            child: SizedBox.square(
+              dimension: 72,
+              child: Icon(Icons.check, size: 36, color: colors.brandDeep),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg + 2),
           Text(
             'Welcome to Veloce, $name',
-            style: AppTextStyles.title,
-            textAlign: TextAlign.center,
+            style: AppTextStyles.display.copyWith(
+              color: colors.ink,
+              fontSize: 32,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -91,11 +103,10 @@ class _Done extends StatelessWidget {
                 ? 'Your account is ready. We sent a link to confirm your '
                       'email.'
                 : 'Your account is ready.',
-            style: AppTextStyles.bodyLarge,
-            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyLarge.copyWith(color: colors.muted),
           ),
-          const SizedBox(height: AppSpacing.xl),
-          FilledButton(onPressed: onContinue, child: const Text('Continue')),
+          const SizedBox(height: AppSpacing.lg + 2),
+          PrimaryButton(label: 'Continue', onPressed: onContinue),
         ],
       ),
     );

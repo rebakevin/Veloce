@@ -12,7 +12,10 @@ import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../bloc/forgot_password_cubit.dart';
 import '../widgets/auth_scaffold.dart';
+import '../widgets/auth_top_bar.dart';
+import '../widgets/fields_card.dart';
 import '../widgets/form_text_field.dart';
+import '../widgets/step_header.dart';
 
 class ForgotPasswordPage extends StatelessWidget {
   const ForgotPasswordPage({super.key});
@@ -50,8 +53,6 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Forgot password',
-      onBack: _back,
       child: BlocConsumer<ForgotPasswordCubit, ForgotPasswordState>(
         listenWhen: (previous, current) =>
             current.status == ForgotPasswordStatus.failure,
@@ -70,26 +71,33 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Enter the email you signed up with and we will send you a '
-                'link to choose a new password.',
-                style: AppTextStyles.bodyLarge,
+              AuthTopBar(onBack: _back),
+              const SizedBox(height: AppSpacing.lg + 2),
+              const StepHeader(
+                title: 'Forgot password',
+                subtitle:
+                    'Enter the email you signed up with and we will send '
+                    'you a link to choose a new password.',
               ),
-              const SizedBox(height: AppSpacing.xl),
-              FormTextField(
-                label: 'Email',
-                hint: FieldHints.email,
-                controller: _email,
-                errorText: state.emailError,
-                enabled: !sending,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.done,
-                autofillHints: const [AutofillHints.email],
-                onChanged: (_) =>
-                    context.read<ForgotPasswordCubit>().emailEdited(),
-                onSubmitted: (_) => _submit(),
+              const SizedBox(height: AppSpacing.lg),
+              FieldsCard(
+                children: [
+                  FormTextField(
+                    label: 'Email',
+                    hint: FieldHints.email,
+                    controller: _email,
+                    errorText: state.emailError,
+                    enabled: !sending,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.email],
+                    onChanged: (_) =>
+                        context.read<ForgotPasswordCubit>().emailEdited(),
+                    onSubmitted: (_) => _submit(),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.lg + 2),
               PrimaryButton(
                 label: 'Send reset link',
                 isLoading: sending,
@@ -120,22 +128,34 @@ class _SentNotice extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        AuthTopBar(onBack: onBack),
         const SizedBox(height: AppSpacing.xl),
-        Icon(Icons.mark_email_read_outlined, size: 64, color: colors.brand),
-        const SizedBox(height: AppSpacing.lg),
-        const Text(
-          'Check your email',
-          style: AppTextStyles.title,
-          textAlign: TextAlign.center,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.brandTint,
+              shape: BoxShape.circle,
+            ),
+            child: SizedBox.square(
+              dimension: 72,
+              child: Icon(
+                Icons.mark_email_read_outlined,
+                size: 36,
+                color: colors.brandDeep,
+              ),
+            ),
+          ),
         ),
+        const SizedBox(height: AppSpacing.lg + 2),
+        const StepHeader(title: 'Check your email'),
         const SizedBox(height: AppSpacing.sm),
         Text(
           'If $email has an account, a reset link is on its way.',
-          style: AppTextStyles.bodyLarge,
-          textAlign: TextAlign.center,
+          style: AppTextStyles.bodyLarge.copyWith(color: colors.muted),
         ),
         const SizedBox(height: AppSpacing.xl),
-        FilledButton(onPressed: onBack, child: const Text('Back to log in')),
+        PrimaryButton(label: 'Back to log in', onPressed: onBack),
         TextButton(
           onPressed: onDifferentEmail,
           child: const Text('Use a different email'),

@@ -14,6 +14,7 @@ import '../auth_destination.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/verify_email_cubit.dart';
 import '../widgets/auth_scaffold.dart';
+import '../widgets/step_header.dart';
 
 class VerifyEmailPage extends StatelessWidget {
   const VerifyEmailPage({super.key});
@@ -64,7 +65,6 @@ class VerifyEmailView extends StatelessWidget {
     final colors = context.colors;
     final email = context.select((AuthBloc bloc) => bloc.state.user?.email);
     return AuthScaffold(
-      title: 'Verify your email',
       child: BlocConsumer<VerifyEmailCubit, VerifyEmailState>(
         listener: _onState,
         builder: (context, state) {
@@ -72,26 +72,37 @@ class VerifyEmailView extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: AppSpacing.lg),
-              Icon(
-                Icons.mark_email_unread_outlined,
-                size: 64,
-                color: colors.brand,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colors.brandTint,
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox.square(
+                    dimension: 72,
+                    child: Icon(
+                      Icons.mark_email_unread_outlined,
+                      size: 36,
+                      color: colors.brandDeep,
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.lg + 2),
+              const StepHeader(title: 'Verify your email'),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 email == null
                     ? 'We sent you a verification link.'
                     : 'We sent a verification link to $email.',
-                style: AppTextStyles.bodyLarge,
-                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyLarge.copyWith(color: colors.muted),
               ),
               const SizedBox(height: AppSpacing.sm),
-              const Text(
+              Text(
                 'You can browse cars now. Requesting a booking, listing a car '
                 'and paying need a verified email.',
-                style: AppTextStyles.bodySmall,
-                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(color: colors.muted),
               ),
               const SizedBox(height: AppSpacing.xl),
               PrimaryButton(

@@ -115,31 +115,42 @@ class _EditProfileFormState extends State<_EditProfileForm> {
             existingUrl: widget.state.account.photoUrl,
           ),
           const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            label: 'Full name',
-            hint: FieldHints.fullName,
-            controller: _name,
-            textInputAction: TextInputAction.next,
-            autofillHints: const [AutofillHints.name],
-            validator: (value) => Validators.requiredText(value, field: 'Name'),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            label: 'Phone number',
-            hint: FieldHints.phone,
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.next,
-            autofillHints: const [AutofillHints.telephoneNumber],
-            validator: Validators.phone,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          DatePickerFormField(
-            label: 'Date of birth',
-            value: _dateOfBirth,
-            firstDate: DateTime(now.year - 100),
-            lastDate: now,
-            validator: (value) => Validators.dateOfBirth(value, now: now),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                children: [
+                  AppTextField(
+                    label: 'Full name',
+                    hint: FieldHints.fullName,
+                    controller: _name,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.name],
+                    validator: (value) =>
+                        Validators.requiredText(value, field: 'Name'),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppTextField(
+                    label: 'Phone number',
+                    hint: FieldHints.phone,
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.telephoneNumber],
+                    validator: Validators.phone,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  DatePickerFormField(
+                    label: 'Date of birth',
+                    value: _dateOfBirth,
+                    firstDate: DateTime(now.year - 100),
+                    lastDate: now,
+                    validator: (value) =>
+                        Validators.dateOfBirth(value, now: now),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           ActionMessageBanner(

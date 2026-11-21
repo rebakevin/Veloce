@@ -17,11 +17,11 @@ import 'package:veloce/core/widgets/loading_view.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 import 'package:veloce/core/widgets/rating_stars.dart';
-import 'package:veloce/core/widgets/section_header.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
 import 'package:veloce/core/widgets/user_avatar.dart';
 
 import '../bloc/decision_bloc.dart';
+import '../widgets/booking_card.dart';
 import '../widgets/booking_price_breakdown.dart';
 
 /// Owner request detail `/booking/:id/decision`.
@@ -113,91 +113,96 @@ class _DecisionBody extends StatelessWidget {
     final action = state.action;
     final colors = context.colors;
     return ListView(
-      padding: Responsive.pagePadding(context)
-          .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
+      padding: Responsive.pagePadding(context).copyWith(
+        top: AppSpacing.lg,
+        bottom: AppSpacing.xl + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
-        Center(
-          child: UserAvatar(
-            name: renter.name,
-            photoUrl: renter.photoUrl,
-            radius: 44,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          renter.name,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.title,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Center(
-          child: RatingStars(
-            rating: renter.ratingAvg,
-            count: renter.ratingCount,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Center(
-          child: Text(
-            renter.completedCount == 1
-                ? '1 past rental'
-                : '${renter.completedCount} past rentals',
-            style: AppTextStyles.body,
-          ),
-        ),
-        if (renter.completedCount == 0) ...[
-          const SizedBox(height: AppSpacing.sm),
-          const Center(
-            child: StatusChip(label: 'First-time user', tone: StatusTone.info),
-          ),
-        ],
-        const SizedBox(height: AppSpacing.md),
-        Center(
-          child: TextButton(
-            onPressed: () => context.push(RouteNames.user(renter.id)),
-            child: const Text('View full profile'),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        const SectionHeader(title: 'Request'),
-        _InfoRow(
-          label: 'Car',
-          value: '${view.vehicle.make} ${view.vehicle.model}',
-        ),
-        _InfoRow(label: 'Plate', value: view.vehicle.plate),
-        _InfoRow(
-          label: 'Dates',
-          value: Formatters.dateRange(booking.startDate, booking.endDate),
-        ),
-        _InfoRow(
-          label: 'Days',
-          value: '${booking.days} day${booking.days == 1 ? '' : 's'}',
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        BookingPriceBreakdown(booking: booking, showOwnerView: true),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            const Expanded(
-              child: Text('You earn', style: AppTextStyles.bodyLarge),
-            ),
-            Text(
-              Formatters.rwf(booking.rentalFee - booking.platformFee),
-              style: AppTextStyles.cardTitle.copyWith(color: colors.brandDeep),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        CheckboxListTile(
-          value: state.reviewed,
-          onChanged: action.isSubmitting
-              ? null
-              : (value) => context.read<DecisionBloc>().add(
-                  DecisionReviewToggled(value ?? false),
+        BookingCard(
+          child: Column(
+            children: [
+              UserAvatar(
+                name: renter.name,
+                photoUrl: renter.photoUrl,
+                radius: 40,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                renter.name,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.title.copyWith(color: colors.ink),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              RatingStars(rating: renter.ratingAvg, count: renter.ratingCount),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                renter.completedCount == 1
+                    ? '1 past rental'
+                    : '${renter.completedCount} past rentals',
+                style: AppTextStyles.bodySmall.copyWith(color: colors.muted),
+              ),
+              if (renter.completedCount == 0) ...[
+                const SizedBox(height: AppSpacing.sm),
+                const StatusChip(
+                  label: 'First-time user',
+                  tone: StatusTone.info,
                 ),
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: const Text('I reviewed their info'),
+              ],
+              TextButton(
+                onPressed: () => context.push(RouteNames.user(renter.id)),
+                child: const Text('View full profile'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: _gap),
+        BookingCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Request',
+                style: AppTextStyles.cardTitle.copyWith(
+                  color: colors.ink,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _InfoRow(
+                label: 'Car',
+                value: '${view.vehicle.make} ${view.vehicle.model}',
+              ),
+              _InfoRow(label: 'Plate', value: view.vehicle.plate),
+              _InfoRow(
+                label: 'Dates',
+                value: Formatters.dateRange(booking.startDate, booking.endDate),
+              ),
+              _InfoRow(
+                label: 'Days',
+                value: '${booking.days} day${booking.days == 1 ? '' : 's'}',
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              BookingPriceBreakdown(booking: booking, showOwnerView: true),
+            ],
+          ),
+        ),
+        const SizedBox(height: _gap),
+        Material(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: CheckboxListTile(
+            value: state.reviewed,
+            onChanged: action.isSubmitting
+                ? null
+                : (value) => context.read<DecisionBloc>().add(
+                    DecisionReviewToggled(value ?? false),
+                  ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+            ),
+            controlAffinity: ListTileControlAffinity.leading,
+            title: const Text('I reviewed their info'),
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
         Row(
@@ -234,6 +239,8 @@ class _DecisionBody extends StatelessWidget {
       ],
     );
   }
+
+  static const double _gap = 14;
 
   Future<void> _decline(BuildContext context) async {
     final reason = await showDialog<String>(
@@ -307,11 +314,22 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: AppTextStyles.body.copyWith(color: context.colors.muted),
+              style: AppTextStyles.bodySmall.copyWith(
+                color: context.colors.muted,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          Flexible(child: Text(value, textAlign: TextAlign.end)),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: context.colors.ink,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );

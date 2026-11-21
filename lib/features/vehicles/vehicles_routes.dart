@@ -3,9 +3,6 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/core/navigation/navigator_keys.dart';
 import 'package:veloce/core/navigation/route_names.dart';
-import 'package:veloce/core/navigation/seed_ids.dart';
-import 'package:veloce/core/widgets/placeholder_link.dart';
-import 'package:veloce/core/widgets/placeholder_page.dart';
 
 import 'presentation/bloc/availability_bloc.dart';
 import 'presentation/bloc/car_wizard_bloc.dart';
@@ -37,51 +34,9 @@ List<RouteBase> vehiclesRoutes() => [
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,
-    path: RouteNames.ownerCarPattern,
-    builder: (context, state) => PlaceholderPage(
-      title: 'My car',
-      route: RouteNames.ownerCarPattern,
-      phase: 2,
-      links: [
-        PlaceholderLink(
-          'View as renter',
-          RouteNames.car(state.pathParameters['id']!),
-        ),
-        PlaceholderLink(
-          'Edit listing',
-          RouteNames.ownerCarEdit(state.pathParameters['id']!),
-        ),
-        PlaceholderLink(
-          'Availability',
-          RouteNames.ownerCarAvailability(state.pathParameters['id']!),
-        ),
-        PlaceholderLink(
-          'Documents',
-          RouteNames.ownerCarDocuments(state.pathParameters['id']!),
-        ),
-      ],
-    ),
-  ),
-  GoRoute(
-    parentNavigatorKey: rootNavigatorKey,
     path: RouteNames.ownerCarPublishedPattern,
     builder: (context, state) =>
         CarPublishedPage(vehicleId: state.pathParameters['id']!),
-  ),
-  GoRoute(
-    parentNavigatorKey: rootNavigatorKey,
-    path: RouteNames.ownerCarRequestsPattern,
-    builder: (context, state) => PlaceholderPage(
-      title: 'Requests',
-      route: RouteNames.ownerCarRequestsPattern,
-      phase: 4,
-      links: [
-        PlaceholderLink(
-          'Request (sample)',
-          RouteNames.bookingDecision(SeedIds.pendingBooking),
-        ),
-      ],
-    ),
   ),
   GoRoute(
     parentNavigatorKey: rootNavigatorKey,

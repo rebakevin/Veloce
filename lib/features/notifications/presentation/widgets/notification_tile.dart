@@ -134,18 +134,16 @@ class NotificationTile extends StatelessWidget {
         padding: const EdgeInsets.only(right: AppSpacing.lg),
         decoration: BoxDecoration(
           color: colors.dangerWash,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         child: Icon(Icons.delete_outline, color: colors.danger),
       ),
       child: Material(
-        color: notification.read
-            ? colors.surface
-            : colors.sand.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
@@ -170,7 +168,7 @@ class NotificationTile extends StatelessWidget {
                           Expanded(
                             child: Text(
                               notification.title,
-                              style: AppTextStyles.cardTitle.copyWith(
+                              style: AppTextStyles.body.copyWith(
                                 color: colors.ink,
                                 fontWeight: notification.read
                                     ? FontWeight.w600

@@ -131,7 +131,7 @@ class _BookingReviewViewState extends State<BookingReviewView> {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             color: colors.sand,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

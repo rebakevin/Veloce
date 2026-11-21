@@ -11,6 +11,7 @@ import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../bloc/profile_bloc.dart';
 import '../widgets/action_message_banner.dart';
+import '../widgets/form_card.dart';
 import '../widgets/profile_action_listener.dart';
 import '../widgets/profile_loaded_builder.dart';
 
@@ -83,12 +84,16 @@ class _PayoutFormState extends State<_PayoutForm> {
             style: AppTextStyles.bodyLarge,
           ),
           const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            label: 'MoMo number (the 9 digits after 0)',
-            hint: FieldHints.momoNumber,
-            controller: _number,
-            keyboardType: TextInputType.number,
-            validator: Validators.momoNumber,
+          FormCard(
+            children: [
+              AppTextField(
+                label: 'MoMo number (the 9 digits after 0)',
+                hint: FieldHints.momoNumber,
+                controller: _number,
+                keyboardType: TextInputType.number,
+                validator: Validators.momoNumber,
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.lg),
           ActionMessageBanner(action: action, kind: ProfileActionKind.payout),

@@ -16,6 +16,7 @@ import 'package:veloce/core/widgets/error_view.dart';
 import 'package:veloce/core/widgets/loading_view.dart';
 import 'package:veloce/features/handover/domain/repositories/handover_repository.dart';
 
+import '../../../../core/widgets/page_app_bar.dart';
 import '../bloc/caution_claim_cubit.dart';
 import '../bloc/caution_claim_state.dart';
 import '../widgets/settlement_breakdown.dart';
@@ -48,7 +49,7 @@ class _CautionClaimView extends StatelessWidget {
     final userId = GetIt.I<AuthSession>().currentUserId;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Caution claim')),
+      appBar: const PageAppBar(title: 'Caution claim'),
       body: StreamBuilder<Result<Booking>>(
         stream: GetIt.I<BookingLookup>().watch(bookingId),
         builder: (context, bookingSnapshot) {

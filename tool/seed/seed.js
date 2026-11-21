@@ -151,7 +151,7 @@ function bookingDoc(b) {
     cautionFee: b.q.caution,
     platformFee: PLATFORM_FEE,
     totalPayable: b.q.total,
-    status: b.status,
+    status: b.status === 'returning' ? 'return' : b.status, // the app stores 'return'
     reason: b.reason ?? null,
     payDeadline: b.status === 'approved' ? ts(hoursFromNow(b.payDeadlineHours ?? 20)) : null,
     expiresAt: b.status === 'pending' ? ts(hoursFromNow(b.expiresInHours ?? 20)) : null,

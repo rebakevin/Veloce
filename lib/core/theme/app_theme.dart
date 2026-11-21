@@ -28,6 +28,7 @@ abstract final class AppTheme {
     );
     return ThemeData(
       useMaterial3: true,
+      fontFamily: AppTextStyles.fontFamily,
       colorScheme: scheme,
       scaffoldBackgroundColor: colors.ground,
       textTheme: AppTextStyles.textTheme(colors.ink, colors.body),
@@ -62,8 +63,9 @@ abstract final class AppTheme {
           minimumSize: const Size.fromHeight(AppSizes.button),
           shape: borderShape,
           textStyle: AppTextStyles.button,
-          foregroundColor: colors.ink,
-          side: BorderSide(color: colors.line, width: 1.5),
+          backgroundColor: colors.surface,
+          foregroundColor: colors.brand,
+          side: BorderSide(color: colors.brand, width: 1.5),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -80,6 +82,26 @@ abstract final class AppTheme {
         focusedErrorBorder: _fieldBorder(colors.danger),
         hintStyle: TextStyle(color: colors.muted),
         errorStyle: AppTextStyles.caption.copyWith(color: colors.danger),
+      ),
+      chipTheme: ChipThemeData(
+        showCheckmark: false,
+        shape: const StadiumBorder(),
+        backgroundColor: colors.surface,
+        selectedColor: colors.brand,
+        selectedShadowColor: Colors.transparent,
+        side: BorderSide(color: colors.line, width: 1.5),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.sm,
+        ),
+        labelStyle: AppTextStyles.button.copyWith(
+          color: colors.ink,
+          fontSize: 15,
+        ),
+        secondaryLabelStyle: AppTextStyles.button.copyWith(
+          color: colors.onBrand,
+          fontSize: 15,
+        ),
       ),
       dividerTheme: DividerThemeData(
         color: colors.sand,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 
@@ -44,8 +45,14 @@ class FormTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.caption),
-        const SizedBox(height: AppSpacing.sm),
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: context.colors.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm - 2),
         TextField(
           controller: controller,
           enabled: enabled,

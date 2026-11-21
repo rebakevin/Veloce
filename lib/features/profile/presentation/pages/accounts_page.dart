@@ -148,14 +148,26 @@ class _AccountList extends StatelessWidget {
           .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
       children: [
         if (state.isWorking) const LinearProgressIndicator(),
-        for (final account in state.accounts)
-          AccountTile(
-            account: account,
-            isCurrent: state.isCurrent(account),
-            enabled: !state.isWorking,
-            onSwitch: () => bloc.add(AccountsSwitchRequested(account.uid)),
-            onRemove: () => _confirmRemove(context, bloc, account),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var index = 0; index < state.accounts.length; index++) ...[
+                if (index > 0) const Divider(height: 1),
+                AccountTile(
+                  account: state.accounts[index],
+                  isCurrent: state.isCurrent(state.accounts[index]),
+                  enabled: !state.isWorking,
+                  onSwitch: () => bloc.add(
+                    AccountsSwitchRequested(state.accounts[index].uid),
+                  ),
+                  onRemove: () =>
+                      _confirmRemove(context, bloc, state.accounts[index]),
+                ),
+              ],
+            ],
           ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         OutlinedButton.icon(
           onPressed: state.isWorking
