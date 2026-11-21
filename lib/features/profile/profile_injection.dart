@@ -28,7 +28,7 @@ void registerProfile(GetIt getIt) {
     )
     ..registerLazySingleton<AccountEraser>(
       () => FirestoreAccountEraser(
-        firestore: getIt<FirebaseFirestore>(),
+        docs: FirestoreDocSource(getIt<FirebaseFirestore>()),
         writes: getIt(),
         storage: getIt(),
       ),
