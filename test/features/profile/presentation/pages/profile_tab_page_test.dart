@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:veloce/core/domain/enums/auth_provider_kind.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/features/auth/auth.dart';
@@ -82,6 +83,33 @@ void main() {
     expect(find.text('Payment method'), findsOneWidget);
     expect(find.text('National ID'), findsOneWidget);
     expect(find.text('Driving licence'), findsNothing);
+  });
+
+  testWidgets('an unverified email shows a way back to verify-email', (
+    tester,
+  ) async {
+    when(() => authBloc.state).thenReturn(
+      const AuthNeedsProfile(
+        AuthUser(
+          uid: 'uid-1',
+          email: 'a@example.com',
+          emailVerified: false,
+          displayName: 'Aline',
+          provider: AuthProviderKind.password,
+        ),
+      ),
+    );
+    await pumpTab(tester, loadedProfile());
+
+    expect(find.text('Verify your email'), findsOneWidget);
+  });
+
+  testWidgets('no verify banner without a signed-in user or when verified', (
+    tester,
+  ) async {
+    await pumpTab(tester, loadedProfile());
+
+    expect(find.text('Verify your email'), findsNothing);
   });
 
   testWidgets('sign out asks first, then dispatches SignOutRequested', (

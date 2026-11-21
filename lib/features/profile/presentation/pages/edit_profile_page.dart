@@ -11,6 +11,7 @@ import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/photo_picker.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
+import 'package:veloce/features/auth/auth.dart';
 
 import '../../domain/entities/profile_update.dart';
 import '../bloc/profile_bloc.dart';
@@ -34,6 +35,9 @@ class EditProfilePage extends StatelessWidget {
       body: ProfileActionListener(
         kind: ProfileActionKind.updateProfile,
         successMessage: 'Profile updated',
+        // The session profile (name shown elsewhere) must follow the edit.
+        onSuccess: () =>
+            context.read<AuthBloc>().add(const AuthProfileRefreshed()),
         child: ProfileLoadedBuilder(
           builder: (context, state) =>
               _EditProfileForm(state: state, picker: photoPicker),
