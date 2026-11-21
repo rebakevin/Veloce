@@ -1,5 +1,5 @@
-/// Ids of the seeded documents (`tool/seed/seed.js`). Placeholders link to these
-/// so every link opens on real data; real pages use the id of the item tapped.
+/// Ids of the seeded documents (`tool/seed/seed.js`). The dev routes list opens
+/// parameterised routes on these; real pages use the id of the item tapped.
 abstract final class SeedIds {
   static const String booking = 'booking-confirmed';
   static const String pendingBooking = 'booking-pending';
