@@ -1,6 +1,7 @@
 # Veloce
 
 ## Links
+- [Project site](https://rebakevin.github.io/Veloce/) (mock and design system)
 - [Mock](https://rebakevin.github.io/Veloce/mock.html)
 - [Design system](https://rebakevin.github.io/Veloce/design-system.html)
 

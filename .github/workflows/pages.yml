@@ -6,6 +6,7 @@ on:
     paths:
       - docs/resources/MOCK.html
       - docs/resources/DESIGN_SYSTEM.html
+      - docs/resources/INDEX.html
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -31,15 +32,7 @@ jobs:
           mkdir site
           cp docs/resources/MOCK.html site/mock.html
           cp docs/resources/DESIGN_SYSTEM.html site/design-system.html
-          cat > site/index.html <<'HTML'
-          <!doctype html>
-          <meta charset="utf-8">
-          <title>Veloce</title>
-          <ul>
-            <li><a href="mock.html">Mock</a></li>
-            <li><a href="design-system.html">Design system</a></li>
-          </ul>
-          HTML
+          cp docs/resources/INDEX.html site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
