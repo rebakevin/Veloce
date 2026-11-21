@@ -25,8 +25,11 @@ class DetailsStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DraftTextField(
-          label: 'Number plate',
+          label: draft.isEditing
+              ? 'Number plate (fixed, it matches your documents)'
+              : 'Number plate',
           hint: 'RAB 123 A',
+          enabled: !draft.isEditing,
           initialValue: draft.plate,
           errorText: errors[WizardField.plate],
           onChanged: (value) => onChanged(draft.copyWith(plate: value)),

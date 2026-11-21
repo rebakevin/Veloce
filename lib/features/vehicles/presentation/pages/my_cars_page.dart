@@ -46,34 +46,58 @@ class MyCarsPage extends StatelessWidget {
             onRetry: () =>
                 context.read<MyCarsBloc>().add(const MyCarsStarted()),
           ),
-          MyCarsLoaded(:final vehicles, :final nextRentals) => ListView.builder(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-              96,
-            ),
-            itemCount: vehicles.length,
-            itemBuilder: (context, index) {
-              final vehicle = vehicles[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: VehicleCard(
-                  vehicle: vehicle,
-                  nextRental: nextRentals[vehicle.id],
-                  onOpen: () => context.push(RouteNames.ownerCar(vehicle.id)),
-                  onEdit: () =>
-                      context.push(RouteNames.ownerCarEdit(vehicle.id)),
-                  onAvailability: () =>
-                      context.push(RouteNames.ownerCarAvailability(vehicle.id)),
-                  onToggleStatus: () => context.read<MyCarsBloc>().add(
-                    MyCarsStatusToggled(vehicle),
-                  ),
-                  onRemove: () => _confirmRemove(context, vehicle),
+          MyCarsLoaded(
+            :final vehicles,
+            :final nextRentals,
+            :final primaryPhotos,
+            :final expiredIds,
+          ) =>
+            RefreshIndicator(
+              onRefresh: () async {
+                final bloc = context.read<MyCarsBloc>()
+                  ..add(const MyCarsRefreshRequested());
+                await bloc.stream.first.timeout(
+                  const Duration(seconds: 5),
+                  onTimeout: () => bloc.state,
+                );
+              },
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  96,
                 ),
-              );
-            },
-          ),
+                itemCount: vehicles.length,
+                itemBuilder: (context, index) {
+                  final vehicle = vehicles[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: VehicleCard(
+                      vehicle: vehicle,
+                      nextRental: nextRentals[vehicle.id],
+                      photoUrl: primaryPhotos[vehicle.id],
+                      docsExpired: expiredIds.contains(vehicle.id),
+                      onOpen: () =>
+                          context.push(RouteNames.ownerCar(vehicle.id)),
+                      onEdit: () =>
+                          context.push(RouteNames.ownerCarEdit(vehicle.id)),
+                      onAvailability: () => context.push(
+                        RouteNames.ownerCarAvailability(vehicle.id),
+                      ),
+                      onDocuments: () => context.push(
+                        RouteNames.ownerCarDocuments(vehicle.id),
+                      ),
+                      onToggleStatus: () => context.read<MyCarsBloc>().add(
+                        MyCarsStatusToggled(vehicle),
+                      ),
+                      onRemove: () => _confirmRemove(context, vehicle),
+                    ),
+                  );
+                },
+              ),
+            ),
         },
       ),
     );

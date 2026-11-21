@@ -15,6 +15,7 @@ class DraftTextField extends StatefulWidget {
     this.errorText,
     this.keyboardType,
     this.maxLines = 1,
+    this.enabled = true,
   });
 
   final String label;
@@ -24,6 +25,7 @@ class DraftTextField extends StatefulWidget {
   final String? errorText;
   final TextInputType? keyboardType;
   final int maxLines;
+  final bool enabled;
 
   @override
   State<DraftTextField> createState() => _DraftTextFieldState();
@@ -51,6 +53,7 @@ class _DraftTextFieldState extends State<DraftTextField> {
           controller: _controller,
           keyboardType: widget.keyboardType,
           maxLines: widget.maxLines,
+          enabled: widget.enabled,
           onChanged: widget.onChanged,
           decoration: InputDecoration(
             hintText: widget.hint,

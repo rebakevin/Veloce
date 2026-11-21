@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:veloce/core/domain/enums/document_kind.dart';
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
@@ -94,7 +96,7 @@ class _DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    final now = GetIt.I<Clock>().now();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
