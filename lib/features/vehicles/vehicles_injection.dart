@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'data/firestore_vehicle_repository.dart';
 import 'domain/repositories/vehicle_repository.dart';
 import 'domain/usecases/find_next_rentals.dart';
+import 'domain/usecases/find_primary_photos.dart';
 import 'domain/usecases/load_vehicle_draft.dart';
 import 'domain/usecases/publish_vehicle.dart';
 import 'domain/usecases/recompute_docs_valid_until.dart';
@@ -23,7 +24,11 @@ import 'presentation/bloc/my_cars_bloc.dart';
 void registerVehicles(GetIt getIt) {
   getIt
     ..registerLazySingleton<VehicleRepository>(
-      () => FirestoreVehicleRepository(firestore: getIt(), writes: getIt()),
+      () => FirestoreVehicleRepository(
+        firestore: getIt(),
+        writes: getIt(),
+        session: getIt(),
+      ),
     )
     ..registerFactory<SetStatus>(() => SetStatus(getIt(), getIt()))
     ..registerFactory<RemoveVehicle>(() => RemoveVehicle(getIt(), getIt()))
@@ -31,12 +36,15 @@ void registerVehicles(GetIt getIt) {
       () => WatchOwnerVehicles(getIt(), getIt()),
     )
     ..registerFactory<FindNextRentals>(() => FindNextRentals(getIt(), getIt()))
+    ..registerFactory<FindPrimaryPhotos>(() => FindPrimaryPhotos(getIt()))
     ..registerFactory<MyCarsBloc>(
       () => MyCarsBloc(
         watchVehicles: getIt(),
         setStatus: getIt(),
         removeVehicle: getIt(),
         findNextRentals: getIt(),
+        findPrimaryPhotos: getIt(),
+        clock: getIt(),
       ),
     )
     ..registerFactory<CarCountCubit>(
@@ -82,6 +90,7 @@ void registerVehicles(GetIt getIt) {
         publishVehicle: getIt(),
         updateVehicle: getIt(),
         loadVehicleDraft: getIt(),
+        clock: getIt(),
       ),
     );
 }
