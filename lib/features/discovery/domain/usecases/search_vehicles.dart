@@ -13,5 +13,9 @@ class SearchVehicles {
   Future<Result<List<VehicleCardData>>> call({
     required SearchQuery query,
     required VehicleFilters filters,
-  }) => _repository.search(query: query, filters: filters);
+  }) => _repository.search(
+    // An explicit type filter replaces the home chip so the two cannot clash.
+    query: filters.type == null ? query : query.copyWith(clearTypeChip: true),
+    filters: filters,
+  );
 }

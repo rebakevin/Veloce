@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'package:veloce/core/constants/app_constants.dart';
 import 'package:veloce/core/constants/firestore_paths.dart';
 import 'package:veloce/core/data/models/booking_contact_model.dart';
@@ -43,6 +42,16 @@ class FirestoreRequestRepository implements RequestRepository {
   final NotificationWriter _notifications;
   final Clock _clock;
 
+  /// A client batch cannot check uniqueness, so the number comes from the
+  /// random Firestore id (not the clock). The booking id stays the true key.
+  static int _referenceNumber(String bookingId) {
+    var hash = 0;
+    for (final unit in bookingId.codeUnits) {
+      hash = (hash * 31 + unit) & 0x7fffffff;
+    }
+    return 1000 + hash % 9000;
+  }
+
   @override
   Future<Result<bool>> hasActiveLock(String renterId) async {
     try {
@@ -79,7 +88,7 @@ class FirestoreRequestRepository implements RequestRepository {
       final write = _writes.begin();
       final bookingId = write.newId(FirestorePaths.bookings);
       final reference = Formatters.bookingReference(
-        1000 + (now.millisecondsSinceEpoch % 9000),
+        _referenceNumber(bookingId),
       );
       final vehicle = draft.vehicle;
       final quote = draft.quote;

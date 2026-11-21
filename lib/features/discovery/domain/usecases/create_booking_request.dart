@@ -1,4 +1,5 @@
 import 'package:veloce/core/domain/entities/booking.dart';
+import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/domain/services/pending_review_checker.dart';
 import 'package:veloce/core/domain/services/pricing_calculator.dart';
@@ -55,6 +56,12 @@ class CreateBookingRequest {
     }
 
     final now = _clock.now();
+    if (vehicle.status != VehicleStatus.published ||
+        !rules.hasValidDocs(vehicle, now)) {
+      return const Result.failure(
+        ConflictFailure('This car is no longer available.'),
+      );
+    }
     if (rules.isPast(start, now)) {
       return const Result.failure(
         ValidationFailure('Choose a pickup date from today onwards.'),

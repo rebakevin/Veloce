@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:veloce/core/domain/entities/booking.dart';
+import 'package:veloce/core/domain/enums/vehicle_status.dart';
 import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/domain/services/pricing_calculator.dart';
 import 'package:veloce/core/error/app_failure.dart';
@@ -63,6 +64,33 @@ void main() {
     );
     final result = await submit();
     expect((result as Failure<Booking>).failure.message, contains('own car'));
+  });
+
+  test('rejects a car that is no longer published', () async {
+    search.detailResult = Result.success(
+      aVehicleDetail(vehicle: aVehicle(status: VehicleStatus.paused)),
+    );
+    final result = await submit();
+    expect(
+      (result as Failure<Booking>).failure.message,
+      contains('no longer available'),
+    );
+    expect(requests.lastDraft, isNull);
+  });
+
+  test('rejects a car whose documents have expired', () async {
+    search.detailResult = Result.success(
+      aVehicleDetail(
+        vehicle: aVehicle(
+          docsValidUntil: testNow.subtract(const Duration(days: 2)),
+        ),
+      ),
+    );
+    final result = await submit();
+    expect(
+      (result as Failure<Booking>).failure.message,
+      contains('no longer available'),
+    );
   });
 
   test('rejects a past pickup date', () async {
