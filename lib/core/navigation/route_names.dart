@@ -10,11 +10,10 @@ abstract final class RouteNames {
   static const String registerDetails = '/register/details';
   static const String registerWelcome = '/register/welcome';
   static const String verifyEmail = '/verify-email';
-  static const String devLogin = '/dev-login';
   static const String devRoutes = '/dev-routes';
 
   /// Debug-only pages, open to everyone and left out of the route list.
-  static bool isDevTool(String path) => path == devLogin || path == devRoutes;
+  static bool isDevTool(String path) => path == devRoutes;
 
   // Renter tabs and discovery (Phase 3)
   static const String renterHome = '/renter/home';

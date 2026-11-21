@@ -6,7 +6,7 @@ import 'package:veloce/core/error/result.dart';
 
 import '../domain/dev_account.dart';
 
-/// Signs in seeded accounts for `/dev-login`. Registered in debug builds only.
+/// Signs in seeded accounts for the dev tools. Registered in debug builds only.
 class DevSignIn {
   const DevSignIn(this._auth);
 

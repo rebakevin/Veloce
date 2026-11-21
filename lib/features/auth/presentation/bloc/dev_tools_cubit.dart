@@ -7,27 +7,27 @@ import 'package:veloce/core/data/services/verification_sim.dart';
 import '../../data/dev_sign_in.dart';
 import '../../domain/dev_account.dart';
 
-enum DevLoginStatus { idle, signingIn, signedIn, failed }
+enum DevToolsStatus { idle, signingIn, signedIn, failed }
 
-class DevLoginState extends Equatable {
-  const DevLoginState({
-    this.status = DevLoginStatus.idle,
+class DevToolsState extends Equatable {
+  const DevToolsState({
+    this.status = DevToolsStatus.idle,
     this.message,
     this.momoSucceeds = true,
     this.verificationSucceeds = true,
   });
 
-  final DevLoginStatus status;
+  final DevToolsStatus status;
   final String? message;
   final bool momoSucceeds;
   final bool verificationSucceeds;
 
-  DevLoginState copyWith({
-    DevLoginStatus? status,
+  DevToolsState copyWith({
+    DevToolsStatus? status,
     String? message,
     bool? momoSucceeds,
     bool? verificationSucceeds,
-  }) => DevLoginState(
+  }) => DevToolsState(
     status: status ?? this.status,
     message: message,
     momoSucceeds: momoSucceeds ?? this.momoSucceeds,
@@ -43,16 +43,17 @@ class DevLoginState extends Equatable {
   ];
 }
 
-/// Debug-only quick login plus the simulation switches (payment, verification).
-class DevLoginCubit extends Cubit<DevLoginState> {
-  DevLoginCubit({
+/// Debug-only dev tools: sign in as a seeded account and flip the simulation
+/// switches (payment, verification).
+class DevToolsCubit extends Cubit<DevToolsState> {
+  DevToolsCubit({
     required this._signIn,
     required MomoGatewaySim momo,
     required VerificationSim verification,
   }) : _momo = momo,
        _verification = verification,
        super(
-         DevLoginState(
+         DevToolsState(
            momoSucceeds: momo.shouldSucceed,
            verificationSucceeds: verification.shouldSucceed,
          ),
@@ -63,15 +64,15 @@ class DevLoginCubit extends Cubit<DevLoginState> {
   final VerificationSim _verification;
 
   Future<void> signInAs(DevAccount account) async {
-    if (state.status == DevLoginStatus.signingIn) return;
-    emit(state.copyWith(status: DevLoginStatus.signingIn));
+    if (state.status == DevToolsStatus.signingIn) return;
+    emit(state.copyWith(status: DevToolsStatus.signingIn));
     final result = await _signIn.signIn(account);
     if (isClosed) return;
     emit(
       result.when(
-        success: (_) => state.copyWith(status: DevLoginStatus.signedIn),
+        success: (_) => state.copyWith(status: DevToolsStatus.signedIn),
         failure: (failure) => state.copyWith(
-          status: DevLoginStatus.failed,
+          status: DevToolsStatus.failed,
           message: failure.message,
         ),
       ),
@@ -81,7 +82,7 @@ class DevLoginCubit extends Cubit<DevLoginState> {
   Future<void> signOut() async {
     await _signIn.signOut();
     if (isClosed) return;
-    emit(state.copyWith(status: DevLoginStatus.idle));
+    emit(state.copyWith(status: DevToolsStatus.idle));
   }
 
   void setMomoSucceeds({required bool value}) {

@@ -34,3 +34,4 @@ export 'presentation/bloc/login_bloc.dart';
 export 'presentation/bloc/register_bloc.dart';
 export 'presentation/bloc/register_draft.dart';
 export 'presentation/bloc/verify_email_cubit.dart';
+export 'presentation/widgets/dev_tools_overlay.dart';
