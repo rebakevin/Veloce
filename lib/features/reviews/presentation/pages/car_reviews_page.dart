@@ -115,8 +115,7 @@ class _VehicleHeader extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.line),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
       child: Row(
         children: [
