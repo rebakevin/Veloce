@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
-import 'package:veloce/core/theme/app_text_styles.dart';
-import 'package:veloce/core/widgets/placeholder_link.dart';
-import 'package:veloce/core/widgets/placeholder_links.dart';
 import 'package:veloce/features/booking/booking.dart';
 import 'package:veloce/features/finances/finances.dart';
 import 'package:veloce/features/vehicles/vehicles.dart';
 
-/// Owner dashboard. Each card is a slot owned by one phase, so no two phases
-/// edit this file.
+/// Owner dashboard. Each card is a slot owned by one feature, so no two
+/// features edit this file.
 class OwnerHomePage extends StatelessWidget {
   const OwnerHomePage({super.key});
 
@@ -20,11 +16,6 @@ class OwnerHomePage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.gutter),
         children: const [
-          Text('Owner dashboard', style: AppTextStyles.title),
-          PlaceholderLinks(
-            links: [PlaceholderLink('List a car', RouteNames.ownerCarNew)],
-          ),
-          SizedBox(height: AppSpacing.lg),
           PendingRequestsCard(),
           SizedBox(height: AppSpacing.md),
           CarCountCard(),
