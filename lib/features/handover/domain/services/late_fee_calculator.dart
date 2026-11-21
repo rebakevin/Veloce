@@ -43,4 +43,13 @@ class LateFeeCalculator {
 
     return min(ownerAdjustedFee, cappedFee);
   }
+
+  /// The reduced late fee the owner stored on the booking, or null when the
+  /// owner did not reduce it.
+  ///
+  /// Until settlement a booking's `lateFee` stays 0 unless the owner reduced
+  /// it, so a positive stored value is the owner's ceiling (waiving uses
+  /// `lateFeeWaived` instead).
+  static int? ownerAdjustedFeeOf(int storedLateFee) =>
+      storedLateFee > 0 ? storedLateFee : null;
 }

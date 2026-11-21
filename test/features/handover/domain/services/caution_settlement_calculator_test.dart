@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/handover/domain/services/caution_settlement_calculator.dart';
+import 'package:veloce/features/handover/domain/services/late_fee_calculator.dart';
 
 final _due = DateTime.utc(2026, 5, 10, 9);
 
@@ -39,6 +40,8 @@ CautionSettlement _refund({
 }
 
 void main() {
+  ownerAdjustedGroup();
+
   group('refund (no issue or owner refund)', () {
     test('on time refunds the whole caution', () {
       final s = _refund();
@@ -121,5 +124,49 @@ void main() {
         }
       }
     }
+  });
+}
+
+void ownerAdjustedGroup() {
+  group('owner adjusted late fee', () {
+    final due = DateTime(2026, 11, 10);
+    final returned = DateTime(2026, 11, 12);
+
+    test('a reduced fee replaces the calculated one', () {
+      final result = CautionSettlementCalculator.forRefund(
+        rentalFee: 100000,
+        cautionFee: 100000,
+        dueAt: due,
+        returnedAt: returned,
+        lateFeeWaived: false,
+        ownerAdjustedFee: 20000,
+      );
+
+      final s = (result as Success<CautionSettlement>).value;
+      expect(s.lateFee, 20000);
+      expect(s.refund, 80000);
+      expect(s.total, 100000);
+    });
+
+    test('the cap with a claim still wins over a high adjustment', () {
+      final result = CautionSettlementCalculator.forAgreedClaim(
+        rentalFee: 100000,
+        cautionFee: 100000,
+        dueAt: due,
+        returnedAt: returned,
+        claimAmount: 60000,
+        lateFeeWaived: false,
+        ownerAdjustedFee: 69000,
+      );
+
+      final s = (result as Success<CautionSettlement>).value;
+      expect(s.lateFee, 40000);
+      expect(s.refund, 0);
+    });
+
+    test('a stored fee of 0 means no adjustment', () {
+      expect(LateFeeCalculator.ownerAdjustedFeeOf(0), isNull);
+      expect(LateFeeCalculator.ownerAdjustedFeeOf(15000), 15000);
+    });
   });
 }
