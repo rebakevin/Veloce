@@ -22,6 +22,6 @@ The code covers every feature in the task: search with filters and the `calendar
 - [ ] Manual check of the Phase 3 seed scenarios in `docs/tasks/phase-3-renter-discovery.md`
 
 **Known stub, belongs to Phase 6**
-- `PendingReviewChecker` is `PendingReviewCheckerStub` (`features/reviews/data/`), so "renter has a pending review" never blocks a request until Phase 6 is merged.
+- None for reviews: `reviews_injection.dart` registers `FirestorePendingReviewChecker`, so a pending review blocks a request. `PendingReviewCheckerStub` is unused.
 
 No gaps to implement before moving on, so no subagents are needed for this phase.
