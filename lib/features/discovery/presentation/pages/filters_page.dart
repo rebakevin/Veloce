@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:veloce/core/domain/enums/transmission.dart';
 import 'package:veloce/core/domain/enums/vehicle_type.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
@@ -81,8 +80,9 @@ class _FiltersBody extends StatelessWidget {
                 Expanded(
                   child: PrimaryButton(
                     label: 'Apply',
-                    onPressed: () =>
-                        context.pop(context.read<FiltersCubit>().state),
+                    onPressed: filters.hasValidPriceRange
+                        ? () => context.pop(filters)
+                        : null,
                   ),
                 ),
               ],

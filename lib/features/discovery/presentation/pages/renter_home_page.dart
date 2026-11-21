@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
@@ -67,7 +67,7 @@ class _HomeBodyState extends State<_HomeBody> {
   }
 
   static SearchQuery _queryFor(SearchState state) {
-    final now = DateTime.now();
+    final now = GetIt.I<Clock>().now();
     final today = DateTime(now.year, now.month, now.day);
     return SearchQuery(
       area: state.area,
@@ -298,7 +298,7 @@ class _SavedList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final query = context.read<SearchCubit>().query;
-    final now = DateTime.now();
+    final now = GetIt.I<Clock>().now();
     final today = DateTime(now.year, now.month, now.day);
     final start = query?.start ?? today;
     final end = query?.end ?? today.add(const Duration(days: 3));
@@ -393,11 +393,18 @@ class _TabHeader extends SliverPersistentHeaderDelegate {
   ) {
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: const TabBar(
-        tabs: [
-          Tab(text: 'Explore'),
-          Tab(text: 'Saved'),
-        ],
+      child: BlocBuilder<FavouritesBloc, FavouritesState>(
+        buildWhen: (previous, current) =>
+            previous.favouriteIds.length != current.favouriteIds.length,
+        builder: (context, state) {
+          final count = state.favouriteIds.length;
+          return TabBar(
+            tabs: [
+              const Tab(text: 'Explore'),
+              Tab(text: count == 0 ? 'Saved' : 'Saved ($count)'),
+            ],
+          );
+        },
       ),
     );
   }

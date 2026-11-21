@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import 'package:veloce/core/formatting/formatters.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
@@ -54,7 +53,17 @@ class _ReviewBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<RequestBloc, RequestState>(
       listener: (context, state) {
-        if (state case RequestSuccess(:final booking)) {
+        if (state case RequestSuccess(:final booking, :final priceChanged)) {
+          if (priceChanged) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'The owner changed the price. Your request total is '
+                  '${Formatters.rwf(booking.totalPayable)}.',
+                ),
+              ),
+            );
+          }
           context.pushReplacement(RouteNames.bookingRequested(booking.id));
         }
       },
