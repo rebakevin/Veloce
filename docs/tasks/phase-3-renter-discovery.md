@@ -105,7 +105,7 @@ The seed script loads everything this task needs (extra cars, an unverified rent
 2. `cd tool/seed && npm install && GOOGLE_APPLICATION_CREDENTIALS=/path/to/veloce-service-account.json npm run seed`
 3. Re-run the seed after testing: it restores any seeded booking you changed (for example the `pending` one after a request test). It only overwrites its own ids, so it is safe to repeat.
 
-**Accounts** (sign in via `/dev-login`, password `Veloce#2026`): `renter1@veloce.test` ... `renter5@veloce.test`, `owner1@veloce.test` ... `owner3@veloce.test`.
+**Accounts** (sign in with the dev button, password `Veloce#2026`): `renter1@veloce.test` ... `renter5@veloce.test`, `owner1@veloce.test` ... `owner3@veloce.test`.
 
 This phase adds 9 cars to the 7 published base cars (16 published; `p3-car-docs-expired` must be hidden, so 15 show in results; `car-8` is paused). Other phases may add a few more cars, so count only `car-*` and `p3-car-*`. Photos (3 per car) are generated automatically. Day offsets are relative to the day you seed.
 

@@ -132,7 +132,7 @@ can take a car from nothing to a published listing that renters can find, and ke
 
 - Seed: 8 cars (owner1: cars 1–3, owner2: 4–6, owner3: 7–8, car 8 paused) with 3 photos each,
   insurance + medical documents (yellow paper on every other car) and an availability window. Sign
-  in as `owner1@veloce.test` via `/dev-login` (password `Veloce#2026`).
+  in as `owner1@veloce.test` with the dev button (password `Veloce#2026`).
 - `firestore.rules` has a labelled `vehicles` block skeleton.
 
 ### Dummy data for this task
@@ -146,7 +146,7 @@ cd tool/seed && npm install && GOOGLE_APPLICATION_CREDENTIALS=/path/to/veloce-se
 ```
 
 The key comes from the Firebase console (see `tool/seed/README.md`). The seed is safe to repeat.
-Sign in through `/dev-login` (password `Veloce#2026`) as `owner1@veloce.test` for almost
+Sign in with the dev button (password `Veloce#2026`) as `owner1@veloce.test` for almost
 everything, and as `owner4@veloce.test` for the empty state.
 
 | Scenario | Account | Car / booking id | What to test |

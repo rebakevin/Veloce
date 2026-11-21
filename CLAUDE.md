@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Veloce is a Flutter/Dart app (Android and iOS only). Phase 0 is in place: shared contracts in `lib/core`, every route as a placeholder, the `/dev-login` page and the seed script. See `README.md` for setup and `docs/adr/0001-phase-0-decisions.md` for where the layout differs from the generic conventions. Run with `flutter run --dart-define-from-file=env.json`.
+Veloce is a Flutter/Dart app (Android and iOS only). Phase 0 is in place: shared contracts in `lib/core`, every route registered, the floating dev button (debug builds) and the seed script. See `README.md` for setup and `docs/adr/0001-phase-0-decisions.md` for where the layout differs from the generic conventions. Run with `flutter run --dart-define-from-file=env.json`.
 
 ## Workflow: read `docs/WORKING.md`
 

@@ -744,7 +744,6 @@ Phase 0 registers **every** route below with a placeholder page; the owning phas
 | `/register/details` | Details + documents (licence or National ID) | P1 |
 | `/register/welcome` | Registration success | P1 |
 | `/verify-email` | Email verification pending | P1 |
-| `/dev-login` | Debug-only quick login (kDebugMode) | P0 |
 | `/dev-routes` | Debug-only list of every route, opens each placeholder (kDebugMode) | P0 |
 | `/renter/home` | Explore / Saved tabs | P3 |
 | `/renter/search` | Area + dates picker | P3 |
@@ -770,7 +769,6 @@ Phase 0 registers **every** route below with a placeholder page; the owning phas
 | `/owner/home` | Owner dashboard (slots) | P0 shell, slots by P2/P4/P6 |
 | `/owner/cars` | My cars | P2 |
 | `/owner/cars/new` | 7-step listing wizard | P2 |
-| `/owner/cars/:id` | My car (view as renter, edit, availability, documents) | P2 |
 | `/owner/cars/:id/published` | Your car is live | P2 |
 | `/owner/cars/:id/requests` | Pending requests for one car | P4 |
 | `/owner/cars/:id/edit` | Edit car (same wizard) | P2 |
@@ -819,7 +817,7 @@ Phase 0 registers **every** route below with a placeholder page; the owning phas
 | `PreferencesService` + `ThemeCubit` | `core/data/services` | §9 |
 | `PendingReviewChecker` (stub → P6 real) | `core/domain/services` | blocks requests/approvals |
 | `AppMessenger`, theme, responsive helpers, shared widget kit | `core/theme`, `core/utils`, `core/widgets` | §12 |
-| Seed script + dev quick-login | `tool/seed`, `/dev-login` | lets every phase work with real data before Phase 1 exists |
+| Seed script + dev button (quick sign-in, simulations, routes) | `tool/seed`, floating dev button | lets every phase work with real data before Phase 1 exists |
 
 **Independence rule:** a phase may *read* any collection through `core` lookups and contracts, but may *write* only the collections listed for it in §4.1. Code against interfaces, unit-test with `mocktail`, and integrate against the shared dev Firebase project seeded with bookings in every status.
 

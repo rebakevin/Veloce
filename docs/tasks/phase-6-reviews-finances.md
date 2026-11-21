@@ -116,7 +116,7 @@ cd tool/seed && npm install && GOOGLE_APPLICATION_CREDENTIALS=/path/to/veloce-se
 
 Reseed after testing: it restores every seeded document you changed or deleted. Day offsets are relative to the day you seed, so the "this month" data shifts with the date: seed after about the 12th of the month to see a full month chart, and reseed to refresh it.
 
-**Accounts.** Password `Veloce#2026`. `owner1`-`owner3` and `renter1`-`renter4` are on `/dev-login`; `owner5`, `renter14` and `p6-owner` are not, so sign in with the normal login form (`owner5@veloce.test`, `renter14@veloce.test`, `p6-owner@veloce.test`).
+**Accounts.** Password `Veloce#2026`. `owner1`-`owner3` and `renter1`-`renter4` are in the dev button; `owner5`, `renter14` and `p6-owner` are not, so sign in with the normal login form (`owner5@veloce.test`, `renter14@veloce.test`, `p6-owner@veloce.test`).
 
 | Scenario | Account | Ids | What to test |
 | --- | --- | --- | --- |

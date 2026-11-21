@@ -30,7 +30,7 @@ node seed.js --dry-run
 node seed.js --dry-run --scenarios=phase-3   # base + one scenario file
 ```
 
-Extra accounts (same password): `owner4`, `owner5`, `p6-owner`, `renter5` to `renter15`. They are not on `/dev-login`, whose list is hard-coded in Dart; use the normal login form.
+Extra accounts (same password): `owner4`, `owner5`, `p6-owner`, `renter5` to `renter15`. They are not in the dev button's account list, which is hard-coded in Dart; use the normal login form.
 
 ## Reset
 

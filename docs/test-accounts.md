@@ -4,8 +4,8 @@ Dev project: `veloce-1fe08`.
 
 **Password for every email account: `Veloce#2026`**
 
-Sign in on the login screen with the email and the password. In debug builds, `/dev-login` also has
-one-tap buttons for the accounts marked "Dev login".
+Sign in on the login screen with the email and the password. In debug builds, the floating dev button also has
+one-tap sign-in for the accounts marked "Dev login".
 
 | Role   | Email                        | Name                  | Dev login | Notes                              |
 |--------|------------------------------|-----------------------|:---------:|------------------------------------|

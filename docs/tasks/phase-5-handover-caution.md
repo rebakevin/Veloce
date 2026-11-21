@@ -100,7 +100,7 @@ cd tool/seed && npm install && GOOGLE_APPLICATION_CREDENTIALS=/path/to/veloce-se
 
 The seed only overwrites its own ids, so after testing (bookings moved to `active`, `completed`, and so on) run it again to restore them. Do not use `npm run reset` without telling the team.
 
-**Accounts:** sign in through `/dev-login` as `<uid>@veloce.test`, password `Veloce#2026`. New: `renter12@veloce.test` (Emmanuel Kayitare) and `renter13@veloce.test` (Jeanne Uwamahoro). Owners are `owner1`, `owner2`, `owner3` (the owner of each booking is in the table).
+**Accounts:** sign in with the dev button as `<uid>@veloce.test`, password `Veloce#2026`. New: `renter12@veloce.test` (Emmanuel Kayitare) and `renter13@veloce.test` (Jeanne Uwamahoro). Owners are `owner1`, `owner2`, `owner3` (the owner of each booking is in the table).
 
 | Scenario | Renter / owner | Booking id | What to test |
 | --- | --- | --- | --- |

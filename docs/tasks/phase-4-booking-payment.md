@@ -106,7 +106,7 @@ cd tool/seed && npm install && GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-a
 
 The seed only overwrites its own ids, so run it again whenever testing has consumed a booking (approved, paid, cancelled) to restore the original state.
 
-**Accounts** (sign in through `/dev-login`, password `Veloce#2026`): owners `owner1`, `owner2`, `owner3` and renters `renter1`, `renter2`, `renter3`, `renter4`, `renter6` ... `renter11`, all `@veloce.test`. Booking ids are `booking-<key>`.
+**Accounts** (sign in with the dev button, password `Veloce#2026`): owners `owner1`, `owner2`, `owner3` and renters `renter1`, `renter2`, `renter3`, `renter4`, `renter6` ... `renter11`, all `@veloce.test`. Booking ids are `booking-<key>`.
 
 | Scenario | Account | Booking id | What to test |
 | --- | --- | --- | --- |

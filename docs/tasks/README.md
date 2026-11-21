@@ -14,7 +14,7 @@ One file per phase (2–6). Each file is written to be pasted as the body of **o
 
 - **Contract = ERD + Phase 0 code.** Entities, models, Firestore constants, core services, every route and the shared widget kit already exist. Nobody waits for another phase.
 - **Write only your own collections** (listed in each task). Read everything else through the `core` lookups.
-- **Realistic data from day one.** The seed script creates cars and bookings in every status; sign in with `/dev-login` (debug builds) using the seeded accounts in `tool/seed/README.md`.
+- **Realistic data from day one.** The seed script creates cars and bookings in every status; sign in with the floating dev button (debug builds) using the seeded accounts in `tool/seed/README.md`.
 - **No shared files.** Pages that several phases contribute to (`OwnerHomePage`, `BookingDetailPage`, `PublicProfilePage`) use **slots**: each phase fills its own slot widget in its own feature folder.
 - **Interfaces + `mocktail`.** Where a task needs something another phase will deliver, it codes against the `core` interface and tests with a mock.
 - **Shared change needed?** Open a PR titled `contract:` and get every owner to review (see `CONTRIBUTING.md`).

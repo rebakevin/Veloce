@@ -42,4 +42,6 @@ flutter devices
 flutter run --dart-define-from-file=env.json
 ```
 
-3. To sign in as a test user, open `/dev-login` (debug builds only). Password for every seeded account: `Veloce#2026`.
+3. Debug builds show a floating dev button on every page (drag it out of the way). It switches between the seeded accounts, simulates payment and verification results, and opens any route. Password for every seeded account: `Veloce#2026`.
+
+Phone and standalone install: see [PHONE.md](PHONE.md).
