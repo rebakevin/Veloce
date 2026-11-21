@@ -7,6 +7,7 @@ import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/entities/review.dart';
 import 'package:veloce/core/domain/entities/user_account.dart';
 import 'package:veloce/core/domain/entities/vehicle.dart';
+import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/subject_type.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/error/app_failure.dart';
@@ -272,6 +273,11 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     }
 
     final currentUserId = _session.currentUserId;
+    final failure = _reviewAccessFailure(booking, currentUserId);
+    if (failure != null) {
+      emit(state.copyWith(status: ReviewStatus.failure, failure: failure));
+      return;
+    }
     final isRenter = currentUserId == booking.renterId;
     final otherUserId = isRenter ? booking.ownerId : booking.renterId;
 
@@ -335,6 +341,22 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
         renterComment: renterReview?.comment ?? '',
       ),
     );
+  }
+
+  /// Only a party of a completed booking may write a review.
+  static AppFailure? _reviewAccessFailure(Booking booking, String? userId) {
+    if (userId == null ||
+        (userId != booking.renterId && userId != booking.ownerId)) {
+      return const PermissionFailure(
+        'Only the renter or the owner can review this booking.',
+      );
+    }
+    if (booking.status != BookingStatus.completed) {
+      return const ValidationFailure(
+        'You can review a booking once it is completed.',
+      );
+    }
+    return null;
   }
 
   void _onSubjectChanged(
@@ -402,6 +424,13 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     final booking = state.booking;
     final currentUserId = _session.currentUserId;
     if (booking == null || currentUserId == null) return;
+    final accessFailure = _reviewAccessFailure(booking, currentUserId);
+    if (accessFailure != null) {
+      emit(
+        state.copyWith(status: ReviewStatus.failure, failure: accessFailure),
+      );
+      return;
+    }
 
     final SubjectType subjectType = event.subjectType;
     final int stars;
