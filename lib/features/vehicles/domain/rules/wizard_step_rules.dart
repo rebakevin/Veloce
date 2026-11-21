@@ -44,19 +44,21 @@ abstract final class WizardStepRules {
     WizardStep step,
     WizardDraft draft, {
     PricingCalculator calculator = const PricingCalculator(),
+    DateTime? now,
   }) {
+    final at = now ?? DateTime.now();
     return switch (step) {
       WizardStep.media => _media(draft),
       WizardStep.details => _details(draft),
       WizardStep.specs => _specs(draft),
       WizardStep.pricing => _pricing(draft, calculator),
       WizardStep.rules => _rules(draft),
-      WizardStep.documents => _documents(draft),
+      WizardStep.documents => _documents(draft, at),
       WizardStep.review => {
         for (final earlier in WizardStep.values.take(
           WizardStep.documents.index,
         ))
-          ...validate(earlier, draft, calculator: calculator),
+          ...validate(earlier, draft, calculator: calculator, now: at),
       },
     };
   }
@@ -149,8 +151,7 @@ abstract final class WizardStepRules {
     });
   }
 
-  static Map<WizardField, String> _documents(WizardDraft draft) {
-    final now = DateTime.now();
+  static Map<WizardField, String> _documents(WizardDraft draft, DateTime now) {
     final errors = <WizardField, String>{};
     for (final kind in DocumentKind.values) {
       final isRequired = DocumentRules.requiredKinds.contains(kind);

@@ -32,3 +32,8 @@ final class MyCarsRemoveRequested extends MyCarsEvent {
 final class MyCarsNoticeCleared extends MyCarsEvent {
   const MyCarsNoticeCleared();
 }
+
+/// Pull to refresh: reloads next rentals and photos for the cars on screen.
+final class MyCarsRefreshRequested extends MyCarsEvent {
+  const MyCarsRefreshRequested();
+}
