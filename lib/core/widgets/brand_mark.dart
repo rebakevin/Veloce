@@ -17,11 +17,28 @@ class BrandMark extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.directions_car_filled, color: colors.brand, size: 32),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.brand,
+              borderRadius: BorderRadius.circular(AppRadius.sm - 2),
+            ),
+            child: SizedBox.square(
+              dimension: 32,
+              child: Icon(
+                Icons.directions_car_outlined,
+                color: colors.onBrand,
+                size: 18,
+              ),
+            ),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Text(
-            'Veloce',
-            style: AppTextStyles.title.copyWith(color: colors.ink),
+            'veloce',
+            style: AppTextStyles.title.copyWith(
+              color: colors.ink,
+              fontSize: 23,
+              letterSpacing: -0.7,
+            ),
           ),
         ],
       ),

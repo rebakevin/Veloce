@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:veloce/core/data/services/preferences_service.dart';
 import 'package:veloce/core/layout/responsive.dart';
 import 'package:veloce/core/navigation/route_names.dart';
 import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 
-import '../widgets/brand_mark.dart';
 import '../widgets/google_sign_up_button.dart';
 import '../widgets/onboarding_slide.dart';
 import '../widgets/page_index_cubit.dart';
+import '../widgets/welcome_hero.dart';
 
 /// Onboarding slides, ending on the Create account / Log in choice. Marks
 /// `onboarding_seen` when the last slide is reached or the slides are skipped.
@@ -46,7 +45,7 @@ class _WelcomeViewState extends State<WelcomeView> {
 
   /// Below this the slide and the buttons no longer fit together, so the
   /// page scrolls instead of overflowing.
-  static const double _minContentHeight = 480;
+  static const double _minContentHeight = 620;
   final PageController _controller = PageController();
 
   int get _last => onboardingSlides.length - 1;
@@ -80,6 +79,10 @@ class _WelcomeViewState extends State<WelcomeView> {
     final landscape = Responsive.isLandscape(context);
     final slides = Column(
       children: [
+        const Padding(
+          padding: EdgeInsets.only(top: AppSpacing.lg),
+          child: WelcomeHero(),
+        ),
         Expanded(
           child: PageView(
             controller: _controller,
@@ -108,7 +111,6 @@ class _WelcomeViewState extends State<WelcomeView> {
               ),
               child: Row(
                 children: [
-                  const BrandMark(),
                   const Spacer(),
                   BlocBuilder<PageIndexCubit, int>(
                     builder: (context, index) => index == _last
@@ -201,9 +203,9 @@ class _WelcomeActions extends StatelessWidget {
             onPressed: onCreateAccount,
             child: const Text('Create an account'),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           OutlinedButton(onPressed: onLogin, child: const Text('Log in')),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           const GoogleSignUpButton(label: 'Continue with Google'),
         ],
       ),

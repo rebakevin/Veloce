@@ -34,17 +34,28 @@ class RoleCard extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: colors.brandWash,
-                  child: Icon(icon, color: colors.brand),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colors.brandWash,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: SizedBox.square(
+                    dimension: 52,
+                    child: Icon(icon, color: colors.brand, size: 26),
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: AppTextStyles.cardTitle),
+                      Text(
+                        title,
+                        style: AppTextStyles.cardTitle.copyWith(
+                          color: colors.ink,
+                          fontSize: 19,
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(description, style: AppTextStyles.bodySmall),
                     ],

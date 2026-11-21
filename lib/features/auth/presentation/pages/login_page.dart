@@ -3,16 +3,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/app_messenger.dart';
+import 'package:veloce/core/widgets/brand_mark.dart';
 import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
 import '../bloc/auth_bloc.dart';
 import '../bloc/login_bloc.dart';
 import '../widgets/auth_scaffold.dart';
-import '../widgets/brand_mark.dart';
+
 import '../widgets/form_text_field.dart';
 import '../widgets/google_button.dart';
 import '../widgets/or_divider.dart';
@@ -103,29 +105,43 @@ class _LoginViewState extends State<LoginView> {
                 style: AppTextStyles.bodyLarge,
               ),
               const SizedBox(height: AppSpacing.xl),
-              FormTextField(
-                label: 'Email',
-                hint: FieldHints.email,
-                controller: _email,
-                errorText: state.emailError,
-                enabled: !state.isSubmitting,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.email],
-                onChanged: (_) => context.read<LoginBloc>().add(
-                  const LoginFieldEdited(LoginField.email),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: context.colors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.sheet),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              PasswordField(
-                hint: FieldHints.password,
-                controller: _password,
-                errorText: state.passwordError,
-                textInputAction: TextInputAction.done,
-                onChanged: (_) => context.read<LoginBloc>().add(
-                  const LoginFieldEdited(LoginField.password),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FormTextField(
+                        label: 'Email',
+                        hint: FieldHints.email,
+                        controller: _email,
+                        errorText: state.emailError,
+                        enabled: !state.isSubmitting,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        autofillHints: const [AutofillHints.email],
+                        onChanged: (_) => context.read<LoginBloc>().add(
+                          const LoginFieldEdited(LoginField.email),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      PasswordField(
+                        hint: FieldHints.password,
+                        controller: _password,
+                        errorText: state.passwordError,
+                        textInputAction: TextInputAction.done,
+                        onChanged: (_) => context.read<LoginBloc>().add(
+                          const LoginFieldEdited(LoginField.password),
+                        ),
+                        onSubmitted: (_) => _submit(),
+                      ),
+                    ],
+                  ),
                 ),
-                onSubmitted: (_) => _submit(),
               ),
               Align(
                 alignment: Alignment.centerRight,
