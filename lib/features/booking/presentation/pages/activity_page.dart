@@ -197,13 +197,26 @@ class _ActivityBody extends StatelessWidget {
         case _:
           break;
       }
-    } else if (view.effectiveStatus == BookingStatus.pending) {
-      actions.add(
-        _actionButton(
-          'Review request',
-          () => context.push(RouteNames.bookingDecision(id)),
-        ),
-      );
+    } else {
+      switch (view.effectiveStatus) {
+        case BookingStatus.pending:
+          actions.add(
+            _actionButton(
+              'Review request',
+              () => context.push(RouteNames.bookingDecision(id)),
+            ),
+          );
+        case BookingStatus.approved || BookingStatus.confirmed:
+          actions.add(
+            _actionButton(
+              'Cancel booking',
+              () => _cancel(context, view),
+              destructive: true,
+            ),
+          );
+        case _:
+          break;
+      }
     }
     return actions;
   }
