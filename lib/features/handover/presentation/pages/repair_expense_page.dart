@@ -9,6 +9,7 @@ import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
 
+import '../../../../core/widgets/page_app_bar.dart';
 import '../bloc/repair_expense_cubit.dart';
 import '../bloc/repair_expense_state.dart';
 
@@ -22,7 +23,7 @@ class RepairExpensePage extends StatelessWidget {
     final userId = GetIt.I<AuthSession>().currentUserId;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Repair expenses')),
+      appBar: const PageAppBar(title: 'Repair expenses'),
       body: StreamBuilder<Result<Booking>>(
         stream: GetIt.I<BookingLookup>().watch(bookingId),
         builder: (context, bookingSnapshot) {
