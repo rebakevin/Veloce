@@ -20,8 +20,10 @@ import 'package:veloce/features/reviews/reviews.dart';
 
 import '../../domain/entities/booking_view.dart';
 import '../bloc/booking_detail_bloc.dart';
+import '../widgets/booking_card.dart';
 import '../widgets/booking_price_breakdown.dart';
 import '../widgets/booking_status_headline.dart';
+import '../widgets/booking_thumb.dart';
 import '../widgets/booking_timeline.dart';
 import '../widgets/cancel_booking_dialog.dart';
 import '../widgets/counterparty_contact_card.dart';
@@ -117,40 +119,89 @@ class _BookingDetailBody extends StatelessWidget {
       _ => false,
     };
 
+    final counterpart = view.counterpartFor(role);
     return ListView(
       padding: Responsive.pagePadding(context)
-          .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
+          .copyWith(top: AppSpacing.sm, bottom: AppSpacing.xl),
       children: [
-        Text(
-          booking.reference,
-          style: AppTextStyles.caption.copyWith(color: colors.muted),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        BookingStatusHeadline(view: view, role: role),
-        const SizedBox(height: AppSpacing.lg),
-        BookingTimeline(status: view.effectiveStatus),
-        const SizedBox(height: AppSpacing.xl),
-        _Section(
-          title: 'Car',
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.directions_car_outlined, color: colors.brand),
-            title: Text(
-              '${view.vehicle.make} ${view.vehicle.model}',
-              style: AppTextStyles.cardTitle,
-            ),
-            subtitle: Text(
-              '${view.vehicle.plate} · ${view.vehicle.year} · '
-              '${view.vehicle.neighbourhood}',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(RouteNames.car(view.vehicle.id)),
+        BookingCard(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BookingStatusHeadline(view: view, role: role),
+              const SizedBox(height: AppSpacing.lg),
+              BookingTimeline(status: view.effectiveStatus),
+            ],
           ),
         ),
-        _Section(
-          title: 'Dates',
+        const SizedBox(height: _gap),
+        _CarRow(
+          view: view,
+          role: role,
+          onTap: () => context.push(RouteNames.car(view.vehicle.id)),
+        ),
+        const SizedBox(height: _gap),
+        _PersonCard(
+          name: counterpart.name,
+          photoUrl: counterpart.photoUrl,
+          label: role == UserRole.owner ? 'Renter' : 'Owner',
+          onTap: () => context.push(RouteNames.user(counterpart.id)),
+        ),
+        const SizedBox(height: _gap),
+        CounterpartyContactCard(view: view, role: role, contact: state.contact),
+        const SizedBox(height: _gap),
+        BookingCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Payment summary',
+                style: AppTextStyles.cardTitle.copyWith(
+                  color: colors.ink,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              BookingPriceBreakdown(
+                booking: booking,
+                showOwnerView: role == UserRole.owner,
+              ),
+              _InfoRow(
+                label: 'Payment',
+                value: _paymentStatus(view.effectiveStatus),
+              ),
+              _InfoRow(
+                label: 'Caution fee',
+                value: _cautionStatus(view.effectiveStatus),
+              ),
+              if (view.effectiveStatus == BookingStatus.approved &&
+                  booking.payDeadline != null)
+                _InfoRow(
+                  label: 'Pay by',
+                  value: Formatters.dateTime(booking.payDeadline!),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: _gap),
+        _AgreementRow(
+          accepted: booking.agreementAckAt != null,
+          onTap: () => context.push(RouteNames.bookingAgreement(bookingId)),
+        ),
+        const SizedBox(height: _gap),
+        BookingCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Dates',
+                style: AppTextStyles.cardTitle.copyWith(
+                  color: colors.ink,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
               _InfoRow(
                 label: 'Pickup',
                 value: Formatters.date(booking.startDate),
@@ -166,62 +217,7 @@ class _BookingDetailBody extends StatelessWidget {
             ],
           ),
         ),
-        _Section(
-          title: 'People',
-          child: Column(
-            children: [
-              _PersonTile(
-                name: view.owner.name,
-                photoUrl: view.owner.photoUrl,
-                label: 'Car owner',
-                onTap: () => context.push(RouteNames.user(view.owner.id)),
-              ),
-              const Divider(height: AppSpacing.xl),
-              _PersonTile(
-                name: view.renter.name,
-                photoUrl: view.renter.photoUrl,
-                label: 'Renter',
-                onTap: () => context.push(RouteNames.user(view.renter.id)),
-              ),
-            ],
-          ),
-        ),
-        _Section(
-          title: 'Price',
-          child: BookingPriceBreakdown(
-            booking: booking,
-            showOwnerView: role == UserRole.owner,
-          ),
-        ),
-        _Section(
-          title: 'Status',
-          child: Column(
-            children: [
-              _InfoRow(
-                label: 'Payment',
-                value: _paymentStatus(view.effectiveStatus),
-              ),
-              _InfoRow(
-                label: 'Caution fee',
-                value: _cautionStatus(view.effectiveStatus),
-              ),
-              _InfoRow(
-                label: 'Agreement',
-                value: booking.agreementAckAt == null
-                    ? 'Not accepted'
-                    : 'Accepted',
-              ),
-              if (view.effectiveStatus == BookingStatus.approved &&
-                  booking.payDeadline != null)
-                _InfoRow(
-                  label: 'Pay by',
-                  value: Formatters.dateTime(booking.payDeadline!),
-                ),
-            ],
-          ),
-        ),
-        CounterpartyContactCard(view: view, role: role, contact: state.contact),
-        const SizedBox(height: AppSpacing.xl),
+        const SizedBox(height: AppSpacing.lg),
         Wrap(
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
@@ -249,11 +245,6 @@ class _BookingDetailBody extends StatelessWidget {
                     : () => _cancel(context, view),
                 child: const Text('Cancel'),
               ),
-            TextButton(
-              onPressed: () =>
-                  context.push(RouteNames.bookingAgreement(bookingId)),
-              child: const Text('Rental agreement'),
-            ),
           ],
         ),
         if (switch (view.effectiveStatus) {
@@ -263,16 +254,18 @@ class _BookingDetailBody extends StatelessWidget {
           BookingStatus.review => true,
           _ => false,
         }) ...[
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.lg),
           HandoverSection(bookingId: bookingId),
         ],
         if (view.effectiveStatus == BookingStatus.completed) ...[
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.lg),
           PostRentalSection(bookingId: bookingId),
         ],
       ],
     );
   }
+
+  static const double _gap = 14;
 
   static bool actionDisabled(BookingDetailLoaded state) =>
       state.action.isSubmitting;
@@ -304,23 +297,104 @@ class _BookingDetailBody extends StatelessWidget {
   };
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
+class _CarRow extends StatelessWidget {
+  const _CarRow({required this.view, required this.role, required this.onTap});
 
-  final String title;
-  final Widget child;
+  final BookingView view;
+  final UserRole role;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: AppTextStyles.heading),
-          const SizedBox(height: AppSpacing.sm),
-          child,
-        ],
+    final colors = context.colors;
+    final booking = view.booking;
+    final detail = AppTextStyles.caption.copyWith(color: colors.muted);
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              const BookingThumb(),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${view.vehicle.make} ${view.vehicle.model}',
+                      style: AppTextStyles.cardTitle.copyWith(
+                        color: colors.ink,
+                      ),
+                    ),
+                    Text(
+                      '${Formatters.dateRange(booking.startDate, booking.endDate)}'
+                      ' · ${booking.days} day${booking.days == 1 ? '' : 's'}',
+                      style: detail,
+                    ),
+                    Text(
+                      '${view.vehicle.neighbourhood}, Kigali · '
+                      '${view.vehicle.plate}',
+                      style: detail,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AgreementRow extends StatelessWidget {
+  const _AgreementRow({required this.accepted, required this.onTap});
+
+  final bool accepted;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Rental agreement',
+                      style: AppTextStyles.cardTitle.copyWith(
+                        color: colors.ink,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      accepted ? 'Accepted' : 'Not accepted',
+                      style: AppTextStyles.caption.copyWith(
+                        color: colors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: colors.brand),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -343,7 +417,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: AppTextStyles.body.copyWith(color: colors.muted),
+              style: AppTextStyles.bodySmall.copyWith(color: colors.muted),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -351,7 +425,10 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: AppTextStyles.body,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: colors.ink,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -360,8 +437,8 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _PersonTile extends StatelessWidget {
-  const _PersonTile({
+class _PersonCard extends StatelessWidget {
+  const _PersonCard({
     required this.name,
     required this.label,
     required this.onTap,
@@ -375,13 +452,51 @@ class _PersonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: UserAvatar(name: name, photoUrl: photoUrl, radius: 20),
-      title: Text(name, style: AppTextStyles.cardTitle),
-      subtitle: Text(label),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
+    final colors = context.colors;
+    return Semantics(
+      button: true,
+      label: 'View $label profile',
+      child: Material(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            child: Row(
+              children: [
+                UserAvatar(name: name, photoUrl: photoUrl, radius: 22),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: AppTextStyles.label.copyWith(
+                          color: colors.muted,
+                        ),
+                      ),
+                      Text(
+                        name,
+                        style: AppTextStyles.cardTitle.copyWith(
+                          color: colors.ink,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: colors.brand),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

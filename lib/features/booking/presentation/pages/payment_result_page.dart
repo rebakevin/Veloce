@@ -8,6 +8,8 @@ import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
 
+import '../widgets/booking_card.dart';
+
 /// Payment success with the simulated MoMo reference.
 class PaymentResultPage extends StatelessWidget {
   const PaymentResultPage({
@@ -30,26 +32,46 @@ class PaymentResultPage extends StatelessWidget {
         padding: Responsive.pagePadding(context)
             .copyWith(top: AppSpacing.xl, bottom: AppSpacing.xl),
         children: [
-          const SizedBox(height: AppSpacing.xl),
-          Icon(Icons.check_circle_outline, size: 72, color: colors.brand),
+          BookingCard(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: 28,
+            ),
+            child: Column(
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colors.brandTint,
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox(
+                    width: 72,
+                    height: 72,
+                    child: Icon(Icons.check, size: 36, color: colors.brandDeep),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const Text(
+                  'Payment successful',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.title,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'The booking is confirmed and the contact details are '
+                  'unlocked.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body.copyWith(color: colors.muted),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                if (bookingReference != null)
+                  _Row(label: 'Booking', value: bookingReference!),
+                if (reference != null)
+                  _Row(label: 'MoMo reference', value: reference!),
+              ],
+            ),
+          ),
           const SizedBox(height: AppSpacing.lg),
-          const Text(
-            'Payment successful',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.title,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const Text(
-            'The booking is confirmed and the contact details are unlocked.',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.bodyLarge,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          if (bookingReference != null)
-            _Row(label: 'Booking', value: bookingReference!),
-          if (reference != null)
-            _Row(label: 'MoMo reference', value: reference!),
-          const SizedBox(height: AppSpacing.xl),
           PrimaryButton(
             label: 'View booking',
             onPressed: () => context.go(RouteNames.booking(bookingId)),

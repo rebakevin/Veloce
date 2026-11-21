@@ -5,8 +5,7 @@ import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 
-/// Six-step booking timeline. It scrolls horizontally so it never overflows on
-/// a small phone or in landscape.
+/// Six-step booking timeline sharing the card width evenly.
 class BookingTimeline extends StatelessWidget {
   const BookingTimeline({required this.status, super.key});
 
@@ -44,78 +43,84 @@ class BookingTimeline extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final completed = _completedSteps;
-    return SizedBox(
-      height: 76,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _steps.length,
-        separatorBuilder: (context, index) => SizedBox(
-          width: 22,
-          child: Center(
-            child: Container(
-              height: 2,
-              color: index < completed - 1 ? colors.brand : colors.line,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < _steps.length; index++)
+          Expanded(
+            child: _Step(
+              label: _steps[index],
+              number: index + 1,
+              isDone: index < completed,
+              isCurrent:
+                  !_hasEnded && index == completed && completed < _steps.length,
+              colors: colors,
             ),
           ),
+      ],
+    );
+  }
+}
+
+class _Step extends StatelessWidget {
+  const _Step({
+    required this.label,
+    required this.number,
+    required this.isDone,
+    required this.isCurrent,
+    required this.colors,
+  });
+
+  final String label;
+  final int number;
+  final bool isDone;
+  final bool isCurrent;
+  final AppColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = isDone
+        ? colors.brand
+        : isCurrent
+        ? colors.brandWash
+        : colors.sand;
+    final foreground = isDone
+        ? colors.onBrand
+        : isCurrent
+        ? colors.brandDeep
+        : colors.muted;
+    return Column(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: background,
+            shape: BoxShape.circle,
+            border: isCurrent
+                ? Border.all(color: colors.brand, width: 2)
+                : null,
+          ),
+          child: isDone
+              ? Icon(Icons.check, size: 16, color: foreground)
+              : Text(
+                  '$number',
+                  style: AppTextStyles.label.copyWith(color: foreground),
+                ),
         ),
-        itemBuilder: (context, index) {
-          final isDone = index < completed;
-          final isCurrent =
-              !_hasEnded && index == completed && completed < _steps.length;
-          final background = isDone
-              ? colors.brand
-              : isCurrent
-              ? colors.brandWash
-              : colors.sand;
-          final foreground = isDone
-              ? colors.onBrand
-              : isCurrent
-              ? colors.brandDeep
-              : colors.muted;
-          return SizedBox(
-            width: 62,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: background,
-                    shape: BoxShape.circle,
-                    border: isCurrent
-                        ? Border.all(color: colors.brand, width: 2)
-                        : null,
-                  ),
-                  child: isDone
-                      ? Icon(Icons.check, size: 16, color: foreground)
-                      : Text(
-                          '${index + 1}',
-                          style: AppTextStyles.label.copyWith(
-                            color: foreground,
-                          ),
-                        ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  _steps[index],
-                  textAlign: TextAlign.center,
-                  style:
-                      (isDone || isCurrent
-                              ? AppTextStyles.caption
-                              : AppTextStyles.label)
-                          .copyWith(
-                            color: isDone || isCurrent
-                                ? colors.ink
-                                : colors.muted,
-                          ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.label.copyWith(
+            fontSize: 10.5,
+            color: isDone || isCurrent ? colors.ink : colors.muted,
+          ),
+        ),
+      ],
     );
   }
 }

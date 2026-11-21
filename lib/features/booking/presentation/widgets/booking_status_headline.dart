@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/user_role.dart';
+import 'package:veloce/core/theme/app_colors.dart';
 import 'package:veloce/core/theme/app_spacing.dart';
 import 'package:veloce/core/theme/app_text_styles.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
@@ -44,13 +45,47 @@ class BookingStatusHeadline extends StatelessWidget {
       BookingStatus.cancelled => reason ?? 'This booking was cancelled.',
       BookingStatus.expired => reason ?? 'This booking expired.',
     };
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        StatusChip.booking(status),
-        const SizedBox(height: AppSpacing.sm),
-        Text(text, style: AppTextStyles.bodyLarge),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            StatusChip.booking(status),
+            Text(
+              view.booking.reference,
+              style: AppTextStyles.label.copyWith(
+                color: colors.muted,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          _headline(status, role),
+          style: AppTextStyles.title.copyWith(color: colors.ink, fontSize: 24),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(text, style: AppTextStyles.body.copyWith(color: colors.body)),
       ],
     );
   }
+
+  static String _headline(BookingStatus status, UserRole role) =>
+      switch (status) {
+        BookingStatus.pending =>
+          role == UserRole.owner ? 'New request' : 'Waiting for the owner',
+        BookingStatus.approved =>
+          role == UserRole.owner ? 'Waiting for payment' : 'Ready to pay',
+        BookingStatus.confirmed => 'Booking confirmed',
+        BookingStatus.active => 'Rental in progress',
+        BookingStatus.returning => 'Return in progress',
+        BookingStatus.review => 'Caution claim open',
+        BookingStatus.completed => 'Rental complete',
+        BookingStatus.declined => 'Request declined',
+        BookingStatus.cancelled => 'Booking cancelled',
+        BookingStatus.expired => 'Booking expired',
+      };
 }

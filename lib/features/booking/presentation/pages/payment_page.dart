@@ -17,10 +17,10 @@ import 'package:veloce/core/widgets/field_hints.dart';
 import 'package:veloce/core/widgets/loading_view.dart';
 import 'package:veloce/core/widgets/page_app_bar.dart';
 import 'package:veloce/core/widgets/primary_button.dart';
-import 'package:veloce/core/widgets/section_header.dart';
 import 'package:veloce/core/widgets/status_chip.dart';
 
 import '../bloc/payment_bloc.dart';
+import '../widgets/booking_card.dart';
 import '../widgets/booking_price_breakdown.dart';
 
 /// MoMo payment for an approved booking.
@@ -129,18 +129,23 @@ class _PaymentBody extends StatelessWidget {
         padding: Responsive.pagePadding(context)
             .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
         children: [
-          Center(child: StatusChip.booking(view.effectiveStatus)),
-          const SizedBox(height: AppSpacing.lg),
-          Text(
-            _closedMessage(view.effectiveStatus),
-            textAlign: TextAlign.center,
-            style: AppTextStyles.bodyLarge,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Center(
-            child: OutlinedButton(
-              onPressed: () => context.go(RouteNames.booking(booking.id)),
-              child: const Text('View booking'),
+          BookingCard(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              children: [
+                StatusChip.booking(view.effectiveStatus),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  _closedMessage(view.effectiveStatus),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyLarge,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                OutlinedButton(
+                  onPressed: () => context.go(RouteNames.booking(booking.id)),
+                  child: const Text('View booking'),
+                ),
+              ],
             ),
           ),
         ],
@@ -151,30 +156,53 @@ class _PaymentBody extends StatelessWidget {
       padding: Responsive.pagePadding(context)
           .copyWith(top: AppSpacing.lg, bottom: AppSpacing.xl),
       children: [
-        Text(
-          '${view.vehicle.make} ${view.vehicle.model} · ${view.vehicle.plate}',
-          style: AppTextStyles.cardTitle,
+        const _SimulatedBanner(),
+        const SizedBox(height: _gap),
+        if (hasDeadline) ...[
+          _DeadlineCard(deadline: deadline),
+          const SizedBox(height: _gap),
+        ],
+        BookingCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${view.vehicle.make} ${view.vehicle.model} · '
+                '${Formatters.dateRange(booking.startDate, booking.endDate)}',
+                style: AppTextStyles.cardTitle.copyWith(
+                  color: colors.ink,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              BookingPriceBreakdown(booking: booking),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          Formatters.dateRange(booking.startDate, booking.endDate),
-          style: AppTextStyles.body,
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        if (hasDeadline) _DeadlineCard(deadline: deadline),
-        const SizedBox(height: AppSpacing.lg),
-        const SectionHeader(title: 'Total'),
-        BookingPriceBreakdown(booking: booking),
-        const SizedBox(height: AppSpacing.lg),
-        const SectionHeader(title: 'Mobile Money'),
-        Form(
-          key: formKey,
-          child: AppTextField(
-            label: 'MoMo number',
-            hint: FieldHints.momoNumber,
-            controller: momoController,
-            keyboardType: TextInputType.number,
-            validator: Validators.momoNumber,
+        const SizedBox(height: _gap),
+        BookingCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Mobile Money',
+                style: AppTextStyles.cardTitle.copyWith(
+                  color: colors.ink,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Form(
+                key: formKey,
+                child: AppTextField(
+                  label: 'Mobile Money number',
+                  hint: FieldHints.momoNumber,
+                  controller: momoController,
+                  keyboardType: TextInputType.number,
+                  validator: Validators.momoNumber,
+                ),
+              ),
+            ],
           ),
         ),
         if (action.status == PaymentActionStatus.failure) ...[
@@ -198,16 +226,11 @@ class _PaymentBody extends StatelessWidget {
                   );
                 },
         ),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          'Simulated MTN MoMo. The money is held by Veloce until both sides '
-          'confirm pickup.',
-          textAlign: TextAlign.center,
-          style: AppTextStyles.caption.copyWith(color: colors.muted),
-        ),
       ],
     );
   }
+
+  static const double _gap = 14;
 
   static String _closedMessage(BookingStatus status) => switch (status) {
     BookingStatus.confirmed ||
@@ -223,6 +246,46 @@ class _PaymentBody extends StatelessWidget {
   };
 }
 
+class _SimulatedBanner extends StatelessWidget {
+  const _SimulatedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.cautionWash,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
+        child: Text.rich(
+          const TextSpan(
+            children: [
+              TextSpan(
+                text: 'Simulated payment. ',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              TextSpan(
+                text:
+                    'Veloce holds your money until both you and the owner '
+                    'confirm pickup. No real money moves here.',
+              ),
+            ],
+          ),
+          style: AppTextStyles.caption.copyWith(
+            color: colors.cautionBody,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DeadlineCard extends StatelessWidget {
   const _DeadlineCard({required this.deadline});
 
@@ -234,7 +297,7 @@ class _DeadlineCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colors.cautionWash,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
