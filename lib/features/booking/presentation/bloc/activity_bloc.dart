@@ -61,14 +61,14 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
       return;
     }
     emit(const ActivityLoading());
-    // A failed sweep (logged by the repository's callers) never blocks the
-    // list: expiry is also applied lazily to what the list shows.
-    await _expireBookings();
-    if (isClosed) return;
     await _subscription?.cancel();
     _subscription = _repository.watchMyBookings().listen(
       (result) => add(_BookingsChanged(result)),
     );
+    // The sweep runs beside the list, never in front of it: a slow or failed
+    // sweep must not block the list, and expiry is also applied lazily to what
+    // the list shows.
+    unawaited(_expireBookings());
   }
 
   void _onChanged(_BookingsChanged event, Emitter<ActivityState> emit) {
