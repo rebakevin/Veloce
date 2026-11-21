@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
+import 'package:veloce/core/domain/entities/checklist_entry.dart';
+import 'package:veloce/core/domain/entities/checklist_media.dart';
 import 'package:veloce/core/domain/enums/booking_actor.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/checklist_kind.dart';
@@ -10,6 +12,7 @@ import 'package:veloce/core/domain/enums/checklist_side.dart';
 import 'package:veloce/core/domain/enums/media_type.dart';
 import 'package:veloce/core/error/app_failure.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/features/handover/domain/repositories/handover_repository.dart';
 import 'package:veloce/features/handover/presentation/bloc/checklist_cubit.dart';
 import 'package:veloce/features/handover/presentation/bloc/checklist_state.dart';
 
@@ -197,6 +200,77 @@ void main() {
     });
   });
 
+  test(
+    'entries keep the same ids across submits, so a retry overwrites',
+    () async {
+      stubPickup(Result.success(aBooking(status: BookingStatus.confirmed)));
+      final cubit = await readyCubit();
+
+      await cubit.submit();
+      await cubit.submit();
+
+      final calls = verify(
+        () => repository.saveChecklist(
+          bookingId: any(named: 'bookingId'),
+          kind: any(named: 'kind'),
+          side: any(named: 'side'),
+          entries: captureAny(named: 'entries'),
+          media: any(named: 'media'),
+        ),
+      ).captured;
+      final first = (calls[0] as List<ChecklistEntry>)
+          .map((e) => e.id)
+          .toList();
+      final second = (calls[1] as List<ChecklistEntry>)
+          .map((e) => e.id)
+          .toList();
+      expect(first, second);
+      expect(first.toSet().length, 5);
+    },
+  );
+
+  test('load restores ticked items and saved media', () async {
+    final saved = ChecklistMedia(
+      id: 'm1',
+      bookingId: 'booking-1',
+      kind: ChecklistKind.pickup,
+      side: ChecklistSide.owner,
+      mediaType: MediaType.photo,
+      url: 'https://example.com/p.jpg',
+      at: DateTime(2026, 11, 18),
+    );
+    final cubit = await readyCubit(withPhoto: false);
+    when(
+      () => repository.loadChecklist(
+        bookingId: any(named: 'bookingId'),
+        kind: any(named: 'kind'),
+        side: any(named: 'side'),
+      ),
+    ).thenAnswer(
+      (_) async => Result.success(
+        SavedChecklist(
+          entries: [
+            ChecklistEntry(
+              id: 'pickup_owner_1',
+              bookingId: 'booking-1',
+              kind: ChecklistKind.pickup,
+              side: ChecklistSide.owner,
+              item: cubit.checklistItems[1],
+              ticked: true,
+              at: DateTime(2026, 11, 18),
+            ),
+          ],
+          media: [saved],
+        ),
+      ),
+    );
+
+    await cubit.load();
+
+    expect(cubit.state.checkedItems, {cubit.checklistItems[1]});
+    expect(cubit.state.media, [saved]);
+  });
+
   group('return', () {
     void stubReturn({Result<Booking>? start, Result<Booking>? confirm}) {
       when(
@@ -245,6 +319,35 @@ void main() {
       ]);
       expect(cubit.state.submitMessage, 'Return checklist submitted.');
     });
+
+    test(
+      'a retry after a failed confirm does not start the return twice',
+      () async {
+        stubReturn(confirm: const Result.failure(NetworkFailure()));
+        final cubit = await readyCubit(
+          kind: ChecklistKind.returning,
+          startReturnFirst: true,
+        );
+
+        await cubit.submit();
+        await cubit.submit();
+
+        verify(
+          () => repository.startReturn(
+            bookingId: any(named: 'bookingId'),
+            userId: any(named: 'userId'),
+            actor: any(named: 'actor'),
+          ),
+        ).called(1);
+        verify(
+          () => repository.confirmReturn(
+            bookingId: any(named: 'bookingId'),
+            userId: any(named: 'userId'),
+            actor: any(named: 'actor'),
+          ),
+        ).called(2);
+      },
+    );
 
     test('skips startReturn once the return has started', () async {
       stubReturn();

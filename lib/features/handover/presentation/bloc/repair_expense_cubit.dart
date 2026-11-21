@@ -3,12 +3,15 @@ import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/domain/entities/repair_expense.dart';
+import '../../../../core/error/app_failure.dart';
 import '../../domain/repositories/repair_expense_repository.dart';
 import 'repair_expense_state.dart';
 
 class RepairExpenseCubit extends Cubit<RepairExpenseState> {
   RepairExpenseCubit({
     required this.bookingId,
+    required this.vehicleId,
     required this.ownerId,
     required this._repository,
   }) : super(const RepairExpenseState()) {
@@ -23,12 +26,20 @@ class RepairExpenseCubit extends Cubit<RepairExpenseState> {
   }
 
   final String bookingId;
+  final String vehicleId;
   final String ownerId;
   final RepairExpenseRepository _repository;
   StreamSubscription<Object?>? _subscription;
 
   void receiptPicked({required String name, required Uint8List bytes}) {
-    emit(_copy(receiptName: name, receiptBytes: bytes, clearError: true));
+    emit(
+      _copy(
+        receiptName: name,
+        receiptBytes: bytes,
+        receiptExtension: _extensionOf(name),
+        clearError: true,
+      ),
+    );
   }
 
   void startEditing(RepairExpense expense) {
@@ -81,32 +92,41 @@ class RepairExpenseCubit extends Cubit<RepairExpenseState> {
     );
 
     try {
-      await _repository.saveExpense(
-        expenseId: state.editing?.id,
+      final result = await _repository.saveExpense(
+        existing: state.editing,
         bookingId: bookingId,
+        vehicleId: vehicleId,
         ownerId: ownerId,
         amount: amount,
         description: text,
         receiptBytes: state.receiptBytes,
-        existingReceiptUrl: state.existingReceiptUrl,
+        receiptExtension: state.receiptExtension,
       );
       if (isClosed) return;
 
-      emit(
-        _copy(
-          saveStatus: RepairExpenseSave.idle,
-          clearEditing: true,
-          clearReceipt: true,
-          notice: 'Repair expense saved.',
+      result.when(
+        success: (_) => emit(
+          _copy(
+            saveStatus: RepairExpenseSave.idle,
+            clearEditing: true,
+            clearReceipt: true,
+            notice: 'Repair expense saved.',
+          ),
+        ),
+        failure: (failure) => emit(
+          _copy(
+            saveStatus: RepairExpenseSave.idle,
+            errorMessage: failure.message,
+          ),
         ),
       );
-    } on Object catch (error) {
+    } on Object {
       if (isClosed) return;
 
       emit(
         _copy(
           saveStatus: RepairExpenseSave.idle,
-          errorMessage: 'Could not save expense: $error',
+          errorMessage: const UnknownFailure().message,
         ),
       );
     }
@@ -116,24 +136,32 @@ class RepairExpenseCubit extends Cubit<RepairExpenseState> {
     emit(_copy(clearNotice: true));
 
     try {
-      await _repository.deleteExpense(expense);
+      final result = await _repository.deleteExpense(expense);
       if (isClosed) return;
 
-      final wasEditing = state.editing?.id == expense.id;
-      emit(
-        _copy(
-          clearEditing: wasEditing,
-          clearReceipt: wasEditing,
-          clearError: wasEditing,
-          notice: 'Repair expense deleted.',
-        ),
+      result.when(
+        success: (_) {
+          final wasEditing = state.editing?.id == expense.id;
+          emit(
+            _copy(
+              clearEditing: wasEditing,
+              clearReceipt: wasEditing,
+              clearError: wasEditing,
+              notice: 'Repair expense deleted.',
+            ),
+          );
+        },
+        failure: (failure) => emit(_copy(notice: failure.message)),
       );
-    } on Object catch (error) {
+    } on Object {
       if (isClosed) return;
 
-      emit(_copy(notice: 'Could not delete expense: $error'));
+      emit(_copy(notice: const UnknownFailure().message));
     }
   }
+
+  static String _extensionOf(String name) =>
+      name.contains('.') ? name.split('.').last.toLowerCase() : 'jpg';
 
   RepairExpenseState _copy({
     RepairExpenseLoad? loadStatus,
@@ -143,6 +171,7 @@ class RepairExpenseCubit extends Cubit<RepairExpenseState> {
     bool clearEditing = false,
     String? receiptName,
     Uint8List? receiptBytes,
+    String? receiptExtension,
     bool clearReceipt = false,
     String? errorMessage,
     bool clearError = false,
@@ -156,6 +185,7 @@ class RepairExpenseCubit extends Cubit<RepairExpenseState> {
       editing: clearEditing ? null : editing ?? state.editing,
       receiptName: clearReceipt ? null : receiptName ?? state.receiptName,
       receiptBytes: clearReceipt ? null : receiptBytes ?? state.receiptBytes,
+      receiptExtension: receiptExtension ?? state.receiptExtension,
       errorMessage: clearError ? null : errorMessage ?? state.errorMessage,
       notice: clearNotice ? null : notice ?? state.notice,
     );

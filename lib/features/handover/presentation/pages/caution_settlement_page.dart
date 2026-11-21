@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/caution_decision.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
+import 'package:veloce/core/domain/services/clock.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/core/navigation/route_names.dart';
+import 'package:veloce/core/theme/app_text_styles.dart';
+import 'package:veloce/core/widgets/error_view.dart';
+import 'package:veloce/core/widgets/loading_view.dart';
 import 'package:veloce/features/handover/domain/repositories/handover_repository.dart';
-import 'package:veloce/features/handover/domain/services/late_fee_calculator.dart';
 
 import '../bloc/settlement_cubit.dart';
 import '../bloc/settlement_state.dart';
+import '../widgets/settlement_breakdown.dart';
 
 class CautionSettlementPage extends StatelessWidget {
   const CautionSettlementPage({required this.bookingId, super.key});
@@ -33,12 +39,12 @@ class CautionSettlementPage extends StatelessWidget {
           stream: GetIt.I<BookingLookup>().watch(bookingId),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const LoadingView();
             }
 
             if (!snapshot.hasData) {
-              return const Center(
-                child: Text('Unable to load booking details.'),
+              return const ErrorView(
+                message: 'Unable to load booking details.',
               );
             }
 
@@ -47,7 +53,7 @@ class CautionSettlementPage extends StatelessWidget {
                 return _buildSettlement(context, booking, userId);
               },
               failure: (failure) {
-                return Center(child: Text(failure.message));
+                return ErrorView(message: failure.message);
               },
             );
           },
@@ -70,51 +76,35 @@ class CautionSettlementPage extends StatelessWidget {
         booking.renterReturnConfirmedAt != null;
 
     final isNoIssue = booking.cautionDecision == CautionDecision.noIssue;
-
-    final returnedAt = booking.returnedAt;
-
-    final lateDays = returnedAt == null
-        ? 0
-        : LateFeeCalculator.calculateLateDays(
-            dueAt: booking.endDate,
-            returnedAt: returnedAt,
-          );
-
-    final lateFee = LateFeeCalculator.calculateLateFee(
-      rentalFee: booking.rentalFee,
-      lateDays: lateDays,
-      cautionFee: booking.cautionFee,
-      waived: booking.lateFeeWaived,
-    );
-
-    final refundAmount = booking.cautionFee - lateFee;
+    final now = GetIt.I<Clock>().now();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Return settlement',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
+          const Text('Return settlement', style: AppTextStyles.title),
           const SizedBox(height: 12),
           const Text(
             'Review the caution fee and any late charges before completing the booking.',
           ),
           const SizedBox(height: 24),
-          _amountRow('Caution fee', booking.cautionFee),
-          _amountRow('Late days', lateDays, isCurrency: false),
-          _amountRow('Late fee', lateFee),
-          const Divider(height: 28),
-          _amountRow('Caution refund', refundAmount, isBold: true),
+          SettlementBreakdown(booking: booking, now: now),
           const SizedBox(height: 24),
 
           if (isOwner &&
               booking.status == BookingStatus.returning &&
               bothReturned) ...[
+            _LateFeeAdjuster(
+              waived: booking.lateFeeWaived,
+              onWaive: () => cubit.adjustLateFee(userId: userId!, waived: true),
+              onReduce: (text) =>
+                  cubit.adjustLateFee(userId: userId!, reducedFeeText: text),
+              onRestore: () => cubit.adjustLateFee(userId: userId!),
+            ),
+            const Divider(height: 32),
             const Text(
-              'Confirm that the vehicle was returned without damage or other issues.',
+              'Confirm that the vehicle was returned without damage or other issues, or make a claim.',
             ),
             const SizedBox(height: 16),
             _actionButton(
@@ -122,6 +112,12 @@ class CautionSettlementPage extends StatelessWidget {
               onPressed: userId == null
                   ? null
                   : () => cubit.markNoIssue(userId: userId),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () =>
+                  context.push(RouteNames.bookingClaim(booking.id)),
+              child: const Text('Make a claim'),
             ),
           ] else if (isRenter &&
               booking.status == BookingStatus.review &&
@@ -142,10 +138,16 @@ class CautionSettlementPage extends StatelessWidget {
             const Text(
               'No issues recorded. Waiting for the renter to acknowledge the settlement.',
             ),
+          ] else if (booking.status == BookingStatus.review) ...[
+            OutlinedButton(
+              onPressed: () =>
+                  context.push(RouteNames.bookingClaim(booking.id)),
+              child: const Text('Open the caution claim'),
+            ),
           ] else if (booking.status == BookingStatus.completed) ...[
             const Text(
               'This booking has been completed.',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: AppTextStyles.cardTitle,
             ),
           ] else ...[
             const Text('The booking is not ready for this settlement action.'),
@@ -178,36 +180,6 @@ class CautionSettlementPage extends StatelessWidget {
     );
   }
 
-  Widget _amountRow(
-    String label,
-    int amount, {
-    bool isCurrency = true,
-    bool isBold = false,
-  }) {
-    final value = isCurrency ? '$amount RWF' : '$amount days';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _actionButton({
     required String label,
     required VoidCallback? onPressed,
@@ -220,6 +192,78 @@ class CautionSettlementPage extends StatelessWidget {
             onPressed: state.isLoading ? null : onPressed,
             child: Text(label),
           ),
+        );
+      },
+    );
+  }
+}
+
+/// Owner controls for the late fee: waive it, reduce it, or restore it. Owns
+/// the text controller only; the cubit validates and writes.
+class _LateFeeAdjuster extends StatefulWidget {
+  const _LateFeeAdjuster({
+    required this.waived,
+    required this.onWaive,
+    required this.onReduce,
+    required this.onRestore,
+  });
+
+  final bool waived;
+  final VoidCallback onWaive;
+  final void Function(String text) onReduce;
+  final VoidCallback onRestore;
+
+  @override
+  State<_LateFeeAdjuster> createState() => _LateFeeAdjusterState();
+}
+
+class _LateFeeAdjusterState extends State<_LateFeeAdjuster> {
+  final _reduced = TextEditingController();
+
+  @override
+  void dispose() {
+    _reduced.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SettlementCubit, SettlementState>(
+      builder: (context, state) {
+        final busy = state.isLoading;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Late fee', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _reduced,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Reduce late fee to (RWF)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: busy ? null : () => widget.onReduce(_reduced.text),
+                  child: const Text('Reduce'),
+                ),
+                OutlinedButton(
+                  onPressed: busy || widget.waived ? null : widget.onWaive,
+                  child: const Text('Waive'),
+                ),
+                TextButton(
+                  onPressed: busy ? null : widget.onRestore,
+                  child: const Text('Restore'),
+                ),
+              ],
+            ),
+          ],
         );
       },
     );

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -31,8 +32,17 @@ void main() {
     final cubit = CautionClaimCubit(
       bookingId: 'booking-1',
       repository: repository,
+      mediaStorage: FakeMediaStorage(),
     );
     addTearDown(cubit.close);
+    return cubit;
+  }
+
+  const photo = 'https://example.com/photo.jpg';
+
+  Future<CautionClaimCubit> cubitWithPhoto() async {
+    final cubit = createCubit();
+    await cubit.addEvidence(bytes: Uint8List.fromList([1]), extension: 'jpg');
     return cubit;
   }
 
@@ -52,6 +62,20 @@ void main() {
     expect(cubit.state.claim, aClaim());
   });
 
+  test('retryLoad resubscribes after a failed load', () async {
+    final cubit = createCubit();
+    claims.addError(Exception('boom'));
+    await pumpEventQueue();
+    expect(cubit.state.loadStatus, CautionClaimLoad.failed);
+
+    await cubit.retryLoad();
+    expect(cubit.state.loadStatus, CautionClaimLoad.loading);
+
+    claims.add(aClaim());
+    await pumpEventQueue();
+    expect(cubit.state.loadStatus, CautionClaimLoad.loaded);
+  });
+
   test('a stream error becomes a failed load', () async {
     final cubit = createCubit();
 
@@ -62,7 +86,7 @@ void main() {
   });
 
   group('submitClaim', () {
-    test('trims the form and sends the evidence list', () async {
+    test('trims the form and sends the uploaded evidence', () async {
       when(
         () => repository.submitClaim(
           bookingId: any(named: 'bookingId'),
@@ -72,13 +96,13 @@ void main() {
           evidenceUrls: any(named: 'evidenceUrls'),
         ),
       ).thenAnswer((_) async => booking());
-      final cubit = createCubit();
+      final cubit = await cubitWithPhoto();
+      await cubit.addEvidence(bytes: Uint8List.fromList([2]), extension: 'png');
 
       await cubit.submitClaim(
         userId: 'owner-1',
         amountText: ' 40000 ',
         reason: ' Scratch ',
-        evidenceText: 'https://a.jpg, ,https://b.jpg',
       );
 
       verify(
@@ -87,10 +111,11 @@ void main() {
           userId: 'owner-1',
           amount: 40000,
           reason: 'Scratch',
-          evidenceUrls: ['https://a.jpg', 'https://b.jpg'],
+          evidenceUrls: [photo, photo],
         ),
       ).called(1);
       expect(cubit.state.isLoading, false);
+      expect(cubit.state.evidence, isEmpty);
       expect(cubit.state.errorMessage, isNull);
     });
 
@@ -101,7 +126,6 @@ void main() {
         userId: 'owner-1',
         amountText: 'abc',
         reason: 'Scratch',
-        evidenceText: '',
       );
 
       expect(cubit.state.errorMessage, 'Enter a valid amount and reason.');
@@ -116,6 +140,35 @@ void main() {
       );
     });
 
+    test('requires at least one evidence photo', () async {
+      final cubit = createCubit();
+
+      await cubit.submitClaim(
+        userId: 'owner-1',
+        amountText: '40000',
+        reason: 'Scratch',
+      );
+
+      expect(cubit.state.errorMessage, 'Add at least one evidence photo.');
+      verifyNever(
+        () => repository.submitClaim(
+          bookingId: any(named: 'bookingId'),
+          userId: any(named: 'userId'),
+          amount: any(named: 'amount'),
+          reason: any(named: 'reason'),
+          evidenceUrls: any(named: 'evidenceUrls'),
+        ),
+      );
+    });
+
+    test('removing evidence drops it from the pending list', () async {
+      final cubit = await cubitWithPhoto();
+
+      await cubit.removeEvidence(photo);
+
+      expect(cubit.state.evidence, isEmpty);
+    });
+
     test('shows the repository failure', () async {
       when(
         () => repository.submitClaim(
@@ -128,13 +181,12 @@ void main() {
       ).thenAnswer(
         (_) async => const Result.failure(ValidationFailure('Above caution.')),
       );
-      final cubit = createCubit();
+      final cubit = await cubitWithPhoto();
 
       await cubit.submitClaim(
         userId: 'owner-1',
         amountText: '999999',
         reason: 'Scratch',
-        evidenceText: '',
       );
 
       expect(cubit.state.errorMessage, 'Above caution.');
@@ -230,13 +282,12 @@ void main() {
           evidenceUrls: any(named: 'evidenceUrls'),
         ),
       ).thenAnswer((_) async => booking());
-      final cubit = createCubit();
+      final cubit = await cubitWithPhoto();
 
       await cubit.reviseClaim(
         userId: 'owner-1',
         amountText: '30000',
         reason: 'Smaller scratch',
-        evidenceText: '',
       );
 
       verify(
@@ -245,7 +296,7 @@ void main() {
           userId: 'owner-1',
           amount: 30000,
           reason: 'Smaller scratch',
-          evidenceUrls: <String>[],
+          evidenceUrls: [photo],
         ),
       ).called(1);
     });
@@ -266,13 +317,12 @@ void main() {
             ValidationFailure('A revision cannot exceed the original claim.'),
           ),
         );
-        final cubit = createCubit();
+        final cubit = await cubitWithPhoto();
 
         await cubit.reviseClaim(
           userId: 'owner-1',
           amountText: '60000',
           reason: 'Bigger',
-          evidenceText: '',
         );
 
         expect(

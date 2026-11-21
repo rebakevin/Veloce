@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/enums/booking_status.dart';
 import 'package:veloce/core/domain/enums/claim_response.dart';
 import 'package:veloce/core/domain/enums/claim_status.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
+import 'package:veloce/core/domain/services/clock.dart';
+import 'package:veloce/core/domain/services/media_storage.dart';
 import 'package:veloce/core/error/result.dart';
+import 'package:veloce/core/theme/app_text_styles.dart';
+import 'package:veloce/core/widgets/error_view.dart';
+import 'package:veloce/core/widgets/loading_view.dart';
 import 'package:veloce/features/handover/domain/repositories/handover_repository.dart';
 
 import '../bloc/caution_claim_cubit.dart';
 import '../bloc/caution_claim_state.dart';
+import '../widgets/settlement_breakdown.dart';
 
 class CautionClaimPage extends StatelessWidget {
   const CautionClaimPage({required this.bookingId, super.key});
@@ -24,6 +31,7 @@ class CautionClaimPage extends StatelessWidget {
       create: (_) => CautionClaimCubit(
         bookingId: bookingId,
         repository: GetIt.I<HandoverRepository>(),
+        mediaStorage: GetIt.I<MediaStorage>(),
       ),
       child: _CautionClaimView(bookingId: bookingId),
     );
@@ -45,11 +53,11 @@ class _CautionClaimView extends StatelessWidget {
         stream: GetIt.I<BookingLookup>().watch(bookingId),
         builder: (context, bookingSnapshot) {
           if (bookingSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingView();
           }
 
           if (!bookingSnapshot.hasData) {
-            return const Center(child: Text('Unable to load booking.'));
+            return const ErrorView(message: 'Unable to load booking.');
           }
 
           return bookingSnapshot.data!.when(
@@ -57,12 +65,11 @@ class _CautionClaimView extends StatelessWidget {
               return BlocBuilder<CautionClaimCubit, CautionClaimState>(
                 builder: (context, state) {
                   return switch (state.loadStatus) {
-                    CautionClaimLoad.failed => const Center(
-                      child: Text('Unable to load claim details.'),
+                    CautionClaimLoad.failed => ErrorView(
+                      message: 'Unable to load claim details.',
+                      onRetry: context.read<CautionClaimCubit>().retryLoad,
                     ),
-                    CautionClaimLoad.loading => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    CautionClaimLoad.loading => const LoadingView(),
                     CautionClaimLoad.loaded => _buildContent(
                       context,
                       booking,
@@ -74,7 +81,7 @@ class _CautionClaimView extends StatelessWidget {
               );
             },
             failure: (failure) {
-              return Center(child: Text(failure.message));
+              return ErrorView(message: failure.message);
             },
           );
         },
@@ -108,27 +115,29 @@ class _CautionClaimView extends StatelessWidget {
         children: [
           const Text(
             'Vehicle damage or issue claim',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            style: AppTextStyles.title,
           ),
           const SizedBox(height: 12),
           if (claim != null) ...[
             _detailRow('Claim amount', '${claim.currentAmount} RWF'),
             _detailRow('Reason', claim.reason),
-            _detailRow('Claim status', claimStatus.key),
-            _detailRow('Renter response', response.key),
+            _detailRow('Claim status', claimStatus.label),
+            _detailRow('Renter response', response.label),
             if (claim.evidenceUrls.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Text(
-                'Evidence references',
+                'Evidence photos',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              ...claim.evidenceUrls.map(
-                (url) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: SelectableText(url),
-                ),
-              ),
+              const SizedBox(height: 8),
+              _EvidenceThumbnails(urls: claim.evidenceUrls),
             ],
+            const SizedBox(height: 12),
+            SettlementBreakdown(
+              booking: booking,
+              now: GetIt.I<Clock>().now(),
+              claimAmount: claim.currentAmount,
+            ),
             const Divider(height: 32),
           ],
           if (isOwner &&
@@ -139,13 +148,13 @@ class _CautionClaimView extends StatelessWidget {
               title: 'Submit a caution claim',
               buttonLabel: 'Submit claim',
               isLoading: state.isLoading,
-              onSubmit: (amount, reason, evidence) => userId == null
+              state: state,
+              onSubmit: (amount, reason) => userId == null
                   ? null
                   : cubit.submitClaim(
                       userId: userId,
                       amountText: amount,
                       reason: reason,
-                      evidenceText: evidence,
                     ),
             ),
           ] else if (isRenter &&
@@ -190,13 +199,13 @@ class _CautionClaimView extends StatelessWidget {
               title: 'Revise claim',
               buttonLabel: 'Submit revised claim',
               isLoading: state.isLoading,
-              onSubmit: (amount, reason, evidence) => userId == null
+              state: state,
+              onSubmit: (amount, reason) => userId == null
                   ? null
                   : cubit.reviseClaim(
                       userId: userId,
                       amountText: amount,
                       reason: reason,
-                      evidenceText: evidence,
                     ),
             ),
             const SizedBox(height: 12),
@@ -243,12 +252,7 @@ class _CautionClaimView extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
+          Expanded(child: Text(label, style: AppTextStyles.label)),
           const SizedBox(width: 12),
           Expanded(child: Text(value)),
         ],
@@ -278,13 +282,15 @@ class _ClaimForm extends StatefulWidget {
     required this.title,
     required this.buttonLabel,
     required this.isLoading,
+    required this.state,
     required this.onSubmit,
   });
 
   final String title;
   final String buttonLabel;
   final bool isLoading;
-  final void Function(String amount, String reason, String evidence) onSubmit;
+  final CautionClaimState state;
+  final void Function(String amount, String reason) onSubmit;
 
   @override
   State<_ClaimForm> createState() => _ClaimFormState();
@@ -293,14 +299,33 @@ class _ClaimForm extends StatefulWidget {
 class _ClaimFormState extends State<_ClaimForm> {
   final _amount = TextEditingController();
   final _reason = TextEditingController();
-  final _evidence = TextEditingController();
 
   @override
   void dispose() {
     _amount.dispose();
     _reason.dispose();
-    _evidence.dispose();
     super.dispose();
+  }
+
+  Future<void> _pick(ImageSource source) async {
+    final cubit = context.read<CautionClaimCubit>();
+
+    final file = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 80,
+      maxWidth: 1600,
+    );
+
+    if (file == null || cubit.isClosed) return;
+
+    final bytes = await file.readAsBytes();
+    if (cubit.isClosed) return;
+
+    final extension = file.name.contains('.')
+        ? file.name.split('.').last.toLowerCase()
+        : 'jpg';
+
+    await cubit.addEvidence(bytes: bytes, extension: extension);
   }
 
   @override
@@ -331,22 +356,96 @@ class _ClaimFormState extends State<_ClaimForm> {
           ),
         ),
         const SizedBox(height: 12),
-        TextField(
-          controller: _evidence,
-          maxLines: 2,
-          decoration: const InputDecoration(
-            labelText: 'Evidence photo URLs (comma separated)',
-            hintText: 'Paste uploaded photo URLs',
-            border: OutlineInputBorder(),
-          ),
+        const Text(
+          'Evidence photos',
+          style: TextStyle(fontWeight: FontWeight.w600),
         ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: widget.state.isUploading || widget.isLoading
+                  ? null
+                  : () => _pick(ImageSource.camera),
+              icon: const Icon(Icons.photo_camera),
+              label: const Text('Take photo'),
+            ),
+            OutlinedButton.icon(
+              onPressed: widget.state.isUploading || widget.isLoading
+                  ? null
+                  : () => _pick(ImageSource.gallery),
+              icon: const Icon(Icons.photo_library),
+              label: const Text('Choose photo'),
+            ),
+          ],
+        ),
+        if (widget.state.isUploading) ...[
+          const SizedBox(height: 8),
+          const LinearProgressIndicator(),
+        ],
+        if (widget.state.evidence.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _EvidenceThumbnails(
+            urls: widget.state.evidence,
+            onRemove: context.read<CautionClaimCubit>().removeEvidence,
+          ),
+        ],
         const SizedBox(height: 16),
         _actionButton(
           label: widget.buttonLabel,
-          onPressed: () =>
-              widget.onSubmit(_amount.text, _reason.text, _evidence.text),
+          onPressed: () => widget.onSubmit(_amount.text, _reason.text),
           isLoading: widget.isLoading,
         ),
+      ],
+    );
+  }
+}
+
+/// Evidence photos as thumbnails; [onRemove] adds a remove button.
+class _EvidenceThumbnails extends StatelessWidget {
+  const _EvidenceThumbnails({required this.urls, this.onRemove});
+
+  final List<String> urls;
+  final void Function(String url)? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final url in urls)
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  url,
+                  width: 96,
+                  height: 96,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox(
+                    width: 96,
+                    height: 96,
+                    child: Center(child: Icon(Icons.broken_image)),
+                  ),
+                ),
+              ),
+              if (onRemove != null)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: IconButton.filledTonal(
+                    tooltip: 'Remove photo',
+                    iconSize: 16,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => onRemove!(url),
+                    icon: const Icon(Icons.close),
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }

@@ -103,4 +103,66 @@ void main() {
       ),
     ],
   );
+
+  blocTest<SettlementCubit, SettlementState>(
+    'owner waives the late fee',
+    build: () {
+      when(
+        () => repository.adjustLateFee(
+          bookingId: any(named: 'bookingId'),
+          userId: any(named: 'userId'),
+          waived: any(named: 'waived'),
+          reducedFee: any(named: 'reducedFee'),
+        ),
+      ).thenAnswer((_) async => Result.success(aBooking()));
+      return createCubit();
+    },
+    act: (cubit) => cubit.adjustLateFee(userId: 'owner-1', waived: true),
+    verify: (_) => verify(
+      () => repository.adjustLateFee(
+        bookingId: 'booking-1',
+        userId: 'owner-1',
+        waived: true,
+        reducedFee: null,
+      ),
+    ).called(1),
+  );
+
+  blocTest<SettlementCubit, SettlementState>(
+    'owner reduces the late fee',
+    build: () {
+      when(
+        () => repository.adjustLateFee(
+          bookingId: any(named: 'bookingId'),
+          userId: any(named: 'userId'),
+          waived: any(named: 'waived'),
+          reducedFee: any(named: 'reducedFee'),
+        ),
+      ).thenAnswer((_) async => Result.success(aBooking()));
+      return createCubit();
+    },
+    act: (cubit) =>
+        cubit.adjustLateFee(userId: 'owner-1', reducedFeeText: ' 10000 '),
+    verify: (_) => verify(
+      () => repository.adjustLateFee(
+        bookingId: 'booking-1',
+        userId: 'owner-1',
+        waived: false,
+        reducedFee: 10000,
+      ),
+    ).called(1),
+  );
+
+  blocTest<SettlementCubit, SettlementState>(
+    'a reduced fee that is not a positive number is rejected',
+    build: createCubit,
+    act: (cubit) =>
+        cubit.adjustLateFee(userId: 'owner-1', reducedFeeText: 'abc'),
+    expect: () => [
+      const SettlementState(
+        status: SettlementStatus.failure,
+        message: 'Enter a reduced fee above 0, or waive the fee.',
+      ),
+    ],
+  );
 }

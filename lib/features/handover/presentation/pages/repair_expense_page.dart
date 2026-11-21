@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:veloce/core/data/services/booking_lookup.dart';
 import 'package:veloce/core/domain/entities/booking.dart';
+import 'package:veloce/core/domain/entities/repair_expense.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 import 'package:veloce/core/error/result.dart';
 import 'package:veloce/features/handover/domain/repositories/repair_expense_repository.dart';
@@ -44,6 +45,7 @@ class RepairExpensePage extends StatelessWidget {
               return BlocProvider(
                 create: (_) => RepairExpenseCubit(
                   bookingId: bookingId,
+                  vehicleId: booking.vehicleId,
                   ownerId: userId,
                   repository: GetIt.I<RepairExpenseRepository>(),
                 ),
@@ -148,12 +150,13 @@ class _ExpenseContent extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(expense.description),
-                        if (expense.receiptUrl.isNotEmpty) ...[
+                        if (expense.receiptUrl != null &&
+                            expense.receiptUrl!.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.network(
-                              expense.receiptUrl,
+                              expense.receiptUrl!,
                               height: 140,
                               width: double.infinity,
                               fit: BoxFit.cover,
