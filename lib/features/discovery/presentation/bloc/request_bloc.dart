@@ -1,6 +1,5 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-
 import 'package:veloce/core/domain/entities/booking.dart';
 import 'package:veloce/core/domain/services/auth_session.dart';
 
@@ -58,7 +57,12 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
     );
     if (isClosed) return;
     result.when(
-      success: (booking) => emit(RequestSuccess(booking)),
+      success: (booking) => emit(
+        RequestSuccess(
+          booking,
+          priceChanged: booking.totalPayable != state.draft.quote.totalPayable,
+        ),
+      ),
       failure: (failure) => emit(
         state.copyWith(isSubmitting: false, failureMessage: failure.message),
       ),

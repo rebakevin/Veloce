@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,6 +13,21 @@ import 'package:veloce/features/discovery/presentation/bloc/results_bloc.dart';
 
 import '../../../../support/builders.dart';
 import '../../support/discovery_fakes.dart';
+
+/// Completes each search only when the test says so, to force an overlap.
+class _GatedSearchRepository extends FakeSearchRepository {
+  final List<Completer<Result<List<VehicleCardData>>>> gates = [];
+
+  @override
+  Future<Result<List<VehicleCardData>>> search({
+    required SearchQuery query,
+    required VehicleFilters filters,
+  }) {
+    final gate = Completer<Result<List<VehicleCardData>>>();
+    gates.add(gate);
+    return gate.future;
+  }
+}
 
 void main() {
   final query = SearchQuery(
@@ -93,4 +110,29 @@ void main() {
     act: (bloc) => bloc.add(const ResultsStarted()),
     expect: () => [isA<ResultsLoading>(), isA<ResultsEmpty>()],
   );
+
+  test('a slow older search cannot overwrite the newest one', () async {
+    final repository = _GatedSearchRepository();
+    final bloc = ResultsBloc(
+      search: SearchVehicles(repository),
+      initialQuery: query,
+      initialFilters: VehicleFilters.none,
+    )..add(const ResultsStarted());
+    await pumpEventQueue();
+    bloc.add(const ResultsFiltersChanged(VehicleFilters(minPrice: 50000)));
+    await pumpEventQueue();
+    expect(repository.gates, hasLength(2));
+    repository.gates[1].complete(
+      Result.success([VehicleCardData(vehicle: aVehicle(id: 'new'))]),
+    );
+    await pumpEventQueue();
+    repository.gates[0].complete(
+      Result.success([VehicleCardData(vehicle: aVehicle(id: 'old'))]),
+    );
+    await pumpEventQueue();
+    final state = bloc.state as ResultsLoaded;
+    expect(state.cars.single.vehicle.id, 'new');
+    expect(state.filters.minPrice, 50000);
+    await bloc.close();
+  });
 }

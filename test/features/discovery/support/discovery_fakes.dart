@@ -42,8 +42,16 @@ class FakeAuthSession implements AuthSession {
   @override
   bool get isEmailVerified => verified;
 
+  final StreamController<void> _changes = StreamController<void>.broadcast();
+
+  /// Signs in [newUserId] and notifies listeners, like an account switch.
+  void switchTo(String? newUserId) {
+    userId = newUserId;
+    _changes.add(null);
+  }
+
   @override
-  Stream<void> get changes => const Stream.empty();
+  Stream<void> get changes => _changes.stream;
 }
 
 class FakePendingReviewChecker implements PendingReviewChecker {
@@ -123,6 +131,7 @@ class FakeFavouritesRepository implements FavouritesRepository {
       StreamController<Result<List<Favourite>>>.broadcast();
   final Map<String, Favourite> _favourites = {};
   bool failWrites = false;
+  final List<String> removedIds = [];
 
   @override
   Stream<Result<List<Favourite>>> watch(String userId) async* {
@@ -153,6 +162,7 @@ class FakeFavouritesRepository implements FavouritesRepository {
   }) async {
     if (failWrites) return const Result.failure(NetworkFailure());
     _favourites.remove(vehicleId);
+    removedIds.add(vehicleId);
     _controller.add(Result.success(_favourites.values.toList()));
     return const Result.success(null);
   }

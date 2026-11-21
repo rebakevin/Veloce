@@ -43,10 +43,13 @@ final class RequestEditing extends RequestState {
 }
 
 final class RequestSuccess extends RequestState {
-  const RequestSuccess(this.booking);
+  const RequestSuccess(this.booking, {this.priceChanged = false});
 
   final Booking booking;
 
+  /// True when the written total differs from the total the renter reviewed.
+  final bool priceChanged;
+
   @override
-  List<Object?> get props => [booking];
+  List<Object?> get props => [booking, priceChanged];
 }
