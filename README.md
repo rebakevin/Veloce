@@ -3,6 +3,8 @@
 ## Links
 - [Mock](https://rebakevin.github.io/Veloce/mock.html)
 - [Design system](https://rebakevin.github.io/Veloce/design-system.html)
+- [Contribution sheet](https://docs.google.com/spreadsheets/d/1MCt9xeab2z00Ph0A6JAsyw2u9X4Buopgi7rIhQOkiRk/edit?gid=0#gid=0)
+- [YouTube demo video](https://youtu.be/37-vRjSZXwc)
 
 ## Prerequisites
 
